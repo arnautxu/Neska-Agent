@@ -1,0 +1,1004 @@
+import "server-only";
+
+import { createHash, randomUUID } from "node:crypto";
+import path from "node:path";
+import type { InstallationConfig } from "@/config/installation-schema";
+import { loadInstallationConfig } from "@/config/installation";
+import { getSigningSecret } from "@/auth/session";
+import { FileLocalUserStore } from "@/auth/local-user-store";
+import { BrowserGatewayTokenService } from "@/runtime/browser/gateway-token";
+import {
+  ChromeBrowserRuntimeFactory,
+  ChromeRuntimeError,
+  probeChromeRuntimeCapability,
+} from "@/runtime/browser/chrome-runtime";
+import { CdpClientError } from "@/runtime/browser/cdp-client";
+import {
+  BrowserRegistryBackpressureError,
+  BrowserRuntimeRegistry,
+} from "@/runtime/browser/registry";
+import { BrowserSessionStore } from "@/runtime/browser/state-store";
+import type {
+  BrowserFrame,
+  BrowserGatewayCapability,
+  BrowserInputCommand,
+  BrowserPointerTrailPoint,
+  BrowserViewerHistoryAction,
+  BrowserViewerNavigationState,
+  BrowserViewerControlBinding,
+} from "@/runtime/browser/types";
+import { validateWorkerUserId } from "@/runtime/workers/provisioner";
+import { featurePolicyForIdentity } from "@/settings/server-service";
+import {
+  assertBrowserApprovalEvidence,
+  browserEvidenceHash,
+  browserInteractionRequiresApproval,
+  type BrowserActionResourceSnapshot,
+  type BrowserInformedApprovalEvidence,
+} from "@/runtime/browser/action-evidence";
+import { BrowserActionHistoryStore } from "@/runtime/browser/action-history";
+import { browserRuntimeCapabilityInventory } from "@/runtime/browser/capabilities";
+
+export class BrowserServiceError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+    readonly status: number,
+    readonly retryable = false,
+  ) {
+    super(message);
+    this.name = "BrowserServiceError";
+  }
+}
+
+const DEFAULT_BROWSER_OPERATION_TIMEOUT_MS = 30_000;
+const MIN_BROWSER_OPERATION_TIMEOUT_MS = 1_000;
+const MAX_BROWSER_OPERATION_TIMEOUT_MS = 120_000;
+
+function browserOperationTimeoutMs() {
+  const configured = Number(process.env.AIBRAIN_BROWSER_OPERATION_TIMEOUT_MS || DEFAULT_BROWSER_OPERATION_TIMEOUT_MS);
+  if (!Number.isSafeInteger(configured) || configured < MIN_BROWSER_OPERATION_TIMEOUT_MS ||
+    configured > MAX_BROWSER_OPERATION_TIMEOUT_MS) {
+    return DEFAULT_BROWSER_OPERATION_TIMEOUT_MS;
+  }
+  return configured;
+}
+
+function browserOperationFailure(code: "BROWSER_OPERATION_TIMEOUT" | "BROWSER_OPERATION_CANCELLED") {
+  return new BrowserServiceError(
+    code,
+    code === "BROWSER_OPERATION_CANCELLED"
+      ? "Browser operation was cancelled and its private session is being recovered."
+      : "Browser operation timed out and its private session is being recovered.",
+    code === "BROWSER_OPERATION_CANCELLED" ? 499 : 504,
+    true,
+  );
+}
+
+async function withBrowserOperationDeadline<Result>(
+  operation: () => Promise<Result>,
+  signal?: AbortSignal,
+) {
+  if (signal?.aborted) throw browserOperationFailure("BROWSER_OPERATION_CANCELLED");
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  let removeAbort: () => void = () => undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(
+      () => reject(browserOperationFailure("BROWSER_OPERATION_TIMEOUT")),
+      browserOperationTimeoutMs(),
+    );
+    timeout.unref?.();
+    if (signal) {
+      const abort = () => reject(browserOperationFailure("BROWSER_OPERATION_CANCELLED"));
+      signal.addEventListener("abort", abort, { once: true });
+      removeAbort = () => signal.removeEventListener("abort", abort);
+    }
+  });
+  try {
+    return await Promise.race([operation(), deadline]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+    removeAbort();
+  }
+}
+
+function isBrowserOperationDeadline(error: unknown) {
+  return error instanceof BrowserServiceError &&
+    (error.code === "BROWSER_OPERATION_TIMEOUT" || error.code === "BROWSER_OPERATION_CANCELLED");
+}
+
+type BrowserServiceState = {
+  fingerprint: string;
+  config: Readonly<InstallationConfig>;
+  registry: BrowserRuntimeRegistry;
+  tokens: BrowserGatewayTokenService;
+  viewerStreams: Map<string, ViewerStreamLease | AbortController>;
+};
+
+type ViewerStreamLease = {
+  controller: AbortController;
+  burstUntil: number;
+  wake: (() => void) | null;
+};
+
+const browserGlobal = globalThis as typeof globalThis & {
+  __aibrainBrowserRuntimeService?: BrowserServiceState;
+  __aibrainBrowserRuntimeServicePromise?: Promise<BrowserServiceState>;
+};
+
+function installationFingerprint(config: Readonly<InstallationConfig>) {
+  return createHash("sha256").update(JSON.stringify({
+    schemaVersion: config.schemaVersion,
+    installationId: config.installationId,
+    usersRoot: config.paths.usersRoot,
+  })).digest("hex");
+}
+
+function gatewaySecret() {
+  const configured = process.env.AIBRAIN_BROWSER_GATEWAY_SECRET?.trim();
+  if (configured) return configured;
+  if (process.env.NODE_ENV === "production") {
+    throw new BrowserServiceError(
+      "BROWSER_GATEWAY_SECRET_REQUIRED",
+      "AIBRAIN_BROWSER_GATEWAY_SECRET is required in production.",
+      503,
+    );
+  }
+  return createHash("sha256").update(`browser-gateway:${getSigningSecret()}`).digest("hex");
+}
+
+async function serviceState(): Promise<BrowserServiceState> {
+  const config = await loadInstallationConfig();
+  const fingerprint = installationFingerprint(config);
+  const existing = browserGlobal.__aibrainBrowserRuntimeService;
+  if (existing?.fingerprint === fingerprint) {
+    // Dev hot reloads can retain a service created before viewer attachment
+    // fencing was introduced. Upgrade that process-local state in place.
+    existing.viewerStreams ??= new Map();
+    return existing;
+  }
+  const inFlight = browserGlobal.__aibrainBrowserRuntimeServicePromise;
+  if (inFlight) {
+    const initialized = await inFlight;
+    return initialized.fingerprint === fingerprint ? initialized : serviceState();
+  }
+  const initialize = (async () => {
+    const replaced = browserGlobal.__aibrainBrowserRuntimeService;
+    if (replaced) {
+      for (const stream of replaced.viewerStreams?.values() ?? []) {
+        if (stream instanceof AbortController) stream.abort();
+        else stream.controller.abort();
+      }
+      replaced.viewerStreams?.clear();
+      await replaced.registry.close();
+    }
+    const state: BrowserServiceState = {
+      fingerprint,
+      config,
+      registry: new BrowserRuntimeRegistry({
+        store: new BrowserSessionStore({ config }),
+        factory: new ChromeBrowserRuntimeFactory({
+          executablePath: process.env.AIBRAIN_CHROME_BIN?.trim() || undefined,
+          expectedVersion: process.env.AIBRAIN_CHROME_EXPECTED_VERSION?.trim() || undefined,
+        }),
+        maxConcurrentStarts: Number(process.env.AIBRAIN_BROWSER_MAX_CONCURRENT_STARTS || 2),
+        maxPendingStarts: Number(process.env.AIBRAIN_BROWSER_MAX_PENDING_STARTS || 20),
+      }),
+      tokens: new BrowserGatewayTokenService({ secret: gatewaySecret() }),
+      viewerStreams: new Map(),
+    };
+    browserGlobal.__aibrainBrowserRuntimeService = state;
+    return state;
+  })();
+  browserGlobal.__aibrainBrowserRuntimeServicePromise = initialize;
+  try {
+    return await initialize;
+  } finally {
+    if (browserGlobal.__aibrainBrowserRuntimeServicePromise === initialize) {
+      delete browserGlobal.__aibrainBrowserRuntimeServicePromise;
+    }
+  }
+}
+
+function ensureBinding(state: BrowserServiceState, installationId: string, userId: string) {
+  if (state.config.installationId !== installationId) {
+    throw new BrowserServiceError(
+      "BROWSER_INSTALLATION_MISMATCH",
+      "Authenticated installation does not own this browser runtime.",
+      403,
+    );
+  }
+  try {
+    validateWorkerUserId(userId);
+  } catch {
+    throw new BrowserServiceError("BROWSER_USER_INVALID", "Browser user is invalid.", 403);
+  }
+}
+
+async function ensureEnabledUser(state: BrowserServiceState, userId: string) {
+  const user = await new FileLocalUserStore(state.config.paths.usersRoot).read(userId);
+  if (!user?.enabled) {
+    throw new BrowserServiceError(
+      "BROWSER_USER_DISABLED",
+      "Browser user is not provisioned or is disabled.",
+      403,
+    );
+  }
+}
+
+async function ensureBrowserEnabled(installationId: string, userId: string) {
+  const policy = await featurePolicyForIdentity(installationId, userId);
+  if (!policy["managed-browser"]) {
+    throw new BrowserServiceError(
+      "BROWSER_FEATURE_DISABLED",
+      "The managed browser is disabled in Settings.",
+      403,
+    );
+  }
+}
+
+async function browserCapability() {
+  return probeChromeRuntimeCapability({
+    executablePath: process.env.AIBRAIN_CHROME_BIN?.trim() || undefined,
+    expectedVersion: process.env.AIBRAIN_CHROME_EXPECTED_VERSION?.trim() || undefined,
+  });
+}
+
+async function ensureBrowserCapability() {
+  const capability = await browserCapability();
+  if (!capability.available) {
+    throw new BrowserServiceError(
+      capability.code ?? "CHROME_CAPABILITY_UNAVAILABLE",
+      "The managed Chrome capability is not available on this server.",
+      503,
+      true,
+    );
+  }
+}
+
+async function currentHandle(state: BrowserServiceState, userId: string) {
+  if (!state.registry.get(userId)) await state.registry.start(userId);
+  const handle = state.registry.get(userId);
+  const persistent = await state.registry.state(userId);
+  if (!handle || !persistent.browserSessionId || handle.browserSessionId !== persistent.browserSessionId) {
+    throw new BrowserServiceError(
+      "BROWSER_RUNTIME_NOT_RUNNING",
+      "Browser runtime is not running in this server process.",
+      409,
+      true,
+    );
+  }
+  return { handle, persistent };
+}
+
+export async function browserStatus(installationId: string, userId: string) {
+  const state = await serviceState();
+  ensureBinding(state, installationId, userId);
+  await ensureEnabledUser(state, userId);
+  await ensureBrowserEnabled(installationId, userId);
+  const [health, capability] = await Promise.all([
+    state.registry.health(userId),
+    browserCapability(),
+  ]);
+  return {
+    available: capability.available,
+    capabilityCode: capability.code,
+    healthy: capability.available && health.healthy,
+    state: health.state,
+    runtime: health.runtime,
+    runningInProcess: state.registry.get(userId) !== null,
+  };
+}
+
+export async function browserActionHistory(
+  installationId: string,
+  userId: string,
+  threadId: string,
+  limit = 50,
+) {
+  const state = await serviceState();
+  ensureBinding(state, installationId, userId);
+  await ensureEnabledUser(state, userId);
+  await ensureBrowserEnabled(installationId, userId);
+  const roots = await state.registry.store.roots(userId);
+  return new BrowserActionHistoryStore({
+    userRoot: path.dirname(roots.browserRoot),
+  }).list(threadId, limit);
+}
+
+export async function controlBrowser(
+  installationId: string,
+  userId: string,
+  action: "start" | "stop" | "takeover" | "release" | "heartbeat",
+  binding?: BrowserViewerControlBinding,
+) {
+  const state = await serviceState();
+  ensureBinding(state, installationId, userId);
+  if (action !== "stop") await ensureBrowserEnabled(installationId, userId);
+  if (action !== "stop") await ensureEnabledUser(state, userId);
+  if (action !== "stop") await ensureBrowserCapability();
+  try {
+    if (action === "start") await state.registry.start(userId);
+    else if (action === "stop") {
+      await state.registry.stop(userId);
+      const capability = await browserCapability();
+      return {
+        available: capability.available,
+        capabilityCode: capability.code,
+        healthy: false,
+        state: await state.registry.state(userId),
+        runtime: null,
+        runningInProcess: false,
+      };
+    } else if (binding) await state.registry.controlViewer(userId, action, binding);
+    else if (action === "takeover") await state.registry.takeOver(userId);
+    else if (action === "release") await state.registry.releaseTakeover(userId);
+    else await state.registry.heartbeat(userId, "human");
+    return browserStatus(installationId, userId);
+  } catch (error) {
+    if (error instanceof BrowserRegistryBackpressureError) {
+      throw new BrowserServiceError(error.code, error.message, 429, true);
+    }
+    throw error;
+  }
+}
+
+export async function issueBrowserGatewayToken(input: {
+  installationId: string;
+  userId: string;
+  authSessionId: string;
+  threadId: string;
+  capabilities: readonly BrowserGatewayCapability[];
+  ttlMs?: number;
+}) {
+  const state = await serviceState();
+  ensureBinding(state, input.installationId, input.userId);
+  await ensureBrowserEnabled(input.installationId, input.userId);
+  await ensureEnabledUser(state, input.userId);
+  await ensureBrowserCapability();
+  const { handle, persistent } = await currentHandle(state, input.userId);
+  if (persistent.lifecycle !== "ready" && persistent.lifecycle !== "human-control") {
+    throw new BrowserServiceError("BROWSER_VIEWER_UNAVAILABLE", "Browser viewer is unavailable.", 409, true);
+  }
+  return {
+    token: state.tokens.issue({
+      installationId: input.installationId,
+      userId: input.userId,
+      threadId: input.threadId,
+      browserSessionId: handle.browserSessionId,
+      authSessionId: input.authSessionId,
+      capabilities: input.capabilities,
+      ttlMs: input.ttlMs,
+    }),
+    browserSessionId: handle.browserSessionId,
+  };
+}
+
+async function authorizeGateway(input: {
+  installationId: string;
+  userId: string;
+  authSessionId: string;
+  threadId: string;
+  token: string;
+  capability: BrowserGatewayCapability;
+}) {
+  const state = await serviceState();
+  ensureBinding(state, input.installationId, input.userId);
+  await ensureBrowserEnabled(input.installationId, input.userId);
+  await ensureEnabledUser(state, input.userId);
+  await ensureBrowserCapability();
+  const { handle } = await currentHandle(state, input.userId);
+  state.tokens.verify(input.token, {
+    installationId: input.installationId,
+    userId: input.userId,
+    threadId: input.threadId,
+    browserSessionId: handle.browserSessionId,
+    authSessionId: input.authSessionId,
+    requiredCapability: input.capability,
+  });
+  return state;
+}
+
+async function executeViewerOperation<Result>(input: {
+  registry: BrowserRuntimeRegistry;
+  userId: string;
+  operation: () => Promise<Result>;
+  signal?: AbortSignal;
+  recoverOnCancellation?: boolean;
+}) {
+  try {
+    return await withBrowserOperationDeadline(input.operation, input.signal);
+  } catch (error) {
+    if (viewerOperationRequiresProcessRecovery(error, input.recoverOnCancellation)) {
+      await recoverBrowserProcess(input.registry, input.userId);
+    }
+    throw error;
+  }
+}
+
+export function viewerOperationRequiresProcessRecovery(
+  error: unknown,
+  recoverOnCancellation = true,
+) {
+  const normalViewerDetach = recoverOnCancellation === false &&
+    error instanceof BrowserServiceError && error.code === "BROWSER_OPERATION_CANCELLED";
+  return !normalViewerDetach && shouldRecoverBrowserProcess(error);
+}
+
+export async function captureBrowserFrame(input: {
+  installationId: string;
+  userId: string;
+  authSessionId: string;
+  threadId: string;
+  token: string;
+  signal?: AbortSignal;
+}) {
+  const state = await authorizeGateway({ ...input, capability: "view" });
+  return executeViewerOperation({
+    registry: state.registry,
+    userId: input.userId,
+    signal: input.signal,
+    recoverOnCancellation: false,
+    operation: () => state.registry.captureFrame(input.userId, input.threadId),
+  });
+}
+
+export type BrowserFrameStreamEvent = Readonly<{
+  kind: "frame" | "heartbeat";
+  sequence: number;
+  capturedAt: string;
+  captureDurationMs: number;
+  mediaType: "image/png" | null;
+  pointerTrail: readonly BrowserPointerTrailPoint[];
+  data: Uint8Array;
+}>;
+
+type BrowserFrameEventSource = Readonly<{
+  signal: AbortSignal;
+  capture(): Promise<BrowserFrame>;
+  wait(milliseconds: number, signal?: AbortSignal): Promise<void>;
+  burstActive(): boolean;
+  now(): number;
+  frameIntervalMs: number;
+  idleFrameIntervalMs: number;
+  heartbeatIntervalMs: number;
+  maximumDurationMs: number;
+}>;
+
+/**
+ * Keeps transport liveness independent from image production. A compositor
+ * read may be slow while the authenticated viewer and Chrome target remain
+ * healthy, so cheap heartbeat records continue without starting more captures.
+ */
+export async function* streamBrowserFrameEvents(
+  input: BrowserFrameEventSource,
+): AsyncGenerator<BrowserFrameStreamEvent> {
+  const deadline = input.now() + input.maximumDurationMs;
+  let sequence = 0;
+  let lastDigest: string | null = null;
+  let lastPointerSignature: string | null = null;
+  let lastPointerTrail: readonly BrowserPointerTrailPoint[] = Object.freeze([]);
+  let lastEmissionAt = input.now();
+  while (!input.signal.aborted && input.now() < deadline) {
+    const captureStartedAt = input.now();
+    const capture = input.capture().then(
+      (frame) => ({ kind: "frame" as const, frame }),
+      (error: unknown) => ({ kind: "error" as const, error }),
+    );
+    let frame: BrowserFrame | null = null;
+    while (!input.signal.aborted && input.now() < deadline && !frame) {
+      const now = input.now();
+      const waitMs = Math.max(0, Math.min(
+        deadline - now,
+        (lastEmissionAt + input.heartbeatIntervalMs) - now,
+      ));
+      const timerController = new AbortController();
+      const outcome = await Promise.race([
+        capture,
+        input.wait(waitMs, timerController.signal).then(() => ({ kind: "timer" as const })),
+      ]);
+      timerController.abort();
+      if (outcome.kind === "error") throw outcome.error;
+      if (outcome.kind === "frame") {
+        frame = outcome.frame;
+        break;
+      }
+      const heartbeatAt = input.now();
+      if (input.signal.aborted || heartbeatAt >= deadline) return;
+      if (heartbeatAt - lastEmissionAt >= input.heartbeatIntervalMs) {
+        lastEmissionAt = heartbeatAt;
+        yield Object.freeze({
+          kind: "heartbeat" as const,
+          sequence,
+          capturedAt: new Date(heartbeatAt).toISOString(),
+          captureDurationMs: 0,
+          mediaType: null,
+          pointerTrail: lastPointerTrail,
+          data: new Uint8Array(0),
+        });
+      }
+    }
+    if (!frame || input.signal.aborted) return;
+    const data = Buffer.from(frame.dataBase64, "base64");
+    const digest = createHash("sha256").update(data).digest("hex");
+    const pointerTrail = frame.pointerTrail ?? Object.freeze([]);
+    const pointerSignature = JSON.stringify(pointerTrail);
+    const captureDurationMs = Math.max(0, input.now() - captureStartedAt);
+    lastPointerTrail = pointerTrail;
+    if (digest !== lastDigest || pointerSignature !== lastPointerSignature) {
+      sequence += 1;
+      lastDigest = digest;
+      lastPointerSignature = pointerSignature;
+      lastEmissionAt = input.now();
+      yield Object.freeze({
+        kind: "frame" as const,
+        sequence,
+        capturedAt: frame.capturedAt,
+        captureDurationMs,
+        mediaType: frame.mediaType,
+        pointerTrail,
+        data: new Uint8Array(data),
+      });
+    } else if (input.now() - lastEmissionAt >= input.heartbeatIntervalMs) {
+      const heartbeatAt = input.now();
+      lastEmissionAt = heartbeatAt;
+      yield Object.freeze({
+        kind: "heartbeat" as const,
+        sequence,
+        capturedAt: new Date(heartbeatAt).toISOString(),
+        captureDurationMs: 0,
+        mediaType: null,
+        pointerTrail,
+        data: new Uint8Array(0),
+      });
+    }
+    const targetIntervalMs = input.burstActive() ? input.frameIntervalMs : input.idleFrameIntervalMs;
+    await input.wait(targetIntervalMs - (input.now() - captureStartedAt));
+  }
+}
+
+function waitForNextFrame(milliseconds: number, stream: ViewerStreamLease, localSignal?: AbortSignal) {
+  const signal = stream.controller.signal;
+  if (signal.aborted || localSignal?.aborted || milliseconds <= 0) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(finish, milliseconds);
+    function finish() {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", finish);
+      localSignal?.removeEventListener("abort", finish);
+      if (stream.wake === finish) stream.wake = null;
+      resolve();
+    }
+    stream.wake = finish;
+    signal.addEventListener("abort", finish, { once: true });
+    localSignal?.addEventListener("abort", finish, { once: true });
+  });
+}
+
+function wakeViewerStream(state: BrowserServiceState, userId: string, threadId: string, burstMs: number) {
+  const stream = state.viewerStreams.get(`${userId}:${threadId}`);
+  if (!stream || stream instanceof AbortController) return;
+  stream.burstUntil = Math.max(stream.burstUntil, Date.now() + burstMs);
+  stream.wake?.();
+}
+
+/**
+ * Authenticates once, then emits only changed frames over one bounded stream.
+ * Heartbeats keep idle pages attached without exposing Chrome or CDP details.
+ */
+export async function* streamBrowserFrames(input: {
+  installationId: string;
+  userId: string;
+  authSessionId: string;
+  threadId: string;
+  token: string;
+  signal: AbortSignal;
+  frameIntervalMs?: number;
+  idleFrameIntervalMs?: number;
+  heartbeatIntervalMs?: number;
+  maximumDurationMs?: number;
+}): AsyncGenerator<BrowserFrameStreamEvent> {
+  const state = await authorizeGateway({ ...input, capability: "view" });
+  const streamKey = `${input.userId}:${input.threadId}`;
+  const streamController = new AbortController();
+  const stream: ViewerStreamLease = { controller: streamController, burstUntil: Date.now() + 1_500, wake: null };
+  const previousStream = state.viewerStreams.get(streamKey);
+  state.viewerStreams.set(streamKey, stream);
+  if (previousStream instanceof AbortController) previousStream.abort();
+  else previousStream?.controller.abort();
+  const detach = () => streamController.abort();
+  input.signal.addEventListener("abort", detach, { once: true });
+  if (input.signal.aborted) detach();
+  const frameIntervalMs = Math.max(100, Math.min(1_000, input.frameIntervalMs ?? 100));
+  const idleFrameIntervalMs = Math.max(frameIntervalMs, Math.min(2_000, input.idleFrameIntervalMs ?? 500));
+  const heartbeatIntervalMs = Math.max(1_000, Math.min(10_000, input.heartbeatIntervalMs ?? 2_500));
+  const maximumDurationMs = Math.max(1_000, Math.min(25_000, input.maximumDurationMs ?? 20_000));
+  try {
+    const events = streamBrowserFrameEvents({
+      signal: streamController.signal,
+      capture: () => executeViewerOperation({
+        registry: state.registry,
+        userId: input.userId,
+        signal: streamController.signal,
+        recoverOnCancellation: false,
+        operation: () => state.registry.captureFrame(input.userId, input.threadId),
+      }),
+      wait: (milliseconds, signal) => waitForNextFrame(milliseconds, stream, signal),
+      burstActive: () => Date.now() < stream.burstUntil,
+      now: Date.now,
+      frameIntervalMs,
+      idleFrameIntervalMs,
+      heartbeatIntervalMs,
+      maximumDurationMs,
+    });
+    for await (const event of events) {
+      yield event;
+    }
+  } catch (error) {
+    if (!streamController.signal.aborted) throw error;
+  } finally {
+    // A bounded EOF must retire its pending compositor read. Cancellation is
+    // attachment-local and explicitly does not restart or fence Chrome.
+    streamController.abort();
+    input.signal.removeEventListener("abort", detach);
+    if (state.viewerStreams.get(streamKey) === stream) {
+      state.viewerStreams.delete(streamKey);
+    }
+  }
+}
+
+export async function browserViewerNavigationState(input: {
+  installationId: string;
+  userId: string;
+  authSessionId: string;
+  threadId: string;
+  token: string;
+  signal?: AbortSignal;
+}) {
+  const state = await authorizeGateway({ ...input, capability: "view" });
+  return executeViewerOperation({
+    registry: state.registry,
+    userId: input.userId,
+    signal: input.signal,
+    recoverOnCancellation: false,
+    operation: () => state.registry.viewerNavigationState(input.userId, input.threadId),
+  });
+}
+
+export async function sendBrowserViewerCommand(input: {
+  installationId: string;
+  userId: string;
+  authSessionId: string;
+  threadId: string;
+  token: string;
+  signal?: AbortSignal;
+  command:
+    | { action: "navigate"; url: string }
+    | { action: "history"; direction: BrowserViewerHistoryAction }
+    | { action: "viewport"; viewport: { width: number; height: number } }
+    | { action: "input"; command: BrowserInputCommand }
+    | { action: "inputs"; commands: BrowserInputCommand[] };
+}) {
+  const command = input.command;
+  const state = await authorizeGateway({ ...input, capability: command.action === "viewport" ? "view" : "control" });
+  let navigationState: BrowserViewerNavigationState | undefined;
+  const actions: Array<Exclude<typeof command, { action: "inputs" }>> = [];
+  try {
+    if (command.action === "navigate") {
+      navigationState = await executeViewerOperation({
+        registry: state.registry,
+        userId: input.userId,
+        signal: input.signal,
+        operation: async () => {
+          await state.registry.navigate(input.userId, input.threadId, command.url);
+          return state.registry.viewerNavigationState(input.userId, input.threadId);
+        },
+      });
+    } else if (command.action === "history") {
+      navigationState = await executeViewerOperation({
+        registry: state.registry,
+        userId: input.userId,
+        signal: input.signal,
+        operation: () => state.registry.navigateHistory(input.userId, input.threadId, command.direction),
+      });
+    } else if (command.action === "viewport") {
+      navigationState = await executeViewerOperation({
+        registry: state.registry,
+        userId: input.userId,
+        signal: input.signal,
+        recoverOnCancellation: false,
+        operation: () => state.registry.resizeViewport(input.userId, input.threadId, command.viewport),
+      });
+    } else {
+      await executeViewerOperation({
+        registry: state.registry,
+        userId: input.userId,
+        signal: input.signal,
+        operation: () => command.action === "inputs"
+          ? state.registry.dispatchInputs(input.userId, input.threadId, command.commands,
+            (entry) => actions.push({ action: "input", command: entry }))
+          : state.registry.dispatchInput(input.userId, input.threadId, command.command),
+      });
+      const commands = command.action === "inputs" ? command.commands : [command.command];
+      const canStartNavigation = commands.some((entry) =>
+        (entry.kind === "mouse" && entry.event === "mouseReleased") ||
+        (entry.kind === "key" && entry.event === "keyUp" && entry.key === "Enter"));
+      if (canStartNavigation) {
+        navigationState = await executeViewerOperation({
+          registry: state.registry,
+          userId: input.userId,
+          signal: input.signal,
+          recoverOnCancellation: false,
+          operation: () => state.registry.viewerNavigationState(input.userId, input.threadId),
+        });
+      }
+    }
+    if (command.action !== "inputs" && command.action !== "viewport") actions.push(command);
+  } finally {
+    wakeViewerStream(
+      state,
+      input.userId,
+      input.threadId,
+      command.action === "navigate" ? 5_000 : command.action === "history" ? 3_000 : 1_500,
+    );
+    // Preserve the confirmed prefix even if a later batch input has an uncertain
+    // result. Audit carries no text or coordinates and never replays a mutation.
+    for (const command of actions) {
+      const action = command.action === "navigate"
+        ? "open"
+        : command.action === "history"
+          ? "open"
+          : command.action === "viewport"
+            ? null
+          : command.command.event === "mouseWheel"
+            ? "scroll"
+            : command.command.event === "mouseReleased"
+              ? "click"
+              : command.command.event === "keyDown"
+                ? "type"
+                : null;
+      if (action) {
+        const roots = await state.registry.store.roots(input.userId);
+        await new BrowserActionHistoryStore({ userRoot: path.dirname(roots.browserRoot) }).append({
+          schemaVersion: 1,
+          installationId: input.installationId,
+          userId: input.userId,
+          threadId: input.threadId,
+          turnId: "manual-takeover",
+          callId: randomUUID(),
+          action,
+          phase: "dispatched",
+          success: true,
+          actor: "human",
+        }).catch(() => null);
+      }
+    }
+  }
+  return navigationState;
+}
+
+export type BrowserAgentCommand =
+  | { action: "capabilities" }
+  | { action: "open"; url: string }
+  | { action: "read" }
+  | { action: "screenshot" }
+  | { action: "scroll"; deltaX: number; deltaY: number }
+  | { action: "click"; selector: string }
+  | { action: "type"; selector: string; text: string; clear: boolean }
+  | { action: "tabs" }
+  | { action: "downloads" };
+
+export type BrowserMutationCommand = Extract<
+  BrowserAgentCommand,
+  { action: "open" | "scroll" | "click" | "type" }
+>;
+
+function isBrowserMutation(command: BrowserAgentCommand): command is BrowserMutationCommand {
+  return command.action === "open" || command.action === "scroll" ||
+    command.action === "click" || command.action === "type";
+}
+
+function isRecoverableBrowserReadFailure(error: unknown) {
+  return (error instanceof CdpClientError && [
+    "CDP_PIPE_EOF",
+    "CDP_CLOSED",
+    "CDP_PIPE_READ_FAILED",
+    "CDP_PIPE_WRITE_FAILED",
+    "CDP_SEND_FAILED",
+    "CDP_COMMAND_TIMEOUT",
+    "CDP_EVENT_TIMEOUT",
+  ].includes(error.code)) || (error instanceof ChromeRuntimeError && [
+    "CHROME_NOT_RUNNING",
+    "CHROME_PAGE_STATE_INVALID",
+  ].includes(error.code));
+}
+
+function shouldRecoverBrowserProcess(error: unknown) {
+  return isBrowserOperationDeadline(error) || isRecoverableBrowserReadFailure(error);
+}
+
+async function recoverBrowserProcess(
+  registry: BrowserRuntimeRegistry,
+  userId: string,
+) {
+  await registry.restart(userId);
+}
+
+async function executeBrowserReadWithRecovery<Result>(
+  registry: BrowserRuntimeRegistry,
+  userId: string,
+  operation: () => Promise<Result>,
+  signal?: AbortSignal,
+) {
+  try {
+    return await withBrowserOperationDeadline(operation, signal);
+  } catch (error) {
+    if (!shouldRecoverBrowserProcess(error)) throw error;
+    await recoverBrowserProcess(registry, userId);
+    if (signal?.aborted) throw browserOperationFailure("BROWSER_OPERATION_CANCELLED");
+    return withBrowserOperationDeadline(operation, signal);
+  }
+}
+
+async function agentRegistry(input: { installationId: string; userId: string }) {
+  const state = await serviceState();
+  ensureBinding(state, input.installationId, input.userId);
+  await ensureBrowserEnabled(input.installationId, input.userId);
+  await ensureEnabledUser(state, input.userId);
+  await ensureBrowserCapability();
+  try {
+    await state.registry.start(input.userId);
+  } catch (error) {
+    if (error instanceof BrowserRegistryBackpressureError) {
+      throw new BrowserServiceError(error.code, error.message, 429, true);
+    }
+    throw error;
+  }
+  return state.registry;
+}
+
+/** Captures the exact page and target that a mutation approval describes. */
+export async function prepareBrowserAgentCommand(input: {
+  installationId: string;
+  userId: string;
+  threadId: string;
+  command: BrowserMutationCommand;
+  signal?: AbortSignal;
+}): Promise<BrowserActionResourceSnapshot> {
+  const registry = await agentRegistry(input);
+  try {
+    return await withBrowserOperationDeadline(
+      () => registry.prepareAgentMutation(input.userId, input.threadId, input.command),
+      input.signal,
+    );
+  } catch (error) {
+    if (shouldRecoverBrowserProcess(error)) await recoverBrowserProcess(registry, input.userId);
+    throw error;
+  }
+}
+
+/** Closed, typed browser surface for server-owned Codex dynamic tools. */
+export async function executeBrowserAgentCommand(input: {
+  installationId: string;
+  userId: string;
+  threadId: string;
+  command: BrowserAgentCommand;
+  approvalEvidence?: BrowserInformedApprovalEvidence;
+  expectedResource?: BrowserActionResourceSnapshot;
+  signal?: AbortSignal;
+}) {
+  if (input.command.action === "capabilities") {
+    return browserRuntimeCapabilityInventory();
+  }
+  const registry = await agentRegistry(input);
+  if (isBrowserMutation(input.command)) {
+    const command = input.command;
+    if (!input.expectedResource) {
+      throw new BrowserServiceError(
+        "BROWSER_ACTION_TARGET_EVIDENCE_REQUIRED",
+        "Browser interaction requires server-bound target evidence.",
+        409,
+      );
+    }
+    const approvalRequired = browserInteractionRequiresApproval(input.command, input.expectedResource);
+    if (approvalRequired && !input.approvalEvidence) {
+      throw new BrowserServiceError(
+        "BROWSER_ACTION_APPROVAL_REQUIRED",
+        "Sensitive browser interaction requires explicit approval.",
+        409,
+      );
+    }
+    let evidenceFingerprint: string;
+    if (input.approvalEvidence) {
+      const evidence = assertBrowserApprovalEvidence(input.approvalEvidence);
+      if (evidence.installationId !== input.installationId || evidence.userId !== input.userId ||
+        evidence.actionKind !== input.command.action || evidence.resource.scopeId !== input.threadId ||
+        evidence.resource.kind !== input.expectedResource.kind ||
+        evidence.resource.origin !== input.expectedResource.origin ||
+        evidence.resource.scopeId !== input.expectedResource.scopeId ||
+        evidence.resource.generation !== input.expectedResource.generation ||
+        evidence.resource.version !== input.expectedResource.version ||
+        evidence.resource.locatorHash !== input.expectedResource.locatorHash ||
+        Date.parse(evidence.expiresAt) <= Date.now()) {
+        throw new BrowserServiceError(
+          "BROWSER_ACTION_EVIDENCE_MISMATCH",
+          "Browser action evidence is expired or does not match this execution.",
+          409,
+        );
+      }
+      evidenceFingerprint = evidence.evidenceFingerprint;
+    } else {
+      evidenceFingerprint = browserEvidenceHash({
+        mode: "routine",
+        installationId: input.installationId,
+        userId: input.userId,
+        threadId: input.threadId,
+        actionKind: input.command.action,
+        resource: input.expectedResource,
+      });
+    }
+    try {
+      return await withBrowserOperationDeadline(
+        () => registry.executeAgentMutation(
+          input.userId,
+          input.threadId,
+          command,
+          input.expectedResource as BrowserActionResourceSnapshot,
+          evidenceFingerprint,
+        ),
+        input.signal,
+      );
+    } catch (error) {
+      // A mutation is never replayed after dispatch may have started.  Fencing
+      // the exact employee process makes the next action recover on a fresh
+      // session while the durable call record remains indeterminate.
+      await recoverBrowserProcess(registry, input.userId);
+      throw error;
+    }
+  }
+  if (input.command.action === "read") {
+    return executeBrowserReadWithRecovery(
+      registry,
+      input.userId,
+      () => registry.readPage(input.userId, input.threadId),
+      input.signal,
+    );
+  }
+  if (input.command.action === "screenshot") {
+    return executeBrowserReadWithRecovery(
+      registry,
+      input.userId,
+      () => registry.agentCaptureFrame(input.userId, input.threadId),
+      input.signal,
+    );
+  }
+  if (input.command.action === "tabs") {
+    return executeBrowserReadWithRecovery(
+      registry,
+      input.userId,
+      () => registry.listTabs(input.userId, input.threadId),
+      input.signal,
+    );
+  }
+  return executeBrowserReadWithRecovery(
+    registry,
+    input.userId,
+    () => registry.listDownloads(input.userId, input.threadId),
+    input.signal,
+  );
+}
+
+/** Stops only the selected employee browser without creating a service instance. */
+export async function stopBrowserRuntimeForUser(installationId: string, userId: string) {
+  const state = browserGlobal.__aibrainBrowserRuntimeService;
+  if (!state) return false;
+  ensureBinding(state, installationId, userId);
+  return state.registry.stop(userId);
+}
+
+export function resetBrowserServiceForTests() {
+  const current = browserGlobal.__aibrainBrowserRuntimeService;
+  delete browserGlobal.__aibrainBrowserRuntimeService;
+  delete browserGlobal.__aibrainBrowserRuntimeServicePromise;
+  return current?.registry.close();
+}

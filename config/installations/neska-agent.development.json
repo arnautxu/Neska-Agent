@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "installationId": "neska-agent-dev",
+  "companyName": "Neska Agent",
+  "companySlug": "neska-agent",
+  "publicUrl": "http://localhost:3102",
+  "branding": {
+    "productName": "Neska Agent",
+    "logoPath": "/branding/example-lab/logo.svg",
+    "faviconPath": "/branding/example-lab/favicon.svg",
+    "accentColor": "#315ee7"
+  },
+  "paths": {
+    "dataRoot": "/tmp/neska-agent-dev/data",
+    "companyContextRoot": "/tmp/neska-agent-dev/data/company",
+    "usersRoot": "/tmp/neska-agent-dev/data/users",
+    "sourceReadRoot": "/tmp/neska-agent-dev/documents/source-ro",
+    "publishWriteRoot": "/tmp/neska-agent-dev/documents/publish-rw",
+    "backupsRoot": "/tmp/neska-agent-dev/data/backups"
+  }
+}

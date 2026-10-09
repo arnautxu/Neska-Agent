@@ -1,0 +1,337 @@
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ResolvedPermissions } from "@/permissions";
+import { ResourceLockManager } from "@/storage";
+import { FileDocumentStagingStore } from "@/documents/staging-store";
+import { validateUploadedDocument } from "@/documents/upload-validation";
+import { generateLocalDocument } from "@/runtime/documents/local-document-generator";
+import {
+  assertWorkerTurnDocuments,
+  resolveTurnDocumentAttachments,
+  prepareTurnDocumentWorkspaceInputs,
+  ServerTurnDocumentInputResolver,
+  turnDocumentChatAttachments,
+  turnDocumentCodexInputs,
+} from "@/documents/turn-attachments";
+import type { DocumentToolRunner } from "@/documents/preview-service";
+
+const THREAD_ID = "11111111-1111-4111-8111-111111111111";
+const OTHER_THREAD_ID = "11111111-1111-4111-8111-111111111112";
+const UPLOAD_ID = "22222222-2222-4222-8222-222222222222";
+const roots: string[] = [];
+
+function permissions(effect: "allow" | "deny"): ResolvedPermissions {
+  return {
+    schemaVersion: 1,
+    installationId: "documents-lab",
+    userId: "33333333-3333-4333-8333-333333333333",
+    roleId: null,
+    projectId: null,
+    turnId: "44444444-4444-4444-8444-444444444444",
+    resolvedAt: "2026-08-27T00:00:00.000Z",
+    fingerprint: "a".repeat(64),
+    sources: [],
+    rules: [{
+      ruleId: "documents.read",
+      action: "consult",
+      effect,
+      instruction: "Synthetic document access.",
+      sourceScope: "installation",
+      sourcePolicyVersion: 1,
+      precedence: 100,
+    }],
+    developerInstructions: "Synthetic permission fixture.",
+  };
+}
+
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
+
+async function fixture() {
+  const root = await mkdtemp(path.join(os.tmpdir(), "aibrain-turn-documents-"));
+  roots.push(root);
+  await chmod(root, 0o700);
+  const stagingRoot = path.join(root, "staging");
+  const locks = new ResourceLockManager({ rootDirectory: path.join(root, "locks") });
+  const staging = new FileDocumentStagingStore(stagingRoot, locks);
+  const data = Buffer.from("server-derived attachment\n", "utf8");
+  const validated = validateUploadedDocument({ fileName: "notes.txt", declaredMimeType: "text/plain", data });
+  const document = await staging.stage({ threadId: THREAD_ID, uploadId: UPLOAD_ID, validated, data });
+  return { root, stagingRoot, staging, document };
+}
+
+function textInputResolver(stagingRoot: string) {
+  return new ServerTurnDocumentInputResolver({
+    stagingRoot,
+    previews: {
+      read: async () => { throw new Error("text does not use previews"); },
+      readFile: async () => { throw new Error("text does not use previews"); },
+    },
+    pdftotext: "/tools/pdftotext",
+  });
+}
+
+describe("turn document attachment binding", () => {
+  it.each([10, 11, 20, 33, 50])("binds %i fictional invoices from real validated staging without model calls", async (count) => {
+    const { staging, stagingRoot } = await fixture();
+    const ids: string[] = [];
+    for (let index = 0; index < count; index++) {
+      const uploadId = `22222222-2222-4222-8222-${String(index + 1).padStart(12, "0")}`;
+      const data = Buffer.from(`Fictional invoice INV-${index + 1}\nAmount EUR 42.00\n`, "utf8");
+      const validated = validateUploadedDocument({ fileName: `invoice-${index + 1}.txt`, declaredMimeType: "text/plain", data });
+      await staging.stage({ threadId: THREAD_ID, uploadId, validated, data });
+      ids.push(uploadId);
+    }
+    const resolved = await resolveTurnDocumentAttachments({ staging, threadId: THREAD_ID, uploadIds: ids,
+      permissions: permissions("allow"), inputResolver: textInputResolver(stagingRoot) });
+    expect(resolved).toHaveLength(count);
+    expect(() => assertWorkerTurnDocuments({ documents: resolved, stagingRoot, threadId: THREAD_ID,
+      uploadIds: ids, permissions: permissions("allow") })).not.toThrow();
+    expect(turnDocumentCodexInputs(resolved).filter(input => input.type === "text")).toHaveLength(count + 1);
+    expect(JSON.stringify(turnDocumentCodexInputs(resolved))).not.toContain(stagingRoot);
+  });
+
+  it("rejects 51 documents before staging reads or conversion", async () => {
+    const { staging, stagingRoot } = await fixture();
+    const read = vi.spyOn(staging, "resolveContentById");
+    const resolver = textInputResolver(stagingRoot);
+    const resolve = vi.spyOn(resolver, "resolve");
+    const ids = Array.from({ length: 51 }, (_, index) => `22222222-2222-4222-8222-${String(index + 1).padStart(12, "0")}`);
+    await expect(resolveTurnDocumentAttachments({ staging, threadId: THREAD_ID, uploadIds: ids,
+      permissions: permissions("allow"), inputResolver: resolver })).rejects.toMatchObject({ code: "TURN_DOCUMENT_SET_INVALID" });
+    expect(read).not.toHaveBeenCalled();
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it("retains aggregate source and prepared-text budgets with twenty documents", async () => {
+    const { staging, stagingRoot, document } = await fixture();
+    const ids = Array.from({ length: 20 }, (_, index) => `22222222-2222-4222-8222-${String(index + 1).padStart(12, "0")}`);
+    // Resource-only metadata mock: no large files or conversion processes are allocated.
+    const read = vi.spyOn(staging, "resolveContentById").mockImplementation(async (_threadId, uploadId) => ({
+      document: { ...document, uploadId, size: 11 * 1024 * 1024 },
+      absolutePath: path.join(stagingRoot, document.relativePath),
+    }));
+    const resolve = vi.fn(async () => [{ type: "text" as const, text: "invoice", text_elements: [] }]);
+    await expect(resolveTurnDocumentAttachments({ staging, threadId: THREAD_ID, uploadIds: ids,
+      permissions: permissions("allow"), inputResolver: { resolve } })).rejects.toMatchObject({ code: "TURN_DOCUMENT_SET_TOO_LARGE" });
+    expect(resolve).toHaveBeenCalledTimes(18);
+    read.mockImplementation(async (_threadId, uploadId) => ({ document: { ...document, uploadId },
+      absolutePath: path.join(stagingRoot, document.relativePath) }));
+    resolve.mockImplementation(async () => [{ type: "text" as const, text: "x".repeat(220_000), text_elements: [] }]);
+    await expect(resolveTurnDocumentAttachments({ staging, threadId: THREAD_ID, uploadIds: ids,
+      permissions: permissions("allow"), inputResolver: { resolve } })).rejects.toMatchObject({ code: "TURN_DOCUMENT_INPUT_TOO_LARGE" });
+  });
+
+  it("resolves a permissioned upload to a verified server path and typed Codex inputs", async () => {
+    const { staging, stagingRoot, document } = await fixture();
+    const resolved = await resolveTurnDocumentAttachments({
+      staging,
+      threadId: THREAD_ID,
+      uploadIds: [UPLOAD_ID],
+      permissions: permissions("allow"),
+      inputResolver: textInputResolver(stagingRoot),
+    });
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0].absolutePath).toBe(path.join(stagingRoot, document.relativePath));
+    expect(turnDocumentChatAttachments(resolved)).toEqual([{
+      id: UPLOAD_ID,
+      name: "notes.txt",
+      mimeType: "text/plain",
+      size: document.size,
+    }]);
+    const codexInputs = turnDocumentCodexInputs(resolved);
+    expect(codexInputs).toEqual([
+      expect.objectContaining({ type: "text", text: expect.stringContaining(document.sha256) }),
+      expect.objectContaining({ type: "text", text: expect.stringContaining("server-derived attachment") }),
+    ]);
+    expect(JSON.stringify(codexInputs)).not.toContain(stagingRoot);
+    expect(codexInputs.some((input) => input.type === "mention" || input.type === "localImage")).toBe(false);
+  });
+
+  it("rejects denied, cross-thread and content-tampered attachments", async () => {
+    const { staging, stagingRoot, document } = await fixture();
+    await expect(resolveTurnDocumentAttachments({
+      staging,
+      threadId: THREAD_ID,
+      uploadIds: [UPLOAD_ID],
+      permissions: permissions("deny"),
+      inputResolver: textInputResolver(stagingRoot),
+    })).rejects.toMatchObject({ code: "TURN_DOCUMENT_PERMISSION_DENIED" });
+    await expect(resolveTurnDocumentAttachments({
+      staging,
+      threadId: OTHER_THREAD_ID,
+      uploadIds: [UPLOAD_ID],
+      permissions: permissions("allow"),
+      inputResolver: textInputResolver(stagingRoot),
+    })).rejects.toBeDefined();
+    await writeFile(path.join(stagingRoot, document.relativePath), "tampered\n", "utf8");
+    await expect(resolveTurnDocumentAttachments({
+      staging,
+      threadId: THREAD_ID,
+      uploadIds: [UPLOAD_ID],
+      permissions: permissions("allow"),
+      inputResolver: textInputResolver(stagingRoot),
+    })).rejects.toMatchObject({ code: "STORAGE_STAGING_CONTENT_CORRUPT" });
+  });
+
+  it("embeds attested PDF text and first-page image without exposing a local path", async () => {
+    const { stagingRoot, document } = await fixture();
+    const runner: DocumentToolRunner = {
+      run: async () => ({ stdout: "Rendered contract text\n", stderr: "" }),
+    };
+    const resolver = new ServerTurnDocumentInputResolver({
+      stagingRoot,
+      previews: {
+        read: async () => ({
+          schemaVersion: 2,
+          uploadId: document.uploadId,
+          threadId: document.threadId,
+          sourceSha256: document.sha256,
+          status: "ready",
+          kind: "pdf",
+          files: ["document.pdf", "page-1.png"],
+          artifacts: [
+            { fileName: "document.pdf", size: 14, sha256: "a".repeat(64) },
+            { fileName: "page-1.png", size: 8, sha256: "b".repeat(64) },
+          ],
+          pages: 1,
+          createdAt: document.createdAt,
+        }),
+        readFile: async (_threadId, _uploadId, fileName) =>
+          fileName === "document.pdf" ? Buffer.from("%PDF-synthetic") : Buffer.from("png-page"),
+      },
+      pdftotext: "/tools/pdftotext",
+      runner,
+    });
+    const inputs = await resolver.resolve({
+      ...document,
+      fileName: "contract.pdf",
+      relativePath: document.relativePath.replace("notes.txt", "contract.pdf"),
+      kind: "pdf",
+      mediaType: "application/pdf",
+    });
+    expect(inputs).toEqual([
+      expect.objectContaining({ type: "text", text: expect.stringContaining("Rendered contract text") }),
+      expect.objectContaining({ type: "image", url: expect.stringMatching(/^data:image\/png;base64,/u) }),
+    ]);
+    expect(JSON.stringify(inputs)).not.toContain(stagingRoot);
+  });
+
+  it("supplies a scanned middle-page image and explicitly bounds unavailable trailing pages", async () => {
+    const { stagingRoot, document } = await fixture();
+    const renderPage = vi.fn(async () => Buffer.from("scanned-page"));
+    const resolver = new ServerTurnDocumentInputResolver({ stagingRoot, pdftotext: "/tools/pdftotext",
+      runner: { run: async () => ({ stdout: "page one\f\fpage three\f", stderr: "" }) },
+      previews: { read: async () => ({ schemaVersion: 2, uploadId: document.uploadId, threadId: document.threadId,
+        sourceSha256: document.sha256, status: "ready", kind: "pdf", files: ["document.pdf", "page-1.png"],
+        artifacts: [], pages: 3, createdAt: document.createdAt }),
+        readFile: async () => Buffer.from("preview"), renderPage },
+    });
+    const inputs = await resolver.resolve({ ...document, fileName: "mixed.pdf", kind: "pdf", mediaType: "application/pdf" });
+    expect(renderPage).toHaveBeenCalledWith(document.threadId, document.uploadId, 2, { signal: undefined });
+    expect(inputs.filter(i => i.type === "image")).toHaveLength(2);
+    expect(JSON.stringify(inputs)).toContain("page(s) 2 have no readable text");
+    expect(JSON.stringify(inputs)).toContain("page 2");
+    expect(JSON.stringify(inputs)).not.toContain("INCOMPLETE PDF COVERAGE");
+  });
+
+  it("maps preview and tool failures to a recoverable document error", async () => {
+    const { stagingRoot, document } = await fixture();
+    const resolver = new ServerTurnDocumentInputResolver({
+      stagingRoot,
+      previews: {
+        read: async () => { throw new Error("synthetic preview outage"); },
+        readFile: async () => { throw new Error("unreachable"); },
+      },
+      pdftotext: "/tools/pdftotext",
+    });
+    await expect(resolver.resolve({
+      ...document,
+      fileName: "contract.pdf",
+      relativePath: document.relativePath.replace("notes.txt", "contract.pdf"),
+      kind: "pdf",
+      mediaType: "application/pdf",
+    })).rejects.toMatchObject({ code: "TURN_DOCUMENT_PREPARATION_FAILED" });
+  });
+
+  it("reads uploaded XLSX cells by row without using the lossy PDF preview", async () => {
+    const { root, staging, stagingRoot } = await fixture();
+    const generated = await generateLocalDocument({
+      format: "xlsx",
+      title: "Vendes",
+      content: "Synthetic source",
+      rows: [
+        ["Setmana", "SKU", "Kg", "Preu"],
+        ["2026-07-27", "P001", 37.88, 12.9],
+        ["2026-08-03", "P002", 51.66, 9.9],
+      ],
+    });
+    const validated = validateUploadedDocument({
+      fileName: "vendes.xlsx",
+      declaredMimeType: generated.mimeType,
+      data: generated.data,
+    });
+    const document = await staging.stage({
+      threadId: THREAD_ID,
+      uploadId: "22222222-2222-4222-8222-222222222223",
+      validated,
+      data: generated.data,
+    });
+    const resolver = new ServerTurnDocumentInputResolver({
+      stagingRoot,
+      previews: {
+        read: async () => { throw new Error("XLSX must not use a PDF preview"); },
+        readFile: async () => { throw new Error("XLSX must not use a PDF preview"); },
+      },
+      pdftotext: "/tools/pdftotext",
+    });
+    const resolved = await resolveTurnDocumentAttachments({
+      staging,
+      threadId: THREAD_ID,
+      uploadIds: [document.uploadId],
+      permissions: permissions("allow"),
+      inputResolver: resolver,
+    });
+    const inputs = turnDocumentCodexInputs(resolved);
+    expect(inputs).toEqual([
+      expect.objectContaining({ type: "text", text: expect.stringContaining("server-attached documents") }),
+      expect.objectContaining({ type: "text", text: expect.stringContaining("stored cells") }),
+      expect.objectContaining({ type: "text", text: expect.stringContaining("2026-07-27,P001,37.88,12.9") }),
+    ]);
+    expect(inputs[2]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining("2026-08-03,P002,51.66,9.9"),
+    });
+    expect(JSON.stringify(inputs)).not.toContain(stagingRoot);
+    expect(turnDocumentCodexInputs(resolved, { xlsxAvailableInWorkspace: true })).toHaveLength(1);
+    const projectWorkspace = path.join(root, "private-project");
+    await mkdir(projectWorkspace, { mode: 0o700 });
+    const prepared = await prepareTurnDocumentWorkspaceInputs({
+      documents: resolved,
+      projectWorkspace,
+      stagingRoot,
+    });
+    expect(prepared.directory).toBeTruthy();
+    expect(prepared.codexInputs).toEqual([
+      expect.objectContaining({ type: "text", text: expect.stringContaining("input-1.xlsx") }),
+    ]);
+    expect(JSON.stringify(prepared.codexInputs)).not.toContain(stagingRoot);
+    expect(await readFile(path.join(prepared.directory!, "input-1.xlsx"))).toEqual(generated.data);
+    const workspaceResolver = new ServerTurnDocumentInputResolver({
+      stagingRoot,
+      previews: {
+        read: async () => { throw new Error("XLSX must not use a PDF preview"); },
+        readFile: async () => { throw new Error("XLSX must not use a PDF preview"); },
+      },
+      pdftotext: "/tools/pdftotext",
+      workspaceXlsx: true,
+      runner: { run: async () => { throw new Error("XLSX must not be rendered as text before workspace copy"); } },
+    });
+    expect(await workspaceResolver.resolve(document)).toEqual([
+      expect.objectContaining({ type: "text", text: expect.stringContaining("private turn workspace") }),
+    ]);
+  });
+});

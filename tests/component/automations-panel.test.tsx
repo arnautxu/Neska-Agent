@@ -1,0 +1,408 @@
+// @vitest-environment jsdom
+
+import { act, cleanup, fireEvent, render, screen, waitFor } from "../render-spanish";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_AUTOMATION_EXECUTION_CONTEXT, type AutomationTaskView } from "@/automations/contracts";
+import { AutomationsPanel } from "@/components/automations-panel";
+import type { WorkbenchProject } from "@/workbench/types";
+
+const ownerId = "00000000-0000-4000-8000-000000000001";
+const memberId = "00000000-0000-4000-8000-000000000002";
+const groupId = "00000000-0000-4000-8000-000000000010";
+const projectId = "10000000-0000-4000-8000-000000000001";
+
+const project: WorkbenchProject = {
+  id: projectId,
+  name: "Operaciones",
+  slug: "operaciones",
+  status: "active",
+  pinned: false,
+  instructions: "",
+  sources: [],
+  memory: { enabled: true, notes: "", updatedAt: null },
+  sharing: { visibility: "private", members: [] },
+  workspace: { id: "operations-workspace", label: "Operaciones", hostType: "managed", status: "ready", isPrimary: true },
+  createdAt: "2026-08-30T08:00:00.000Z",
+  updatedAt: "2026-08-30T08:00:00.000Z",
+};
+
+const viewerTask: AutomationTaskView = {
+  schemaVersion: 1,
+  id: "20000000-0000-4000-8000-000000000001",
+  installationId: "audience-qa",
+  userId: ownerId,
+  owner: { userId: ownerId, name: "Propietario" },
+  audience: { membershipPolicy: "current", userIds: [], groupIds: [groupId] },
+  name: "Informe compartido",
+  prompt: "Prepara el informe.",
+  projectId,
+  projectName: project.name,
+  timeZone: "Europe/Madrid",
+  schedule: { kind: "daily", hour: 9, minute: 0 },
+  executionContext: DEFAULT_AUTOMATION_EXECUTION_CONTEXT,
+  state: "active",
+  nextRunAt: "2030-08-30T07:00:00.000Z",
+  lastRunAt: null,
+  lastRunStatus: null,
+  lastRunError: null,
+  retryAt: null,
+  manualRun: null,
+  deletedAt: null,
+  cancellationRequestedAt: null,
+  lease: null,
+  createdAt: "2026-08-30T08:00:00.000Z",
+  updatedAt: "2026-08-30T08:00:00.000Z",
+  access: { canManage: false, canViewResults: true },
+};
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+describe("AutomationsPanel audience", () => {
+  it("waits for the current recipient identity before opening a new automation", async () => {
+    let resolveDirectory!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => { resolveDirectory = resolve; })));
+    render(<AutomationsPanel open projects={[project]} />);
+    const prematureButton = screen.queryByRole("button", { name: "Nueva" });
+    if (prematureButton) expect(prematureButton).toBeDisabled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(resolveDirectory).toBeTypeOf("function"));
+    await act(async () => { resolveDirectory(Response.json({ tasks: [], audienceDirectory: { membershipPolicy: "current", currentUserId: ownerId, users: [{ id: ownerId, name: "Owner" }], groups: [] } })); });
+    const newButton = screen.getByRole("button", { name: "Nueva" });
+    expect(newButton).toBeEnabled();
+    fireEvent.click(newButton);
+    expect(screen.getByRole("checkbox", { name: "Owner" })).toBeChecked();
+  });
+  it("shows a leased automatic run as in progress and prevents duplicate manual submission", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ tasks: [{ ...viewerTask,
+      lease: { workerId: "worker", runKey: "automatic", attempt: 1, claimedAt: "2026-10-07T12:00:00.000Z", expiresAt: "2026-10-07T12:10:00.000Z" },
+      access: { canManage: true, canViewResults: true },
+    }], audienceDirectory: { membershipPolicy: "current", currentUserId: ownerId, users: [], groups: [] } })));
+    render(<AutomationsPanel open projects={[project]} />);
+    expect(await screen.findByText("En curso")).toBeInTheDocument();
+    expect(screen.queryByText("Ejecución en cola")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ejecutar ahora" })).toBeDisabled();
+  });
+  it("updates a queued task after the worker finishes without reloading or resubmitting it", async () => {
+    let completed = false;
+    const request = vi.fn(async () => Response.json({ tasks: [{ ...viewerTask,
+      manualRun: completed ? null : { requestId: "30000000-0000-4000-8000-000000000001", scheduledFor: "2026-10-07T12:00:00.000Z" },
+      lastRunStatus: completed ? "succeeded" : null,
+      lastRunAt: completed ? "2026-10-07T12:00:00.000Z" : null,
+      access: { canManage: true, canViewResults: true },
+    }], audienceDirectory: { membershipPolicy: "current", currentUserId: ownerId, users: [], groups: [] } }));
+    vi.stubGlobal("fetch", request);
+    vi.useFakeTimers();
+    await act(async () => { render(<AutomationsPanel open projects={[project]} />); });
+    expect(screen.getByText("Ejecución en cola")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ejecutar ahora" })).toBeDisabled();
+    completed = true;
+    await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
+    expect(screen.queryByText("Ejecución en cola")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ejecutar ahora" })).toBeEnabled();
+    expect(request.mock.calls).toHaveLength(2);
+  });
+  it("creates a durable 120-minute interval task from the UI", async () => {
+    let submitted: Record<string, unknown> | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      if (!init?.method || init.method === "GET") return Response.json({ tasks: [], worker: null, audienceDirectory: { membershipPolicy: "current", currentUserId: ownerId, users: [{ id: ownerId, name: "Owner" }], groups: [] } });
+      submitted = JSON.parse(String(init.body));
+      return Response.json({ task: { ...viewerTask, ...submitted, access: { canManage: true, canViewResults: true } } });
+    }));
+    render(<AutomationsPanel open projects={[project]} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Nueva" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Nueva" }));
+    fireEvent.change(screen.getByPlaceholderText("Resumen diario del proyecto"), { target: { value: "Facturas" } });
+    fireEvent.change(screen.getByPlaceholderText("Revisa las novedades del proyecto y prepara un resumen con próximos pasos."), { target: { value: "Importa facturas del correo de empresa." } });
+    fireEvent.click(screen.getByRole("button", { name: "Por intervalo" }));
+    expect(screen.getByRole("spinbutton", { name: /Intervalo en minutos/ })).toHaveValue(120);
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(submitted).toMatchObject({ schedule: { kind: "interval", minutes: 120, anchorAt: expect.any(String) } }));
+  });
+
+  it("keeps the mobile sidebar control available on the automations surface", () => {
+    const onToggleSidebar = vi.fn();
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
+
+    render(<AutomationsPanel open projects={[project]} onToggleSidebar={onToggleSidebar} />);
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar u ocultar la barra lateral" }));
+
+    expect(onToggleSidebar).toHaveBeenCalledOnce();
+  });
+
+  it("shows only authorized controls and defaults a new task to the current user with optional users and groups", async () => {
+    const requests: Array<{ method: string; body: unknown }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      if (method === "GET") {
+        return new Response(JSON.stringify({
+          tasks: [viewerTask],
+          worker: null,
+          audienceDirectory: {
+            membershipPolicy: "current",
+            currentUserId: ownerId,
+            users: [{ id: ownerId, name: "Owner" }, { id: memberId, name: "Member" }],
+            groups: [{ id: groupId, name: "Operaciones" }],
+          },
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      const body = JSON.parse(String(init?.body));
+      requests.push({ method, body });
+      return new Response(JSON.stringify({ task: { ...viewerTask, ...body, access: { canManage: true, canViewResults: true } } }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    render(<AutomationsPanel open projects={[project]} />);
+    expect(screen.getByRole("main", { name: "Automatizaciones" })).toBeInTheDocument();
+    expect(screen.queryByText("Centro de tareas")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Servicio de automatizaciones|Se ejecutan mientras/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/Propietario: Propietario · Destinatarios: Grupo: Operaciones/)).toBeInTheDocument();
+    expect(screen.queryByText("Centro de tareas")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Editar Informe compartido" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Nueva" }));
+    const owner = screen.getByRole("checkbox", { name: "Owner" });
+    const member = screen.getByRole("checkbox", { name: "Member" });
+    const group = screen.getByRole("checkbox", { name: "Operaciones" });
+    expect(owner).toBeChecked();
+    expect(member).not.toBeChecked();
+    fireEvent.click(member);
+    fireEvent.click(group);
+    fireEvent.change(screen.getByPlaceholderText("Resumen diario del proyecto"), { target: { value: "Informe nuevo" } });
+    fireEvent.change(screen.getByPlaceholderText("Revisa las novedades del proyecto y prepara un resumen con próximos pasos."), { target: { value: "Prepara el informe nuevo." } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]).toMatchObject({
+      method: "POST",
+      body: {
+        audience: { membershipPolicy: "current", userIds: [ownerId, memberId], groupIds: [groupId] },
+      },
+    });
+  });
+
+  it("keeps the empty action centered and labels the standalone project as Sin proyecto", async () => {
+    const standaloneProject = { ...project, name: "Conversaciones", slug: "aibrain-standalone-chats" };
+    const standaloneTask = { ...viewerTask, projectId: standaloneProject.id, projectName: "Conversaciones" };
+    let tasks: AutomationTaskView[] = [standaloneTask];
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      tasks,
+      worker: null,
+      audienceDirectory: {
+        membershipPolicy: "current",
+        currentUserId: ownerId,
+        users: [{ id: ownerId, name: "Owner" }],
+        groups: [{ id: groupId, name: "Operaciones" }],
+      },
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    const view = render(<AutomationsPanel open projects={[standaloneProject]} />);
+    expect(await screen.findByText(/Sin proyecto ·/)).toBeInTheDocument();
+    view.unmount();
+
+    tasks = [];
+    render(<AutomationsPanel open projects={[standaloneProject]} />);
+    const emptyAction = await screen.findByRole("button", { name: "Nueva" });
+    expect(emptyAction).toHaveClass("mx-auto");
+    expect(emptyAction.parentElement).toHaveClass("workspace-empty-state");
+  });
+
+  it("persists an edited one-time date and minute instead of the form default", async () => {
+    const onceTask: AutomationTaskView = {
+      ...viewerTask,
+      access: { canManage: true, canViewResults: true },
+      audience: { membershipPolicy: "current", userIds: [ownerId], groupIds: [] },
+      schedule: { kind: "once", runAt: "2030-08-29T23:28:00.000Z" },
+    };
+    const requests: Array<{ method: string; body: Record<string, unknown> }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      if (method === "GET") {
+        return new Response(JSON.stringify({
+          tasks: [onceTask],
+          audienceDirectory: {
+            membershipPolicy: "current",
+            currentUserId: ownerId,
+            users: [{ id: ownerId, name: "Owner" }],
+            groups: [],
+          },
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      requests.push({ method, body });
+      return new Response(JSON.stringify({ task: { ...onceTask, ...body } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    render(<AutomationsPanel open projects={[project]} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Editar Informe compartido" }));
+    fireEvent.change(screen.getByLabelText("Fecha"), { target: { value: "2030-08-30" } });
+    fireEvent.change(screen.getByLabelText("Hora"), { target: { value: "00:31" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]).toMatchObject({
+      method: "PATCH",
+      body: {
+        schedule: { kind: "once", runAt: "2030-08-29T22:31:00.000Z" },
+        timeZone: "Europe/Madrid",
+      },
+    });
+  });
+
+  it("opens the editor as a named focus-trapped dialog and restores its opener on Escape", async () => {
+    const managedTask = { ...viewerTask, access: { canManage: true, canViewResults: true } };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      tasks: [managedTask],
+      audienceDirectory: {
+        membershipPolicy: "current",
+        currentUserId: ownerId,
+        users: [{ id: ownerId, name: "Owner" }],
+        groups: [],
+      },
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    render(<AutomationsPanel open projects={[project]} />);
+    const opener = await screen.findByRole("button", { name: "Editar Informe compartido" });
+    fireEvent.click(opener);
+
+    const dialog = screen.getByRole("dialog", { name: "Editar automatización" });
+    const name = screen.getByRole("textbox", { name: "Nombre" });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    await waitFor(() => expect(name).toHaveFocus());
+
+    const cancel = screen.getByRole("button", { name: "Cancelar" });
+    cancel.focus();
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+    expect(screen.getByRole("combobox", { name: "Zona horaria" })).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Editar automatización" })).not.toBeInTheDocument());
+    expect(opener).toHaveFocus();
+  });
+
+  it("keeps a dirty draft on Escape until the user explicitly discards it", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      tasks: [],
+      audienceDirectory: {
+        membershipPolicy: "current",
+        currentUserId: ownerId,
+        users: [{ id: ownerId, name: "Owner" }],
+        groups: [],
+      },
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    render(<AutomationsPanel open projects={[project]} />);
+    const opener = await screen.findByRole("button", { name: "Nueva" });
+    fireEvent.click(opener);
+    const name = screen.getByRole("textbox", { name: "Nombre" });
+    await waitFor(() => expect(name).toHaveFocus());
+    fireEvent.change(name, { target: { value: "Borrador importante" } });
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    const confirmation = await screen.findByRole("alertdialog", { name: "¿Descartar los cambios?" });
+    expect(confirmation).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Nueva automatización" })).toBeInTheDocument();
+    const continueEditing = screen.getByRole("button", { name: "Seguir editando" });
+    const discard = screen.getByRole("button", { name: "Descartar cambios" });
+    await waitFor(() => expect(continueEditing).toHaveFocus());
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+    expect(discard).toHaveFocus();
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(continueEditing).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("alertdialog", { name: "¿Descartar los cambios?" })).not.toBeInTheDocument();
+    await waitFor(() => expect(name).toHaveFocus());
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(await screen.findByRole("button", { name: "Descartar cambios" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva automatización" })).not.toBeInTheDocument());
+    expect(opener).toHaveFocus();
+  });
+
+  it("uses a focus-managed confirmation dialog before deleting an automation", async () => {
+    const managedTask = { ...viewerTask, access: { canManage: true, canViewResults: true } };
+    const requests: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if ((init?.method ?? "GET") === "DELETE") {
+        requests.push(url);
+        return new Response(null, { status: 204 });
+      }
+      return new Response(JSON.stringify({
+        tasks: [managedTask],
+        audienceDirectory: {
+          membershipPolicy: "current",
+          currentUserId: ownerId,
+          users: [{ id: ownerId, name: "Owner" }],
+          groups: [],
+        },
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    render(<AutomationsPanel open projects={[project]} />);
+    const opener = await screen.findByRole("button", { name: "Eliminar Informe compartido" });
+    fireEvent.click(opener);
+
+    expect(screen.getByRole("alertdialog", { name: "¿Eliminar “Informe compartido”?" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cancelar" })).toHaveFocus());
+    expect(requests).toEqual([]);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("alertdialog", { name: "¿Eliminar “Informe compartido”?" })).not.toBeInTheDocument());
+    expect(opener).toHaveFocus();
+
+    fireEvent.click(opener);
+    fireEvent.click(await screen.findByRole("button", { name: "Eliminar automatización" }));
+    await waitFor(() => expect(requests).toEqual([`/api/automations/${viewerTask.id}`]));
+    expect(screen.queryByText("Informe compartido")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Nueva" })).toHaveFocus());
+  });
+
+  it("reports editor and deletion surfaces so the app can prevent stacked global dialogs", async () => {
+    const managedTask = { ...viewerTask, access: { canManage: true, canViewResults: true } };
+    const onBlockingSurfaceChange = vi.fn();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      tasks: [managedTask],
+      audienceDirectory: {
+        membershipPolicy: "current",
+        currentUserId: ownerId,
+        users: [{ id: ownerId, name: "Owner" }],
+        groups: [],
+      },
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    render(
+      <AutomationsPanel
+        open
+        projects={[project]}
+        onBlockingSurfaceChange={onBlockingSurfaceChange}
+      />,
+    );
+    await screen.findByRole("button", { name: "Editar Informe compartido" });
+    await waitFor(() => expect(onBlockingSurfaceChange).toHaveBeenLastCalledWith(false));
+    onBlockingSurfaceChange.mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: "Nueva" }));
+    expect(onBlockingSurfaceChange).toHaveBeenLastCalledWith(true);
+    fireEvent.change(screen.getByRole("textbox", { name: "Nombre" }), { target: { value: "Borrador" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(await screen.findByRole("alertdialog", { name: "¿Descartar los cambios?" })).toBeInTheDocument();
+    expect(onBlockingSurfaceChange).toHaveBeenLastCalledWith(true);
+    fireEvent.click(screen.getByRole("button", { name: "Descartar cambios" }));
+    await waitFor(() => expect(onBlockingSurfaceChange).toHaveBeenLastCalledWith(false));
+
+    onBlockingSurfaceChange.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar Informe compartido" }));
+    expect(onBlockingSurfaceChange).toHaveBeenLastCalledWith(true);
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(onBlockingSurfaceChange).toHaveBeenLastCalledWith(false));
+  });
+});

@@ -1,0 +1,395 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "1"
+
+jobs:
+  quality-build:
+    name: Types, lint, contracts and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout immutable revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Use pinned Node runtime
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.18.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Verify generated Codex contracts
+        run: npm run contracts:verify
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Windows import and on-demand broker boundaries
+        run: |
+          python3 -m unittest discover -s tests/infra -p 'test_rdp*.py' -q
+          python3 -m unittest discover -s tests/infra -p 'test_playwright_apt*.py' -q
+      - name: Company knowledge and legacy spreadsheet boundaries
+        run: |
+          python3 -m venv "$RUNNER_TEMP/knowledge-tests"
+          "$RUNNER_TEMP/knowledge-tests/bin/python" -m pip install --require-hashes --only-binary=:all: -r infra/hetzner/knowledge-test-requirements.txt
+          "$RUNNER_TEMP/knowledge-tests/bin/python" -m unittest discover -s tests/infra -p 'test_knowledge*.py' -q
+          "$RUNNER_TEMP/knowledge-tests/bin/python" -m unittest discover -s tests/infra -p 'test_xls_passive*.py' -q
+      - name: Build and smoke-test automation worker
+        run: npm run build:automation-worker
+      - name: Production build
+        run: npm run build
+      - name: Validate infrastructure contracts
+        run: |
+          npm run infra:validate
+          bash -n infra/hetzner/app/deploy-arnall-main.sh
+          bash -n infra/hetzner/app/horaria-release.sh
+          bash -n infra/hetzner/app/horaria-backup.sh
+
+  quality-tests:
+    name: Tests (${{ matrix.shard }}/3)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: Checkout immutable revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Use pinned Node runtime
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.18.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Unit, integration and contract test shard
+        run: npm test -- --shard=${{ matrix.shard }}/3
+
+  quality:
+    name: Types, lint, contracts, tests and build
+    needs: [quality-build, quality-tests, horaria-tests]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require build checks and every test shard to pass
+        env:
+          BUILD_RESULT: ${{ needs.quality-build.result }}
+          TESTS_RESULT: ${{ needs.quality-tests.result }}
+          HORARIA_RESULT: ${{ needs.horaria-tests.result }}
+        run: |
+          test "$BUILD_RESULT" = success
+          test "$TESTS_RESULT" = success
+          test "$HORARIA_RESULT" = success
+
+  horaria-tests:
+    name: Horaria engine and authenticated chat service
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 24.18.1
+          cache: npm
+          cache-dependency-path: modules/horaria/backend/package-lock.json
+      - run: npm ci --ignore-scripts --prefix modules/horaria/backend
+      - run: npm run build --prefix modules/horaria/backend
+      - run: npm test --prefix modules/horaria/backend
+
+  e2e-suites:
+    name: E2E (${{ matrix.suite }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: backend
+            browser: ""
+            command: npm run test:e2e:backend
+          - suite: chromium-1
+            browser: chromium
+            command: npx playwright test --project=chromium-desktop --shard=1/2
+          - suite: chromium-2
+            browser: chromium
+            command: npx playwright test --project=chromium-desktop --shard=2/2
+    steps:
+      - name: Checkout immutable revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Use pinned Node runtime
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.18.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install the required pinned browser runtime
+        if: matrix.browser != ''
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: npx playwright install --with-deps "$BROWSER"
+      - name: Run isolated E2E suite
+        run: ${{ matrix.command }}
+      - name: Validate native composer and transport recovery
+        if: matrix.suite == 'chromium-1'
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: npx playwright test --config=playwright.recovery.config.ts --project="$BROWSER-recovery"
+
+  webkit:
+    name: E2E (webkit)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout immutable revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Use pinned Node runtime
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.18.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install WebKit system libraries with bounded mirror retries
+        timeout-minutes: 5
+        run: |
+          # Include legacy/deb822 sources and the runner's mirror+file lists.
+          sudo python3 scripts/configure-playwright-apt-mirrors.py
+          sudo tee /etc/apt/apt.conf.d/80-aibrain-timeouts >/dev/null <<'APT'
+          Acquire::Retries "3";
+          Acquire::http::Timeout "30";
+          Acquire::https::Timeout "30";
+          APT
+          npx playwright install-deps webkit
+      - name: Install the pinned WebKit browser
+        timeout-minutes: 3
+        env:
+          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: "30000"
+        run: npx playwright install webkit
+      - name: Run isolated E2E suite
+        run: npx playwright test --project=webkit-iphone
+      - name: Validate native composer and transport recovery
+        run: npx playwright test --config=playwright.recovery.config.ts --project=webkit-recovery
+
+  e2e:
+    name: Filesystem and restart E2E
+    needs: [e2e-suites, webkit]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every E2E suite including WebKit
+        env:
+          SUITES_RESULT: ${{ needs.e2e-suites.result }}
+          WEBKIT_RESULT: ${{ needs.webkit.result }}
+        run: |
+          test "$SUITES_RESULT" = success
+          test "$WEBKIT_RESULT" = success
+
+  documents:
+    name: Real Office, PDF, text and image matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout immutable revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Use pinned Node runtime
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.18.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install native document toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libreoffice-calc libreoffice-impress libreoffice-writer \
+            poppler-utils python3-pip qpdf catdoc unrtf
+          python3 -m pip install --break-system-packages --no-cache-dir \
+            python-pptx==1.0.2 openpyxl==3.1.5
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run real document matrix
+        env:
+          AIBRAIN_XLS_EDIT_TEST_PYTHON: /usr/bin/python3
+        run: npm run test:documents:real
+      - name: Read legacy DOC and RTF fixtures without privileges
+        run: python3 -m unittest discover -s tests/infra -p 'test_knowledge_word.py' -q
+
+  containers:
+    name: Clean immutable container builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout immutable revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Validate Compose model without secrets
+        env:
+          AIBRAIN_RUNTIME_ENV_FILE: ci.env.placeholder
+          AIBRAIN_EGRESS_ENV_FILE: ci.env.placeholder
+          AIBRAIN_ALERTS_ENV_FILE: ci.env.placeholder
+          AIBRAIN_REPLICA_ENV_FILE: ci.env.placeholder
+        run: |
+          docker compose \
+            --env-file infra/hetzner/compose.env.example \
+            -f infra/hetzner/compose.yaml \
+            config --no-env-resolution --quiet
+      - name: Build application image from scratch
+        run: |
+          docker build --pull --no-cache \
+            --target runtime \
+            --build-arg AIBRAIN_REVISION="${GITHUB_SHA}" \
+            --tag "aibrain-ci:${GITHUB_SHA}" .
+      - name: Exercise packaged Codex App Server through its production sandbox
+        run: |
+          sudo apparmor_parser -r infra/hetzner/apparmor/aibrain-container
+          mkdir -p "${RUNNER_TEMP}/aibrain-ci-data/company-context" \
+            "${RUNNER_TEMP}/aibrain-ci-source" \
+            "${RUNNER_TEMP}/aibrain-ci-publish"
+          chmod 0555 "${RUNNER_TEMP}/aibrain-ci-source"
+          sudo chown -R 10001:10001 \
+            "${RUNNER_TEMP}/aibrain-ci-data" \
+            "${RUNNER_TEMP}/aibrain-ci-publish"
+          cat > "${RUNNER_TEMP}/aibrain-ci-installation.json" <<'JSON'
+          {
+            "schemaVersion": 1,
+            "installationId": "container-ci",
+            "companyName": "Container CI",
+            "companySlug": "container-ci",
+            "publicUrl": "http://localhost",
+            "branding": {
+              "productName": "AiBrain",
+              "logoPath": "/brand.svg",
+              "faviconPath": "/favicon.ico",
+              "accentColor": "#000000"
+            },
+            "paths": {
+              "dataRoot": "/var/lib/aibrain/data",
+              "companyContextRoot": "/var/lib/aibrain/data/company-context",
+              "usersRoot": "/var/lib/aibrain/data/users",
+              "sourceReadRoot": "/srv/aibrain/source-ro",
+              "publishWriteRoot": "/srv/aibrain/publish-rw",
+              "backupsRoot": "/var/lib/aibrain/data/backups"
+            }
+          }
+          JSON
+          docker run --rm \
+            --user 10001:10001 \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --security-opt apparmor=aibrain-container \
+            --security-opt systempaths=unconfined \
+            --security-opt seccomp=infra/hetzner/browser/seccomp_profile.json \
+            --pids-limit 768 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=512m,mode=1777 \
+            --tmpfs /run:rw,nosuid,nodev,noexec,size=16m,mode=0755 \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-installation.json,dst=/etc/aibrain/installation.json,readonly" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-data,dst=/var/lib/aibrain/data" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-source,dst=/srv/aibrain/source-ro,readonly" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-publish,dst=/srv/aibrain/publish-rw" \
+            --env NODE_ENV=production \
+            --env CODEX_BIN=/usr/local/bin/aibrain-codex-worker \
+            --env AIBRAIN_CODEX_EXPECTED_VERSION=0.153.4 \
+            --env AIBRAIN_INSTALLATION_CONFIG=/etc/aibrain/installation.json \
+            --env AIBRAIN_EGRESS_PROXY_URL=http://127.0.0.1:9 \
+            --env AIBRAIN_EGRESS_WORKER_TOKEN=container_ci_worker_token_000000000000000000 \
+            --entrypoint node \
+            "aibrain-ci:${GITHUB_SHA}" \
+            /usr/local/share/aibrain/container-app-server-acceptance.mjs
+      - name: Convert a real presentation through the production document sandbox
+        run: |
+          docker run --rm \
+            --user 10001:10001 \
+            --read-only \
+            --network none \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --security-opt apparmor=aibrain-container \
+            --security-opt systempaths=unconfined \
+            --security-opt seccomp=infra/hetzner/browser/seccomp_profile.json \
+            --pids-limit 768 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=512m,mode=1777 \
+            --tmpfs /run:rw,nosuid,nodev,noexec,size=16m,mode=0755 \
+            --entrypoint node \
+            "aibrain-ci:${GITHUB_SHA}" \
+            /usr/local/share/aibrain/container-document-conversion-acceptance.mjs
+      - name: Review a draft through the real server document tool
+        run: |
+          docker run --rm \
+            --user 10001:10001 \
+            --read-only \
+            --network none \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --security-opt apparmor=aibrain-container \
+            --security-opt systempaths=unconfined \
+            --security-opt seccomp=infra/hetzner/browser/seccomp_profile.json \
+            --pids-limit 768 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=512m,mode=1777 \
+            --tmpfs /run:rw,nosuid,nodev,noexec,size=16m,mode=0755 \
+            --tmpfs /var/lib/aibrain/data:rw,nosuid,nodev,noexec,size=512m,uid=10001,gid=10001,mode=0700 \
+            --env AIBRAIN_SYNTHETIC_ACCEPTANCE=1 \
+            --entrypoint node \
+            "aibrain-ci:${GITHUB_SHA}" \
+            /usr/local/share/aibrain/container-presentation-tool-acceptance.mjs
+      - name: Build egress gateway image from scratch
+        run: |
+          docker build --pull --no-cache \
+            --target egress-gateway \
+            --build-arg AIBRAIN_REVISION="${GITHUB_SHA}" \
+            --tag "aibrain-egress-ci:${GITHUB_SHA}" .
+      - name: Verify native and passive XLS through the production isolation boundary
+        run: |
+          docker run --rm \
+            --user 10001:10001 --read-only --network none --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --security-opt apparmor=aibrain-container \
+            --security-opt systempaths=unconfined \
+            --security-opt seccomp=infra/hetzner/browser/seccomp_profile.json \
+            --pids-limit 768 --memory 1g --cpus 1 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=512m,mode=1777 \
+            --tmpfs /run:rw,nosuid,nodev,noexec,size=16m,mode=0755 \
+            --tmpfs /var/lib/aibrain/data:rw,nosuid,nodev,noexec,size=512m,uid=10001,gid=10001,mode=0700 \
+            --env AIBRAIN_SYNTHETIC_ACCEPTANCE=1 \
+            --entrypoint node "aibrain-ci:${GITHUB_SHA}" \
+            /usr/local/share/aibrain/container-xls-passive-acceptance.mjs

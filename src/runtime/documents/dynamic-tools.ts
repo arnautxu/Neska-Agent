@@ -1,0 +1,969 @@
+import { renderPresentationDraft, PresentationRenderError, type PresentationRenderCallback } from "@/runtime/documents/presentation-render";
+import { createHash } from "node:crypto";
+import { lstat, mkdir, open, readFile, realpath, rm } from "node:fs/promises";
+import path from "node:path";
+import type { DynamicToolCallParams } from "../../../contracts/codex/0.153.4/types/v2/DynamicToolCallParams";
+import type { DynamicToolCallResponse } from "../../../contracts/codex/0.153.4/types/v2/DynamicToolCallResponse";
+import type { DynamicToolSpec } from "../../../contracts/codex/0.153.4/types/v2/DynamicToolSpec";
+import type { InstallationConfig } from "@/config/installation-schema";
+import type { DocumentArtifact } from "@/lib/chat-contract";
+import type { ResolvedPermissions } from "@/permissions";
+import { validateUploadedDocument } from "@/documents/upload-validation";
+import { resourceLocationIndexForInstallation } from "@/library/server-resource-access";
+import { readRegularFileWithin } from "@/security/safe-file";
+import { atomicWriteFile } from "@/storage";
+import {
+  generateLocalDocument,
+  normalizeDocumentSlides,
+  LocalDocumentGenerationError,
+  type LocalDocumentSlide,
+  isLocalDocumentFormula,
+  type LocalDocumentCell,
+  type LocalDocumentFormat,
+} from "@/runtime/documents/local-document-generator";
+import { generatedDocumentArtifactId, persistGeneratedDocumentArtifact } from "@/runtime/generated-document-artifacts";
+import { generatedImageArtifactId, isPng } from "@/runtime/generated-image-artifacts";
+import type { ArnallSchedule } from "@/runtime/documents/arnall-schedule";
+import { reviewFictionalArnallSchedule } from "@/runtime/documents/fictional-arnall-schedule";
+
+export const AIBRAIN_DOCUMENT_TOOL_NAMESPACE = "aibrain_documents";
+
+const OPAQUE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/u;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const FILE_NAME_PATTERN = /^[^/\\\0\r\n]{1,160}$/u;
+const CELL_SCHEMA = {
+  anyOf: [
+    { type: ["string", "number", "boolean", "null"] },
+    { type: "object", properties: { formula: { type: "string", minLength: 1, maxLength: 1000 } }, required: ["formula"], additionalProperties: false },
+  ],
+};
+const SLIDES_SCHEMA = {
+  type: "array", minItems: 1, maxItems: 50,
+  description: "Basic text-only slides for explicitly simple PPTX or PDF requests, not designed presentations. Each entry is one 16:9 page; overflowing text is rejected, never auto-paginated. Write the final content first; this renderer cannot execute prompts or invent content. Use the same slides for matching PDF and PPTX outputs.",
+  items: {
+    type: "object",
+    properties: {
+      title: { type: "string", minLength: 1, maxLength: 80 },
+      body: { type: "string", minLength: 1, maxLength: 16000 },
+    },
+    required: ["title", "body"], additionalProperties: false,
+  },
+};
+const FORMATS = ["pdf", "docx", "pptx", "xlsx"] as const;
+
+export const DOCUMENT_DYNAMIC_TOOLS: readonly DynamicToolSpec[] = Object.freeze([{
+  type: "namespace",
+  name: AIBRAIN_DOCUMENT_TOOL_NAMESPACE,
+  description: "Create validated PDF, Word, PowerPoint and Excel files in this employee's private AiBrain project workspace on the installation server. This is the default document destination. It does not use Google Drive or any external connector.",
+  tools: [
+    { type: "function", name: "remember_preferences",
+      description: "Save the complete consolidated criteria for all future chats in the current owned project, only when the current user explicitly asks to update/remember the project criteria. Retain unchanged existing criteria, apply the user's latest corrections, omit secrets and unrelated content. Returns a verified save receipt and the exact saved text. Never claim persistence before status saved. Files and assistant promises do not update project criteria.",
+      inputSchema: { type: "object", properties: { notes: { type: "string", minLength: 1, maxLength: 16000 } }, required: ["notes"], additionalProperties: false },
+    },
+    { type: "function", name: "remember",
+      description: "Persist the complete original of a file uploaded in this conversation as a reference available to all conversations in the current project. Use only when the user explicitly asks to remember/save that file. Pass its exact displayed filename. Returns a verified save receipt; never claim it is remembered before success. It does not save a summary instead of the original or grant access outside this project.",
+      inputSchema: { type: "object", properties: { fileName: { type: "string", minLength: 1, maxLength: 120 } }, required: ["fileName"], additionalProperties: false },
+    },
+    {
+      type: "function", name: "create_arnall_schedule",
+      description: "Create and attach a fictional Arnall shop schedule in the embedded HORARI SAGARO Excel template. Use only when the user explicitly supplies an invented shop and people; no horarIA database records are created or read. Supply all seven days per person, marking every free day F, with actual hours for M, T and D. The tool rejects shift-time mismatches and returns calculated hours and coverage from the final grid; compare these with every user rule before claiming compliance. For real employees and shops use aibrain_horaria schedules.draft instead. Never ask the user to upload the template: it is bundled on the server.",
+      inputSchema: { type: "object", properties: {
+        fileName: { type: "string", minLength: 1, maxLength: 160 },
+        establishmentName: { type: "string", minLength: 1, maxLength: 80 },
+        week: { type: "string", pattern: "^[0-9]{4}-W[0-9]{2}$" },
+        people: { type: "array", minItems: 1, maxItems: 43, items: { type: "object", properties: {
+          name: { type: "string", minLength: 1, maxLength: 100 },
+          section: { type: "string", enum: ["DEPENDIENTA", "ELABORACION"] },
+          maxWeeklyHours: { type: "number", minimum: 0, maximum: 40, description: "Weekly maximum; defaults to 40. Use the lower contract limit for a reduced week." },
+          codeHours: { type: "object", properties: { M: { type: "number", minimum: 0, maximum: 24 }, T: { type: "number", minimum: 0, maximum: 24 }, D: { type: "number", minimum: 0, maximum: 24 } }, required: ["M", "T", "D"], additionalProperties: false },
+          days: { type: "array", minItems: 7, maxItems: 7, items: { anyOf: [{ type: "null" }, { type: "object", properties: {
+            code: { type: "string", enum: ["M", "T", "D", "F", "V", "B"] },
+            firstLine: { type: "string", maxLength: 60 }, secondLine: { type: "string", maxLength: 60 },
+            requested: { type: "boolean" },
+          }, required: ["code", "firstLine", "secondLine"], additionalProperties: false }] } },
+        }, required: ["name", "section", "codeHours", "days"], additionalProperties: false } },
+      }, required: ["fileName", "establishmentName", "week", "people"], additionalProperties: false },
+    },
+    {
+      type: "function", name: "deliver",
+      description: "Attach one explicitly selected final document from documents/ to this chat. Call only after authoring and review are finished. Validates and preserves exact private bytes; listing, inspecting or rendering a file does not deliver it. Repeat the same path only for identical bytes; use a new final filename for a revision.",
+      inputSchema: { type: "object", properties: {
+        relativePath: { type: "string", minLength: 1, maxLength: 1024 },
+      }, required: ["relativePath"], additionalProperties: false },
+    },
+    {
+      type: "function", name: "render",
+      description: "Review one page of a worker-authored PPTX or PDF under .aibrain-drafts using the server document sandbox. Returns the page image, total pages, source hash and a draft review PDF path. Call for each page before promoting final files; this does not publish an artifact.",
+      inputSchema: {
+        type: "object", properties: {
+          relativePath: { type: "string", minLength: 1, maxLength: 1024 },
+          page: { type: "integer", minimum: 1, maximum: 50 },
+        }, required: ["relativePath", "page"], additionalProperties: false,
+      },
+    },
+    {
+      type: "function",
+      name: "create",
+      description: "Render final authored content into one local document; this is not an AI authoring tool and does not execute instructions in content. Never pass the user request or a prompt as the document. This renderer supports only plain text, not visual presentation design. For presentations use the local authoring workflow described by the runtime; reserve slides for explicitly basic text-only outputs. Legacy PPTX content separates slides with a line containing ---. Verify its format and return its private preview/download artifact. Use rows for structured Excel data; content is still required as a human-readable description or fallback table. Formula cells must be explicit objects like {formula: 'SUM(A2:A3)'}; plain strings stay literal text. Only same-sheet numeric references/arithmetic and SUM, MIN, MAX, AVERAGE, COUNT, ROUND, ABS are supported; no external links.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          format: { type: "string", enum: ["pdf", "docx", "pptx", "xlsx"] },
+          fileName: { type: "string", minLength: 1, maxLength: 160 },
+          title: { type: "string", minLength: 1, maxLength: 500 },
+          content: { type: "string", minLength: 1, maxLength: 200_000, description: "Final document text, or a brief summary when slides/rows carry the actual content. Never a request to create content." },
+          slides: SLIDES_SCHEMA,
+          rows: {
+            type: "array",
+            minItems: 1,
+            maxItems: 2_000,
+            items: {
+              type: "array",
+              minItems: 1,
+              maxItems: 100,
+              items: CELL_SCHEMA,
+            },
+          },
+        },
+        required: ["format", "fileName", "title", "content"],
+        additionalProperties: false,
+      },
+    },
+    {
+      type: "function",
+      name: "create_batch",
+      description: "Create and verify every requested local document in one bounded call. Use this for two or more basic text/table documents, not designed presentations; each file receives exactly one private artifact. Author final content before calling. Designed presentations and matching PDFs use the local authoring workflow, never this basic batch renderer.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          files: {
+            type: "array",
+            minItems: 2,
+            maxItems: 8,
+            items: {
+              type: "object",
+              properties: {
+                format: { type: "string", enum: ["pdf", "docx", "pptx", "xlsx"] },
+                fileName: { type: "string", minLength: 1, maxLength: 160 },
+                title: { type: "string", minLength: 1, maxLength: 500 },
+                content: { type: "string", minLength: 1, maxLength: 200_000, description: "Final document text, or a brief summary when slides/rows carry the actual content. Never a request to create content." },
+          slides: SLIDES_SCHEMA,
+                rows: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 2_000,
+                  items: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 100,
+                    items: CELL_SCHEMA,
+                  },
+                },
+              },
+              required: ["format", "fileName", "title", "content"],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ["files"],
+        additionalProperties: false,
+      },
+    },
+    {
+      type: "function",
+      name: "image_to_pdf",
+      description: "Create a one-page A4 PDF containing a completed generated PNG. Pass the opaque image item id from that image generation; never pass or reveal a server or workspace path.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          sourceImageItemId: { type: "string", minLength: 1, maxLength: 256 },
+          fileName: { type: "string", minLength: 1, maxLength: 160 },
+          title: { type: "string", minLength: 1, maxLength: 500 },
+        },
+        required: ["sourceImageItemId", "fileName", "title"],
+        additionalProperties: false,
+      },
+    },
+  ],
+}]);
+
+export class LocalDocumentDynamicToolError extends Error {
+  constructor(readonly code: string, message: string) {
+    super(message);
+    this.name = "LocalDocumentDynamicToolError";
+  }
+}
+
+type CreateArguments = Readonly<{
+  format: LocalDocumentFormat;
+  fileName: string;
+  title: string;
+  content: string;
+  rows?: readonly (readonly LocalDocumentCell[])[];
+  slides?: readonly LocalDocumentSlide[];
+  sourceImageItemId?: string;
+}>;
+
+type Receipt = Readonly<{
+  schemaVersion: 1;
+  installationId: string;
+  userId: string;
+  projectId: string;
+  runtimeThreadId: string;
+  runtimeTurnId: string;
+  callId: string;
+  inputFingerprint: string;
+  relativePath: string;
+  format: LocalDocumentFormat;
+  mimeType: string;
+  size: number;
+  sha256: string;
+  pages: number | null;
+  createdAt: string;
+}>;
+
+type BatchReceipt = Readonly<{
+  schemaVersion: 1;
+  kind: "document_batch";
+  installationId: string;
+  userId: string;
+  projectId: string;
+  runtimeThreadId: string;
+  runtimeTurnId: string;
+  callId: string;
+  inputFingerprint: string;
+  childCallIds: readonly string[];
+  status: "started" | "completed";
+  createdAt: string;
+}>;
+
+export type LocalDocumentDynamicToolResult = Readonly<{
+  response: DynamicToolCallResponse;
+  artifacts: readonly DocumentArtifact[];
+}>;
+
+export type LocalDocumentDynamicToolContext = Readonly<{
+  installation: Pick<InstallationConfig, "installationId" | "paths"> & { companySlug?: string };
+  installationId: string;
+  userId: string;
+  projectId: string;
+  projectWorkspace: string;
+  receiptRoot: string;
+  runtimeThreadId: string;
+  runtimeTurnId: string;
+  sourceThreadId: string;
+  sourceTurnId: string;
+  permissions: ResolvedPermissions;
+  rememberProjectFile?: (fileName: string) => Promise<Record<string, unknown>>;
+  rememberProjectPreferences?: (notes: string) => Promise<Record<string, unknown>>;
+  renderPresentation?: PresentationRenderCallback;
+  spreadsheetLayout?: "schedule";
+  arnallSchedule?: ArnallSchedule;
+  now?: () => Date;
+}>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function exactKeys(value: Record<string, unknown>, required: readonly string[], optional: readonly string[] = []) {
+  const keys = Object.keys(value);
+  if (required.some((key) => !(key in value)) || keys.some((key) => !required.includes(key) && !optional.includes(key))) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Document tool fields are invalid.");
+  }
+}
+
+function parseRows(value: unknown): readonly (readonly LocalDocumentCell[])[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length === 0 || value.length > 2_000) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Spreadsheet rows are invalid.");
+  }
+  return value.map((row) => {
+    if (!Array.isArray(row) || row.length === 0 || row.length > 100) {
+      throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Spreadsheet row width is invalid.");
+    }
+    return row.map((cell) => {
+      if (cell !== null && typeof cell !== "string" && typeof cell !== "number" && typeof cell !== "boolean" && !isLocalDocumentFormula(cell)) {
+        throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Spreadsheet cell is invalid.");
+      }
+      return cell as LocalDocumentCell;
+    });
+  });
+}
+
+function parseArguments(value: unknown): CreateArguments {
+  if (!isRecord(value)) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Document arguments must be an object.");
+  exactKeys(value, ["format", "fileName", "title", "content"], ["rows", "slides"]);
+  if (typeof value.format !== "string" || !FORMATS.includes(value.format as LocalDocumentFormat) ||
+      typeof value.fileName !== "string" || !FILE_NAME_PATTERN.test(value.fileName) || value.fileName === "." || value.fileName === ".." ||
+      typeof value.title !== "string" || typeof value.content !== "string") {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Document arguments are invalid.");
+  }
+  const format = value.format as LocalDocumentFormat;
+  if (path.extname(value.fileName).toLocaleLowerCase() !== `.${format}`) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_EXTENSION_MISMATCH", "File name extension does not match the requested format.");
+  }
+  return {
+    format,
+    fileName: value.fileName.normalize("NFC"),
+    title: value.title,
+    content: value.content,
+    rows: parseRows(value.rows),
+    ...(value.slides === undefined ? {} : { slides: normalizeDocumentSlides(value.slides) }),
+  };
+}
+
+function parseFictionalArnallSchedule(value: unknown): { input: CreateArguments; schedule: ArnallSchedule; review: ReturnType<typeof reviewFictionalArnallSchedule> } {
+  if (!isRecord(value)) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Faltan los datos del horario ficticio.");
+  exactKeys(value, ["fileName", "establishmentName", "week", "people"]);
+  if (typeof value.fileName !== "string" || !FILE_NAME_PATTERN.test(value.fileName) ||
+      path.extname(value.fileName).toLocaleLowerCase() !== ".xlsx" ||
+      typeof value.establishmentName !== "string" || typeof value.week !== "string" ||
+      !Array.isArray(value.people) || value.people.length < 1 || value.people.length > 43) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Los datos del horario ficticio no son válidos.");
+  }
+  const people = value.people.map((person: unknown, index: number) => {
+    if (!isRecord(person)) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Persona ficticia no válida.");
+    exactKeys(person, ["name", "section", "codeHours", "days"], ["maxWeeklyHours"]);
+    if (!isRecord(person.codeHours)) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Horas ficticias no válidas.");
+    exactKeys(person.codeHours, ["M", "T", "D"]);
+    if (typeof person.name !== "string" || !["DEPENDIENTA", "ELABORACION"].includes(String(person.section)) ||
+        [person.codeHours.M, person.codeHours.T, person.codeHours.D].some((hours) => typeof hours !== "number" || !Number.isFinite(hours))) {
+      throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Persona u horas ficticias no válidas.");
+    }
+    if (!Array.isArray(person.days) || person.days.length !== 7) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Semana ficticia no válida.");
+    for (const day of person.days) if (day !== null) {
+      if (!isRecord(day)) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Turno ficticio no válido.");
+      exactKeys(day, ["code", "firstLine", "secondLine"], ["requested"]);
+      if (typeof day.code !== "string" || typeof day.firstLine !== "string" || typeof day.secondLine !== "string") {
+        throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Turno ficticio no válido.");
+      }
+    }
+    return { ...person, id: index + 1 };
+  });
+  const schedule = { establishmentId: 1, establishmentName: value.establishmentName, week: value.week, people } as unknown as ArnallSchedule;
+  let review: ReturnType<typeof reviewFictionalArnallSchedule>;
+  try { review = reviewFictionalArnallSchedule(schedule); }
+  catch (error) { throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_SCHEDULE_INVALID", error instanceof Error ? error.message : "Horario ficticio no válido."); }
+  const input = parseArguments({ format: "xlsx", fileName: value.fileName, title: `Simulación de horario ${value.week}`, content: "Simulación ficticia no guardada ni aprobada.", rows: [["Persona", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Horas"]] });
+  return { input, schedule, review };
+}
+
+function parseImageToPdfArguments(value: unknown): CreateArguments {
+  if (!isRecord(value)) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Image PDF arguments must be an object.");
+  }
+  exactKeys(value, ["sourceImageItemId", "fileName", "title"]);
+  if (typeof value.sourceImageItemId !== "string" || !OPAQUE_ID_PATTERN.test(value.sourceImageItemId) ||
+      typeof value.fileName !== "string" || !FILE_NAME_PATTERN.test(value.fileName) || value.fileName === "." || value.fileName === ".." ||
+      path.extname(value.fileName).toLocaleLowerCase() !== ".pdf" || typeof value.title !== "string") {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Image PDF arguments are invalid.");
+  }
+  return {
+    format: "pdf",
+    fileName: value.fileName.normalize("NFC"),
+    title: value.title,
+    content: "",
+    sourceImageItemId: value.sourceImageItemId,
+  };
+}
+
+function parseBatchArguments(value: unknown) {
+  if (!isRecord(value)) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Document batch arguments must be an object.");
+  }
+  exactKeys(value, ["files"]);
+  if (!Array.isArray(value.files) || value.files.length < 2 || value.files.length > 8) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Document batch must contain between two and eight files.");
+  }
+  const files = value.files.map(parseArguments);
+  const names = files.map(({ fileName }) => fileName.toLocaleLowerCase());
+  if (new Set(names).size !== names.length) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Document batch file names must be unique.");
+  }
+  return files;
+}
+
+function permissionAllowsLocalDocumentCreation(permissions: ResolvedPermissions) {
+  const rules = permissions.rules.filter((rule) => rule.ruleId === "tools.execute" && rule.action === "execute");
+  if (rules.some((rule) => rule.effect === "deny")) return false;
+  return rules.some((rule) => rule.effect === "allow");
+}
+
+function canonicalInput(input: CreateArguments) {
+  return JSON.stringify({
+    format: input.format,
+    fileName: input.fileName,
+    title: input.title,
+    content: input.content,
+    rows: input.rows ?? null,
+    ...(input.slides === undefined ? {} : { slides: input.slides }),
+    sourceImageItemId: input.sourceImageItemId ?? null,
+  });
+}
+
+function canonicalBatchInput(files: readonly CreateArguments[]) {
+  return JSON.stringify(files.map((file) => JSON.parse(canonicalInput(file)) as unknown));
+}
+
+function receiptNameFor(callId: string) {
+  return `${createHash("sha256").update(callId).digest("hex")}.json`;
+}
+
+async function artifactFromReceipt(receipt: Receipt, context: LocalDocumentDynamicToolContext): Promise<DocumentArtifact> {
+  const contents = await readRegularFileWithin(context.projectWorkspace, receipt.relativePath, 20_000_000);
+  return persistGeneratedDocumentArtifact({
+    artifactId: generatedDocumentArtifactId(context.sourceTurnId, receipt.relativePath),
+    relativePath: receipt.relativePath,
+    contents,
+    pages: receipt.pages,
+    context: {
+      installation: context.installation,
+      projectId: context.projectId,
+      threadId: context.sourceThreadId,
+      messageId: context.sourceTurnId,
+      storageOwnerId: context.userId,
+    },
+  });
+}
+
+function responseFor(receipt: Receipt, fictionalReview?: ReturnType<typeof reviewFictionalArnallSchedule>): DynamicToolCallResponse {
+  return {
+    success: true,
+    contentItems: [{
+      type: "inputText",
+      text: JSON.stringify({
+        status: "created",
+        storage: "local-private-workspace",
+        externalConnectorUsed: false,
+        fileName: path.basename(receipt.relativePath),
+        format: receipt.format,
+        mimeType: receipt.mimeType,
+        size: receipt.size,
+        sha256: receipt.sha256,
+        pages: receipt.pages,
+        previewAvailable: true,
+        downloadAvailable: true,
+        ...(fictionalReview ? { review: fictionalReview } : {}),
+      }),
+    }],
+  };
+}
+
+function failure(
+  code: string,
+  message: string,
+  status: "failed" | "indeterminate" = "failed",
+): LocalDocumentDynamicToolResult {
+  return {
+    response: {
+      success: false,
+      contentItems: [{
+        type: "inputText",
+        text: JSON.stringify({ status, code, message, externalConnectorUsed: false }),
+      }],
+    },
+    artifacts: [],
+  };
+}
+
+function receiptValue(value: unknown): Receipt {
+  if (!isRecord(value)) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_RECEIPT_INVALID", "Document receipt is invalid.");
+  exactKeys(value, [
+    "schemaVersion", "installationId", "userId", "projectId", "runtimeThreadId", "runtimeTurnId", "callId",
+    "inputFingerprint", "relativePath", "format", "mimeType", "size", "sha256", "pages", "createdAt",
+  ]);
+  if (value.schemaVersion !== 1 || typeof value.installationId !== "string" || typeof value.userId !== "string" ||
+      typeof value.projectId !== "string" || typeof value.runtimeThreadId !== "string" || typeof value.runtimeTurnId !== "string" ||
+      typeof value.callId !== "string" || typeof value.inputFingerprint !== "string" || typeof value.relativePath !== "string" ||
+      typeof value.format !== "string" || !FORMATS.includes(value.format as LocalDocumentFormat) || typeof value.mimeType !== "string" ||
+      typeof value.size !== "number" || !Number.isSafeInteger(value.size) || value.size < 64 || typeof value.sha256 !== "string" ||
+      !/^[0-9a-f]{64}$/u.test(value.sha256) || (value.pages !== null && (!Number.isSafeInteger(value.pages) || (value.pages as number) < 1)) ||
+      typeof value.createdAt !== "string" || Number.isNaN(new Date(value.createdAt).valueOf())) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_RECEIPT_INVALID", "Document receipt fields are invalid.");
+  }
+  return value as Receipt;
+}
+
+function batchReceiptValue(value: unknown): BatchReceipt {
+  if (!isRecord(value)) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_RECEIPT_INVALID", "Document batch receipt is invalid.");
+  exactKeys(value, [
+    "schemaVersion", "kind", "installationId", "userId", "projectId", "runtimeThreadId", "runtimeTurnId", "callId",
+    "inputFingerprint", "childCallIds", "status", "createdAt",
+  ]);
+  if (value.schemaVersion !== 1 || value.kind !== "document_batch" || typeof value.installationId !== "string" ||
+      typeof value.userId !== "string" || typeof value.projectId !== "string" || typeof value.runtimeThreadId !== "string" ||
+      typeof value.runtimeTurnId !== "string" || typeof value.callId !== "string" || typeof value.inputFingerprint !== "string" ||
+      !Array.isArray(value.childCallIds) || value.childCallIds.length < 2 || value.childCallIds.length > 8 ||
+      value.childCallIds.some((callId) => typeof callId !== "string" || !OPAQUE_ID_PATTERN.test(callId)) ||
+      (value.status !== "started" && value.status !== "completed") || typeof value.createdAt !== "string" ||
+      Number.isNaN(new Date(value.createdAt).valueOf())) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_RECEIPT_INVALID", "Document batch receipt fields are invalid.");
+  }
+  return value as unknown as BatchReceipt;
+}
+
+async function secureDirectory(workspace: string) {
+  const canonicalWorkspace = await realpath(workspace);
+  const documents = path.join(workspace, "documents");
+  await mkdir(documents, { recursive: true, mode: 0o700 });
+  const metadata = await lstat(documents);
+  const canonicalDocuments = await realpath(documents);
+  const relative = path.relative(canonicalWorkspace, canonicalDocuments);
+  if (!metadata.isDirectory() || metadata.isSymbolicLink() || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_PATH_UNSAFE", "Private document directory is unsafe.");
+  }
+  return documents;
+}
+
+async function sourcePngFor(input: CreateArguments, context: LocalDocumentDynamicToolContext) {
+  const sourceImageItemId = input.sourceImageItemId;
+  if (!sourceImageItemId) return undefined;
+  try {
+    const index = resourceLocationIndexForInstallation(context.installation);
+    const matches = (await index.listForProjects(new Set([context.projectId]), "generated-image"))
+      .filter((candidate) => candidate.threadId === context.sourceThreadId &&
+        candidate.storageOwnerId === context.userId && candidate.messageId !== null &&
+        generatedImageArtifactId(candidate.messageId, sourceImageItemId) === candidate.resourceId);
+    // App Server item ids are opaque. Re-deriving each indexed artifact id
+    // from its original assistant message preserves that opacity while making
+    // same-thread references survive later turns. Ambiguity fails closed.
+    if (matches.length !== 1) throw new Error("Generated image reference is missing or ambiguous.");
+    const location = matches[0]!;
+    const artifactId = location.resourceId;
+    const expectedPath = `generated-image-artifacts/${artifactId}.png`;
+    if (location.mediaType !== "image/png" || location.relativePath !== expectedPath ||
+        !/^[^/\\\u0000-\u001f\u007f]+\.png$/u.test(location.fileName)) {
+      throw new Error("Generated image binding mismatch.");
+    }
+    const contents = await readRegularFileWithin(context.installation.paths.dataRoot, expectedPath, 20_000_000);
+    if (contents.byteLength !== location.size ||
+        createHash("sha256").update(contents).digest("hex") !== location.sha256 || !isPng(contents)) {
+      throw new Error("Generated image integrity mismatch.");
+    }
+    const validated = validateUploadedDocument({
+      fileName: location.fileName,
+      declaredMimeType: location.mediaType,
+      data: contents,
+    });
+    if (validated.kind !== "image" || validated.mediaType !== "image/png") {
+      throw new Error("Generated image is not a PNG.");
+    }
+    return contents;
+  } catch {
+    throw new LocalDocumentDynamicToolError(
+      "LOCAL_DOCUMENT_SOURCE_IMAGE_INVALID",
+      "No se ha podido localizar y verificar la imagen PNG generada en esta conversación.",
+    );
+  }
+}
+
+async function availableTarget(documents: string, fileName: string) {
+  const extension = path.extname(fileName);
+  const stem = path.basename(fileName, extension);
+  for (let suffix = 0; suffix < 1_000; suffix += 1) {
+    const name = suffix === 0 ? fileName : `${stem}-${suffix + 1}${extension}`;
+    const target = path.join(documents, name);
+    try {
+      await lstat(target);
+    } catch (error) {
+      if (isRecord(error) && error.code === "ENOENT") return { name, target };
+      throw error;
+    }
+  }
+  throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_NAME_EXHAUSTED", "No safe file name is available.");
+}
+
+async function readReceipt(filePath: string) {
+  try {
+    return receiptValue(JSON.parse(await readFile(filePath, "utf8")));
+  } catch (error) {
+    if (isRecord(error) && error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function readBatchReceipt(filePath: string) {
+  try {
+    return batchReceiptValue(JSON.parse(await readFile(filePath, "utf8")));
+  } catch (error) {
+    if (isRecord(error) && error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function verifyReceipt(receipt: Receipt, inputFingerprint: string, context: LocalDocumentDynamicToolContext) {
+  if (receipt.installationId !== context.installationId || receipt.userId !== context.userId || receipt.projectId !== context.projectId ||
+      receipt.runtimeThreadId !== context.runtimeThreadId || receipt.runtimeTurnId !== context.runtimeTurnId || receipt.inputFingerprint !== inputFingerprint) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_RECEIPT_CONFLICT", "Document call receipt does not match this authenticated turn.");
+  }
+  const contents = await readRegularFileWithin(context.projectWorkspace, receipt.relativePath, 20_000_000);
+  if (contents.length !== receipt.size || createHash("sha256").update(contents).digest("hex") !== receipt.sha256) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_RECEIPT_CORRUPT", "Previously created document no longer matches its receipt.");
+  }
+  validateUploadedDocument({ fileName: path.basename(receipt.relativePath), declaredMimeType: receipt.mimeType, data: contents });
+}
+
+function verifyBatchReceipt(
+  receipt: BatchReceipt,
+  inputFingerprint: string,
+  childCallIds: readonly string[],
+  context: LocalDocumentDynamicToolContext,
+) {
+  if (receipt.installationId !== context.installationId || receipt.userId !== context.userId ||
+      receipt.projectId !== context.projectId || receipt.runtimeThreadId !== context.runtimeThreadId ||
+      receipt.runtimeTurnId !== context.runtimeTurnId || receipt.inputFingerprint !== inputFingerprint ||
+      receipt.childCallIds.length !== childCallIds.length ||
+      receipt.childCallIds.some((callId, index) => callId !== childCallIds[index])) {
+    throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_RECEIPT_CONFLICT", "Document batch call receipt does not match this authenticated turn.");
+  }
+}
+
+function batchResult(results: readonly LocalDocumentDynamicToolResult[]): LocalDocumentDynamicToolResult {
+  const artifacts = results.flatMap(({ artifacts: created }) => created);
+  const payloads = results.map(({ response }) => responsePayload(response));
+  const successful = results.every(({ response }) => response.success);
+  return {
+    response: {
+      success: successful,
+      contentItems: [{
+        type: "inputText",
+        text: JSON.stringify(successful ? {
+          status: "created",
+          storage: "local-private-workspace",
+          externalConnectorUsed: false,
+          files: payloads,
+        } : {
+          status: "indeterminate",
+          code: "LOCAL_DOCUMENT_BATCH_INCOMPLETE",
+          message: "No se han podido confirmar todos los documentos. No se repetirá automáticamente ninguna creación.",
+          externalConnectorUsed: false,
+          files: payloads,
+        }),
+      }],
+    },
+    artifacts,
+  };
+}
+
+async function completedBatchResult(
+  files: readonly CreateArguments[],
+  childCallIds: readonly string[],
+  context: LocalDocumentDynamicToolContext,
+) {
+  const results: LocalDocumentDynamicToolResult[] = [];
+  for (const [index, file] of files.entries()) {
+    const callId = childCallIds[index];
+    const receipt = await readReceipt(path.join(context.receiptRoot, receiptNameFor(callId)));
+    if (!receipt || receipt.callId !== callId) {
+      throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_RECEIPT_CORRUPT", "Completed document batch is missing a child receipt.");
+    }
+    await verifyReceipt(receipt, createHash("sha256").update(canonicalInput(file)).digest("hex"), context);
+    results.push({ response: responseFor(receipt), artifacts: [await artifactFromReceipt(receipt, context)] });
+  }
+  return batchResult(results);
+}
+
+async function handleSingleLocalDocumentDynamicToolCall(
+  params: DynamicToolCallParams,
+  context: LocalDocumentDynamicToolContext,
+): Promise<LocalDocumentDynamicToolResult> {
+  try {
+    if (!isRecord(params)) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_REQUEST_INVALID", "Document tool request is invalid.");
+    exactKeys(params, ["threadId", "turnId", "callId", "namespace", "tool", "arguments"]);
+    if (params.namespace !== AIBRAIN_DOCUMENT_TOOL_NAMESPACE || (params.tool !== "remember_preferences" && params.tool !== "remember" && params.tool !== "create" && params.tool !== "create_arnall_schedule" && params.tool !== "image_to_pdf" && params.tool !== "render" && params.tool !== "deliver")) {
+      throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_TOOL_REJECTED", "Document tool is not in the closed allowlist.");
+    }
+    for (const value of [params.threadId, params.turnId, params.callId]) {
+      if (typeof value !== "string" || !OPAQUE_ID_PATTERN.test(value)) {
+        throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_REQUEST_INVALID", "Document tool identity is invalid.");
+      }
+    }
+    if (context.installation.installationId !== context.installationId ||
+        !UUID_PATTERN.test(context.userId) || !UUID_PATTERN.test(context.projectId) ||
+        !UUID_PATTERN.test(context.sourceThreadId) || !UUID_PATTERN.test(context.sourceTurnId) ||
+        params.threadId !== context.runtimeThreadId || params.turnId !== context.runtimeTurnId ||
+        context.permissions.installationId !== context.installationId || context.permissions.userId !== context.userId ||
+        context.permissions.projectId !== context.projectId) {
+      throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_IDENTITY_MISMATCH", "Document tool call does not belong to this turn.");
+    }
+    if (!permissionAllowsLocalDocumentCreation(context.permissions)) {
+      return failure("LOCAL_DOCUMENT_PERMISSION_DENIED", "La política de este usuario no permite crear archivos locales.");
+    }
+    if (params.tool === "remember_preferences") {
+      if (!isRecord(params.arguments)) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Preference fields are invalid.");
+      exactKeys(params.arguments, ["notes"]);
+      if (typeof params.arguments.notes !== "string" || !context.rememberProjectPreferences) return failure("PROJECT_PREFERENCES_UNAVAILABLE", "No se pueden guardar los criterios de este proyecto.");
+      try {
+        const receipt = await context.rememberProjectPreferences(params.arguments.notes);
+        return { artifacts: [], response: { success: true, contentItems: [{ type: "inputText", text: JSON.stringify(receipt) }] } };
+      } catch (error) { return failure("PROJECT_PREFERENCES_NOT_SAVED", error instanceof Error && !/(?:\/var\/|\/Users\/|ENOENT)/.test(error.message) ? error.message : "No se han podido guardar los criterios. No está confirmado."); }
+    }
+    if (params.tool === "remember") {
+      if (!isRecord(params.arguments)) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Reference fields are invalid.");
+      exactKeys(params.arguments, ["fileName"]);
+      if (typeof params.arguments.fileName !== "string" || !FILE_NAME_PATTERN.test(params.arguments.fileName) || !context.rememberProjectFile) return failure("PROJECT_REFERENCE_UNAVAILABLE", "No se puede guardar esta referencia en el proyecto.");
+      try {
+        const receipt = await context.rememberProjectFile(params.arguments.fileName);
+        return { artifacts: [], response: { success: true, contentItems: [{ type: "inputText", text: JSON.stringify(receipt) }] } };
+      } catch (error) { return failure("PROJECT_REFERENCE_NOT_SAVED", error instanceof Error && !/(?:\/var\/|\/Users\/|ENOENT)/.test(error.message) ? error.message : "No se ha podido guardar el original como referencia. No está confirmado."); }
+    }
+    if (params.tool === "deliver") {
+      if (!isRecord(params.arguments)) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Delivery fields are invalid.");
+      exactKeys(params.arguments, ["relativePath"]);
+      const relativePath = params.arguments.relativePath;
+      if (typeof relativePath !== "string" || relativePath.length > 1024 ||
+          !/^documents\/.+\.(pdf|pptx|docx|xlsx)$/u.test(relativePath) ||
+          /[\\\0\r\n]/u.test(relativePath) || relativePath.split("/").some((segment) => !segment || segment === "." || segment === ".." || segment === ".aibrain-drafts")) {
+        throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_ARGUMENTS_INVALID", "Delivery requires a final project-relative document under documents/.");
+      }
+      // Reject linked components before the bounded safe-file read; the worker
+      // cannot choose an owner, root, conversation or external destination.
+      let current = context.projectWorkspace;
+      if (await realpath(current) !== current) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_SOURCE_INVALID", "Delivery workspace is unsafe.");
+      for (const segment of relativePath.split("/")) {
+        current = path.join(current, segment);
+        if ((await lstat(current)).isSymbolicLink()) throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_SOURCE_INVALID", "Delivery source may not contain symbolic links.");
+      }
+      const contents = await readRegularFileWithin(context.projectWorkspace, relativePath, 50 * 1024 * 1024);
+      const fileName = path.basename(relativePath);
+      const format = path.extname(relativePath).slice(1) as LocalDocumentFormat;
+      const mimeTypes: Record<LocalDocumentFormat, string> = {
+        pdf: "application/pdf",
+        pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      };
+      const validated = validateUploadedDocument({ fileName, declaredMimeType: mimeTypes[format], data: contents });
+      const artifact = await persistGeneratedDocumentArtifact({
+        artifactId: generatedDocumentArtifactId(context.sourceTurnId, relativePath), relativePath, contents, pages: null,
+        context: { installation: context.installation, projectId: context.projectId, threadId: context.sourceThreadId, messageId: context.sourceTurnId, storageOwnerId: context.userId },
+      });
+      return { artifacts: [artifact], response: { success: true, contentItems: [{ type: "inputText", text: JSON.stringify({
+        status: "delivered", artifact, sha256: validated.sha256, externalConnectorUsed: false,
+      }) }] } };
+    }
+    if (params.tool === "render") {
+      const { png, ...review } = await renderPresentationDraft(params.arguments, context.projectWorkspace, context.renderPresentation);
+      return { artifacts: [], response: { success: true, contentItems: [
+        { type: "inputText", text: JSON.stringify({ status: "review", ...review }) },
+        { type: "inputImage", imageUrl: `data:image/png;base64,${png.toString("base64")}` },
+      ] } };
+    }
+    if (params.tool === "create_arnall_schedule" && context.installation.companySlug !== "arnall") {
+      throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_TOOL_REJECTED", "Esta plantilla solo está disponible en Arnall.");
+    }
+    const fictional = params.tool === "create_arnall_schedule" ? parseFictionalArnallSchedule(params.arguments) : null;
+    const input = fictional?.input ?? (params.tool === "image_to_pdf" ? parseImageToPdfArguments(params.arguments) : parseArguments(params.arguments));
+    const spreadsheetLayout = fictional ? "schedule" : context.spreadsheetLayout;
+    const arnallSchedule = fictional?.schedule ?? context.arnallSchedule;
+    const inputFingerprint = createHash("sha256").update(canonicalInput(input) + (spreadsheetLayout ? `|layout:${spreadsheetLayout}` : "") + (arnallSchedule ? `|arnall-schedule-v2-original-formulas:${JSON.stringify(arnallSchedule)}` : "")).digest("hex");
+    const receiptName = receiptNameFor(params.callId);
+    const receiptPath = path.join(context.receiptRoot, receiptName);
+    await mkdir(context.receiptRoot, { recursive: true, mode: 0o700 });
+    const claimPath = path.join(context.receiptRoot, `${receiptName}.claim`);
+    let claimed = false;
+    try {
+      await mkdir(claimPath, { mode: 0o700 });
+      claimed = true;
+    } catch (error) {
+      if (!isRecord(error) || error.code !== "EEXIST") throw error;
+      const existing = await readReceipt(receiptPath);
+      if (!existing) {
+        return failure(
+          "LOCAL_DOCUMENT_CALL_INDETERMINATE",
+          "La creación de este documento ya está en curso o quedó en un estado incierto; no se repetirá automáticamente.",
+          "indeterminate",
+        );
+      }
+      await verifyReceipt(existing, inputFingerprint, context);
+      return { response: responseFor(existing, fictional?.review), artifacts: [await artifactFromReceipt(existing, context)] };
+    }
+    try {
+      const existing = await readReceipt(receiptPath);
+      if (existing) {
+        await verifyReceipt(existing, inputFingerprint, context);
+        return { response: responseFor(existing, fictional?.review), artifacts: [await artifactFromReceipt(existing, context)] };
+      }
+      const documents = await secureDirectory(context.projectWorkspace);
+      const sourcePng = await sourcePngFor(input, context);
+      const generated = await generateLocalDocument({
+        format: input.format,
+        title: input.title,
+        content: input.content,
+        rows: input.rows,
+        spreadsheetLayout,
+        arnallSchedule,
+        slides: input.slides,
+        sourcePng,
+      });
+      validateUploadedDocument({ fileName: input.fileName, declaredMimeType: generated.mimeType, data: generated.data });
+      const selected = await availableTarget(documents, input.fileName);
+      let written = false;
+      try {
+        // This runtime-owned, ACL-validated workspace path must not make the
+        // production bundler trace the repository as a build-time asset.
+        const handle = await open(/* turbopackIgnore: true */ selected.target, "wx", 0o600);
+        try {
+          await handle.writeFile(generated.data);
+          await handle.sync();
+          written = true;
+        } finally {
+          await handle.close();
+        }
+        const relativePath = path.posix.join("documents", selected.name);
+        const verified = await readRegularFileWithin(context.projectWorkspace, relativePath, 20_000_000);
+        const verifiedDocument = validateUploadedDocument({ fileName: selected.name, declaredMimeType: generated.mimeType, data: verified });
+        if (verified.length !== generated.data.length || verifiedDocument.sha256 !== generated.sha256) {
+          throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_VERIFY_FAILED", "Created document failed server readback.");
+        }
+        const receipt: Receipt = Object.freeze({
+          schemaVersion: 1,
+          installationId: context.installationId,
+          userId: context.userId,
+          projectId: context.projectId,
+          runtimeThreadId: context.runtimeThreadId,
+          runtimeTurnId: context.runtimeTurnId,
+          callId: params.callId,
+          inputFingerprint,
+          relativePath,
+          format: generated.format,
+          mimeType: generated.mimeType,
+          size: verified.length,
+          sha256: generated.sha256,
+          pages: generated.pages,
+          createdAt: (context.now ?? (() => new Date()))().toISOString(),
+        });
+        await atomicWriteFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { mode: 0o600 });
+        return { response: responseFor(receipt, fictional?.review), artifacts: [await artifactFromReceipt(receipt, context)] };
+      } catch (error) {
+        if (written) await rm(selected.target, { force: true }).catch(() => undefined);
+        throw error;
+      }
+    } finally {
+      if (claimed) await rm(claimPath, { recursive: true, force: false }).catch(() => undefined);
+    }
+  } catch (error) {
+    return error instanceof LocalDocumentDynamicToolError || error instanceof LocalDocumentGenerationError || error instanceof PresentationRenderError
+      ? failure(error.code, error.message)
+      : failure("LOCAL_DOCUMENT_GENERATION_FAILED", "No se ha podido crear y verificar el documento local.");
+  }
+}
+
+function responsePayload(response: DynamicToolCallResponse) {
+  const text = response.contentItems.find((item) => item.type === "inputText")?.text;
+  if (!text) return null;
+  try {
+    const value = JSON.parse(text) as unknown;
+    return isRecord(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function handleLocalDocumentDynamicToolCall(
+  params: DynamicToolCallParams,
+  context: LocalDocumentDynamicToolContext,
+): Promise<LocalDocumentDynamicToolResult> {
+  if (!isRecord(params) || params.tool !== "create_batch") {
+    return handleSingleLocalDocumentDynamicToolCall(params, context);
+  }
+  try {
+    exactKeys(params, ["threadId", "turnId", "callId", "namespace", "tool", "arguments"]);
+    if (params.namespace !== AIBRAIN_DOCUMENT_TOOL_NAMESPACE) {
+      throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_TOOL_REJECTED", "Document tool is not in the closed allowlist.");
+    }
+    for (const value of [params.threadId, params.turnId, params.callId]) {
+      if (typeof value !== "string" || !OPAQUE_ID_PATTERN.test(value)) {
+        throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_REQUEST_INVALID", "Document tool identity is invalid.");
+      }
+    }
+    if (context.installation.installationId !== context.installationId ||
+        !UUID_PATTERN.test(context.userId) || !UUID_PATTERN.test(context.projectId) ||
+        !UUID_PATTERN.test(context.sourceThreadId) ||
+        !UUID_PATTERN.test(context.sourceTurnId) || params.threadId !== context.runtimeThreadId ||
+        params.turnId !== context.runtimeTurnId || context.permissions.installationId !== context.installationId ||
+        context.permissions.userId !== context.userId || context.permissions.projectId !== context.projectId) {
+      throw new LocalDocumentDynamicToolError("LOCAL_DOCUMENT_IDENTITY_MISMATCH", "Document tool call does not belong to this turn.");
+    }
+    if (!permissionAllowsLocalDocumentCreation(context.permissions)) {
+      return failure("LOCAL_DOCUMENT_PERMISSION_DENIED", "La política de este usuario no permite crear archivos locales.");
+    }
+    const files = parseBatchArguments(params.arguments);
+    const inputFingerprint = createHash("sha256").update(canonicalBatchInput(files)).digest("hex");
+    const childCallIds = files.map((_, index) =>
+      `batch-${createHash("sha256").update(`${params.callId}\0${index}`).digest("hex").slice(0, 48)}`);
+    await mkdir(context.receiptRoot, { recursive: true, mode: 0o700 });
+    const receiptPath = path.join(context.receiptRoot, receiptNameFor(params.callId));
+    const claimPath = `${receiptPath}.claim`;
+    let claimed = false;
+    try {
+      try {
+        await mkdir(claimPath, { mode: 0o700 });
+        claimed = true;
+      } catch (error) {
+        if (!isRecord(error) || error.code !== "EEXIST") throw error;
+        const existing = await readBatchReceipt(receiptPath);
+        if (!existing) {
+          return failure(
+            "LOCAL_DOCUMENT_CALL_INDETERMINATE",
+            "La creación del lote ya está en curso o quedó en un estado incierto; no se repetirá automáticamente.",
+            "indeterminate",
+          );
+        }
+        verifyBatchReceipt(existing, inputFingerprint, childCallIds, context);
+        return existing.status === "completed"
+          ? completedBatchResult(files, childCallIds, context)
+          : failure("LOCAL_DOCUMENT_CALL_INDETERMINATE", "El lote quedó en un estado incierto; no se repetirá automáticamente.", "indeterminate");
+      }
+
+      const existing = await readBatchReceipt(receiptPath);
+      if (existing) {
+        verifyBatchReceipt(existing, inputFingerprint, childCallIds, context);
+        return existing.status === "completed"
+          ? completedBatchResult(files, childCallIds, context)
+          : failure("LOCAL_DOCUMENT_CALL_INDETERMINATE", "El lote quedó en un estado incierto; no se repetirá automáticamente.", "indeterminate");
+      }
+
+      const started: BatchReceipt = Object.freeze({
+        schemaVersion: 1,
+        kind: "document_batch",
+        installationId: context.installationId,
+        userId: context.userId,
+        projectId: context.projectId,
+        runtimeThreadId: context.runtimeThreadId,
+        runtimeTurnId: context.runtimeTurnId,
+        callId: params.callId,
+        inputFingerprint,
+        childCallIds,
+        status: "started",
+        createdAt: (context.now ?? (() => new Date()))().toISOString(),
+      });
+      await atomicWriteFile(receiptPath, `${JSON.stringify(started, null, 2)}\n`, { mode: 0o600 });
+
+      const results: LocalDocumentDynamicToolResult[] = [];
+      for (const [index, file] of files.entries()) {
+        results.push(await handleSingleLocalDocumentDynamicToolCall({
+          ...params,
+          callId: childCallIds[index],
+          tool: "create",
+          arguments: {
+            ...file,
+            rows: file.rows?.map((row) => [...row]),
+            slides: file.slides?.map((slide) => ({ ...slide })),
+          },
+        }, context));
+      }
+      if (results.every(({ response }) => response.success)) {
+        await atomicWriteFile(receiptPath, `${JSON.stringify({ ...started, status: "completed" }, null, 2)}\n`, { mode: 0o600 });
+      }
+      return batchResult(results);
+    } finally {
+      if (claimed) await rm(claimPath, { recursive: true, force: false }).catch(() => undefined);
+    }
+  } catch (error) {
+    return error instanceof LocalDocumentDynamicToolError || error instanceof LocalDocumentGenerationError
+      ? failure(error.code, error.message)
+      : failure("LOCAL_DOCUMENT_GENERATION_FAILED", "No se ha podido crear y verificar el lote documental local.");
+  }
+}

@@ -1,0 +1,396 @@
+# Runtime and performance budgets
+
+This document is the acceptance ledger for turn lifecycle, streaming and
+perceived performance. A green port or `/api/health/ready` response is not an
+AI health result. Live validation requires an authenticated turn through Codex
+App Server, its streamed events, durable projection and final persisted state.
+
+Statuses are `not started`, `implemented`, `validated locally` and
+`validated live`. A row may only advance when the linked evidence measures the
+same definition.
+
+## Lifecycle contract
+
+### 6 October 2026 local candidate
+
+CPU profiling of the existing paced-answer fixture showed JSX construction in
+`BrainApp`, `ChatWorkspace` and `Sidebar` on every text fragment. The candidate
+keeps a per-mounted-workbench, thread/message-scoped display buffer, so only the
+active answer subscribes to text changes. Non-delta events and final/abort paths
+flush the exact accumulated content to chat state; server projection is still
+durable and authoritative. Completed plain paragraphs/headings keep their DOM
+nodes; complex Markdown retains its full terminal parse. No-op message updates
+do not invalidate the workbench.
+
+The unchanged CPU x4 fixture passes on a local optimized production build:
+757 frames, 150 mutations, p95 frame gap 18.5 ms, slow-frame ratio 0.00132,
+200 ms total long tasks. The local development build still fails its total
+long-task ceiling at 524 ms, despite p95 17.6 ms and ratio 0.00690. These are
+separate results, not deployed/client acceptance. Five local browser regressions
+pass cancellation, independent concurrent turns, refresh/persistence and a real
+loopback connection outage. Evidence is outside the repo in the task's
+`arnall-incidents-20261006/evidence` directory.
+
+| Capability | State | Contract and evidence |
+| --- | --- | --- |
+| Stable turn identity and replay | validated locally | UI IDs are idempotency keys; App Server IDs are bound server-side. `src/runtime/worker-codex-turn.ts`, `src/runtime/transport/app-server-rpc-router.ts`, `tests/integration/worker-crash-recovery.integration.test.ts`. |
+| Two users / four concurrent threads | validated locally | Routing is installation + user worker + runtime thread + runtime turn. `tests/integration/multi-user-worker-acceptance.integration.test.ts`. |
+| Reconnect without cross-turn projection | validated locally | Journal replay and the turn owner captured at event receipt prevent a delayed event from attaching to a later registration. `src/runtime/transport/file-event-journal.ts`, `src/runtime/transport/app-server-rpc-router.test.ts`, `src/workbench/turn-projection-store.test.ts`. |
+| NDJSON disconnect does not stop the turn | validated locally | The HTTP consumer is now separate from the server-owned turn lifetime. Only `/api/runtime/turns/control` can request `turn/interrupt`. `src/app/api/chat/route.ts`, `src/app/api/chat/route.test.ts`. Live refresh/reconnect remains pending. |
+| Silent App Server turn reaches one terminal state | validated locally | A 4-minute activity deadline and 30-minute hard deadline reconcile `thread/read` before one bounded `turn/interrupt`; no model action is resubmitted. Durable approval/user-input waits pause the watchdog. `src/runtime/turn-terminal-watchdog.ts`, `src/runtime/worker-codex-turn.test.ts`. |
+| Explicit stop is durable and scoped | validated locally | Stop resolves the private runtime IDs from the turn projection and requires the expected turn. `src/runtime/turn-control.ts`, `tests/integration/turn-control-route.integration.test.ts`. |
+| Per-turn token attribution | validated locally | Only the `last` breakdown from `thread/tokenUsage/updated` is accepted when thread and turn match. Account-wide usage remains a shared subscription snapshot and is never assigned to an employee. `src/runtime/worker-codex-turn.ts`, `src/usage/server-service.ts`, `src/usage/file-usage-store.test.ts`. |
+| Real restart recovery on Arnall | not started | Requires an authenticated turn, restart of the deployed immutable revision, reconnect with the same local IDs, one final message and one usage record. Health endpoints alone do not satisfy this row. |
+| Browser/tool exactly-once outcome | validated locally | A timed-out, cancelled or failed post-dispatch mutation is durable `indeterminate`, is not replayed, and forces a per-user process/session recovery before a new call. Reads may retry once after fencing. `src/runtime/browser/dynamic-tools.test.ts`, `src/runtime/browser/browser.test.ts`. Live Arnall readback remains required. |
+
+## 2026-08-30 P0 latency diagnosis
+
+The causal code path was inside the private per-user worker gateway, not the
+public NDJSON response or the browser paint scheduler. One promise chain handled
+both App Server stdout persistence and incoming WebSocket control/RPC frames.
+A busy stream or slow durable append could therefore hold `thread/start`,
+`thread/read` and `turn/interrupt` for every chat using that worker. The public
+proxy already disables response buffering and the client already applies the
+first delta synchronously, so neither is identified as the causal bottleneck by
+the available local and prior runtime evidence.
+
+The gateway now has independent ordered lanes for App Server output and client
+input. The RPC router separately applies the request deadline to transport
+admission itself, so a blocked send, router close or worker loss cannot leave a
+`thread/read` waiting outside its timeout. The same deadline remains active
+through durable response projection. Output durability and exactly-once
+server-response confirmation remain ordered; uncertain effects are not replayed.
+Authenticated Arnall logs and host metrics remain a post-deploy acceptance gate,
+not evidence available from this local-only change.
+
+## 2026-09-01 live cadence diagnosis
+
+An authenticated turn against deployed revision `872b73642b4` separated model
+latency from presentation cadence. First visible text arrived after 6,294 ms
+and the turn completed after 25,273 ms, but only 11 visible text updates were
+observed. The median gap was 1,983 ms and p95 was 2,265 ms. The browser was not
+inventing those pauses: the server projected each newly sanitized whole answer
+as a replacement `content` event, which bypassed the delta frame dispatcher.
+The UI then reparsed all accumulated Markdown and synchronously read the full
+scroll height on each replacement.
+
+The current local candidate keeps whole-answer sanitization authoritative but
+emits only the proven-safe suffix as a `delta` while the public value remains a
+monotonic extension. A non-monotonic sanitizer result still uses an exact
+`content` replacement. The browser applies the first nonempty chunk immediately
+in full, then batches subsequent chunks in full at the next rAF or a 48 ms
+fallback, with exact flush before non-delta/terminal events and close. It
+memoizes completed Markdown blocks, keeps only the live
+tail lightweight and follows the bottom without a synchronous `scrollHeight`
+read. The exact full Markdown surface is restored at terminal state. This is
+validated locally only; the 2026-09-01 live numbers are a deployed baseline,
+not acceptance of this candidate.
+
+## Metric definitions and budgets
+
+The R2 worker publishes the sanitized complete lexical prefix of each arrival,
+including document turns; the trailing unfinished token stays private until it
+can be sanitized or the item completes. Distinct authoritative final items
+replace previous answers rather than concatenate. Structured terminal snapshots
+stop client reattachment. Projection batches validate envelopes/events first,
+then the accumulated message at the atomic-write boundary (64-delta fixture:
+66 to 3 complete-message validations). These are operation-count/correctness
+results, not provider-speed measurements. The local evidence and caveats are in
+[MELSO_R2_F_20260904.md](MELSO_R2_F_20260904.md).
+
+Remote/model-dependent budgets are comparative: measure AiBrain and ChatGPT
+Work on the same Mac, network, account/model and prompt set. AiBrain passes when
+its p50 and p95 are no worse than the reference by more than 10% or 250 ms,
+whichever allowance is larger. This avoids promising a fixed model time without
+a controlled benchmark.
+
+| Metric | Start / end | Guardrail | State | Current evidence / next measurement |
+| --- | --- | --- | --- | --- |
+| Input latency | key/paste event → next painted composer value | p95 ≤ 100 ms; no task > 200 ms | not started | Browser `performance.mark` and `requestAnimationFrame`; UI owner. |
+| Navigation latency | navigation intent → destination shell painted and interactive | p95 ≤ 500 ms for cached shell; otherwise comparative budget | not started | Browser marks per sidebar/search/project/thread transition; UI owner. |
+| TTI | document navigation start → composer focused and usable | comparative budget | not started | Must be collected in the real Arnall browser, not inferred from server logs. |
+| Turn setup | valid chat request → NDJSON response created | p95 ≤ reference + allowance; no repeated access-index or catalog refresh on the hot path | validated locally | `chat.request_phase` separates feature policy, thread context, maintenance, permissions, documents, turn persistence and projection. A project-scoped workbench cache and one resolved authorization context remove repeated parsing and access scans. |
+| Initial honest feedback | send intent → first painted factual activity | **< 1,000 ms**; no invented response content | validated locally | The optimistic assistant state paints `Enviando solicitud`; a real Chromium test holds `/api/chat` open and measures click → visible activity with `performance.now()`. |
+| Accepted activity | successful chat response acceptance → `Solicitud aceptada` paint | **< 1,000 ms** | validated locally | Client telemetry schema 2 records both the accepted timestamp and its next paint opportunity. The accepted callback fires once across reattachment. |
+| App Server first delta | server admission immediately before runtime work → first non-empty agent delta accepted | comparative budget | validated locally | Private `codex.turn_metrics.serverFirstDeltaMs` is measured at the server notification boundary. This is not visible TTFT. `src/runtime/turn-telemetry.test.ts` fixes the clock and verifies the calculation. |
+| Visible TTFT | send intent → first agent text painted | comparative budget | validated locally | The first non-empty delta is applied synchronously and measured at the next rAF, avoiding the previous extra-frame delay. This is a paint proxy, not model latency; never substitute the server first delta. |
+| Streaming cadence | paint timestamps for consecutive non-empty agent deltas | p95 inter-paint gap ≤ reference + allowance; zero reordering/duplicates | validated locally | Safe monotonic answer growth is emitted as suffix deltas. The first nonempty chunk is applied immediately in full; subsequent chunks batch in full at the next rAF or 48 ms fallback, without artificial reveal pacing. Non-delta/terminal events and close flush the exact pending suffix first; reconnect projection replaces the partial message instead of appending it twice. |
+| Total turn latency | send intent → terminal state painted and persisted | comparative budget; persisted terminal state must match UI | implemented | The client records terminal `done`/`error`/`stopped` after rAF; `codex.turn_metrics.totalMs` remains server elapsed. Persisted-state correlation is still a live acceptance requirement. |
+| Reconnect latency | disconnect observed → durable snapshot caught up to latest delivered sequence | p95 ≤ 1,000 ms on loopback; comparative live | implemented | Idempotent replay starts a client reconnect span; the next applied durable snapshot is measured after rAF. `codex.turn_lifecycle` remains separate server lifecycle evidence; live catch-up timing is pending. |
+| Tool latency | App Server item start → terminal tool outcome, split into queue/runtime/projection/paint | overhead p95 ≤ 250 ms excluding remote tool execution | implemented | `codex.tool_phase` records queue and execution duration with bounded tool kind and opaque correlation only. Browser owner must still preserve `indeterminate`; visible paint remains client-side. |
+| Same-user concurrency | request admission in chats B/C/D while chat A is streaming or waiting on a tool | no cross-thread head-of-line blocking; admission remains bounded by its own RPC timeout | validated locally | The private gateway uses independent client-input and App-Server-output lanes. A blocked durable output test proves a new chat is admitted; a router test runs three bound chats, opens a fourth during a tool, times out one `thread/read`, then completes a trivial request. |
+| Bounded turn lifetime | accepted runtime turn → terminal state | default 30 min; configured range 30 s–30 min; one interrupt only | implemented | `AIBRAIN_WORKER_TURN_TIMEOUT_MS` aborts the scoped turn and requests one `turn/interrupt`. The default matches the terminal watchdog hard budget, avoiding an unconditional cut at ten minutes while work is still active. Explicit installation overrides retain their configured limit. Failure to confirm is terminal error; uncertain effects are never replayed. Configuration bounds and the scoped cancellation path are validated locally; elapsed wall-clock expiry remains a live acceptance case. |
+
+## Reproducible local evidence on the authorized base
+
+### 2026-08-30 client pipeline benchmark
+
+Run `npm run benchmark:chat` from a clean installation. The fixture uses a
+controlled 16 ms browser scheduler plus a real CPU timer for the 10,000-delta
+dispatch loop. It deliberately excludes network, server queue and model time;
+those remain separate server/client telemetry fields and must not be inferred
+from these numbers.
+
+| Measurement | `origin/main` `cb5f0e70` before | This change after |
+| --- | ---: | ---: |
+| First factual feedback field | missing | 16 ms paint proxy |
+| Real Chromium submit → factual activity paint | not measured | 20.30 ms in the final post-sync focal run; budget < 1,000 ms |
+| Accepted response → factual activity | missing | 16 ms paint proxy; budget pass |
+| First delta applied before a frame | no | yes |
+| First delta arrival → paint proxy | 32 ms | 16 ms |
+| Maximum wait when rAF is unavailable | unbounded | 48 ms |
+| 10,000 subsequent deltas | one accumulated frame event | historical adaptive reveal queue plus exact terminal flush (superseded on 2026-09-04 by full next-frame batching) |
+| Duplicate/reordered content after reconnect snapshot | regression asserted only by event types | final projection equals snapshot exactly |
+
+The current controlled run records three paint opportunities, a 48 ms p95/max
+gap and 96 ms from send intent to the completed terminal paint. The
+fixture is deliberately short and deterministic; it validates client cadence
+instrumentation and ordering, not provider generation speed.
+
+The companion Chromium gate is:
+
+```text
+PLAYWRIGHT_PORT=3117 \
+PLAYWRIGHT_INSTALLATION_CONFIG=config/installations/playwright-isolated.example.json \
+npx playwright test tests/e2e/conversation.spec.ts \
+  --project=chromium-desktop \
+  --grep 'submit paints honest activity' \
+  --workers=1
+```
+
+It holds the synthetic response open, measures the real click-to-visible-status
+interval with `performance.now()`, asserts it is below 1,000 ms and attaches the
+numeric JSON result. It does not claim anything about provider/model latency.
+
+`npm run benchmark:chat` also completes a controlled visible delta sequence and
+reports `paintCount`, inter-paint p50/p95/max and terminal-paint time. This is
+the full visible cadence readback used by the authenticated details panel; it
+does not substitute first-event timing for streaming speed.
+
+### Runtime admission and transport overhead
+
+Run `npm run benchmark:chat:runtime` to record two local controls: the previous
+serial admission topology versus parallel memory/worker admission with web as
+a server invariant (while retaining policy-enforcing skill synchronization),
+and direct App Server delivery versus API NDJSON
+encode/decode. The command reports p50/p95 and explicitly excludes provider,
+network, model generation and filesystem persistence. These values quantify
+AiBrain-owned overhead only; they are not model first-token latency.
+
+Controlled run on 2026-08-30 (`80` admission and `800` delivery samples):
+
+| Local fixture | p50 | p95 |
+| --- | ---: | ---: |
+| Serial admission before | 37.214 ms | 42.092 ms |
+| Parallel/invariant admission after | 19.582 ms | 22.210 ms |
+| Direct App Server event delivery | < 0.001 ms | 0.002 ms |
+| API NDJSON encode/decode | 0.005 ms | 0.021 ms |
+
+P0 same-user lane fixture on the final local code (`20` samples, with a
+controlled 20 ms output-persistence delay rather than real filesystem I/O):
+
+| Same-user request admission | p50 | p95 |
+| --- | ---: | ---: |
+| Shared input/output chain before | 21.137 ms | 25.399 ms |
+| Independent direction lanes after | 0.003 ms | 0.015 ms |
+
+Historical lifecycle baseline: `d381ccf836516f91464f20225403996e7e8158d1`.
+
+Telemetry P0 candidate base: `f2c48dc9d84c8876bfd0432f4f09f1b648d59da0`.
+Before this candidate extension, `codex.turn_metrics` emitted only
+`firstTextMs` and `totalMs` when a turn completed; it had no cadence summary,
+terminal state or stream lifecycle record. The private fields described below
+are the server-side replacement, not a visible TTFT measurement.
+
+Focused lifecycle slice:
+
+```text
+vitest run
+  tests/integration/multi-user-worker-acceptance.integration.test.ts
+  tests/integration/worker-crash-recovery.integration.test.ts
+  src/runtime/transport/app-server-rpc-router.test.ts
+  src/runtime/transport/websocket-app-server-transport.test.ts
+  src/workbench/turn-projection-store.test.ts
+  src/usage/file-usage-store.test.ts
+  src/runtime/worker-codex-turn.test.ts
+
+7 files passed, 32 tests passed, 16.39 s
+```
+
+Disconnect regression:
+
+```text
+vitest run src/app/api/chat/route.test.ts
+1 file passed, 1 test passed
+```
+
+Telemetry focal regression on the candidate extension:
+
+```text
+npx vitest run
+  src/runtime/turn-telemetry.test.ts
+  src/runtime/worker-codex-turn.test.ts
+  src/app/api/chat/route.test.ts
+
+3 files passed, 6 tests passed, 1.43 s
+```
+
+### Three-second idle causal check
+
+Candidate `689c610b5b70478d9104eb09bbb643bc0b4360e3` was checked with a
+controlled clock in `src/runtime/transport/websocket-app-server-transport.test.ts`.
+The measured internal timeline is: `t=0` private gateway WebSocket opens,
+resumes and is ready; at `t=3000 ms` it has sent no heartbeat (the configured
+default is 15 s), has no close code/reason, stays `connected` and has made zero
+reconnect attempts. The private worker gateway is loopback
+`ws://127.0.0.1:<ephemeral>/app-server` in
+`src/runtime/workers/local-gateway-runtime.ts`; it cannot be the public NDJSON
+EOF path.
+
+The public browser path is POST NDJSON, not WebSocket. Its incomplete-EOF
+recovery belongs to `src/ui/app-server-ui-adapter.ts`: `reader.read()` ending
+without `done`, `stopped` or `error` currently returns normally instead of
+reattaching the same turn snapshot. Do not reduce the internal 15 s heartbeat
+without evidence of an internal loopback close. The runtime transport already
+reconnects with exponential backoff+jitter and resumes its durable event cursor;
+the UI recovery must reattach to the existing thread/assistant-message IDs
+without resubmitting input.
+
+The post-change TypeScript check, targeted ESLint check and contract verification
+passed. A combined post-change lifecycle run completed 36 assertions in eight
+files, while the two timing-heavy integration files hit their fixed 25 s and
+20 s ceilings. Individual reruns hit the same ceilings while other AiBrain
+worktrees were compiling and running Vitest concurrently. These reruns are
+recorded as inconclusive environmental evidence, not as passes; repeat them on
+a quiet runner before integration. The green baseline above was collected
+before this route-only change from the same authorized commit.
+
+Generated Codex contract verification also passed for pinned version `0.149.1`.
+The desktop Codex binary inspected on the development Mac reports
+`0.149.0-alpha.4.3`; that process is not the Arnall worker and is not accepted as
+live AiBrain evidence. Production's entrypoint must continue rejecting a binary
+that differs from the generated contract version.
+
+## Private runtime telemetry readback
+
+The existing server-only operational logger emits bounded JSON records per
+correlation, never a public route or client payload. `chat.request_phase`
+measures the status-sensitive work that must complete before the NDJSON stream
+is returned. `codex.turn_phase` then separates memory, worker startup, catalog,
+skills, thread resume/start and `turn/start`. `codex.turn_lifecycle`
+records `resumed`, `reconnected`, `disconnected`, `cancel_requested` and
+`timeout_requested` with
+opaque installation/user/project/thread/turn/request IDs and request elapsed
+time. `codex.turn_metrics` records terminal `completed`, `error` or `stopped`,
+server first-delta time, delta count, inter-delta p50/p95/max, server total and
+lifecycle counts. It deliberately excludes prompt/message/content fields,
+model output, token data, error text, file paths and credentials.
+
+`codex.turn_model` closes the branded experience-selector chain by recording
+the server-resolved requested model and the effective model returned by
+`thread/start` or `thread/resume`, plus effort and whether the value came from
+the runtime response, explicit request or runtime default. A later
+`model/rerouted` notification emits `codex.turn_model_rerouted` with the new
+effective model. These records contain model identifiers but still exclude
+prompts, output, tokens, paths, credentials and provider secrets.
+
+`codex.app_server_request` records the RPC method and opaque request ID,
+transport-acceptance time, total time, active-turn count, pending-request count
+and a bounded outcome (`completed`, `timeout`, connection/send failure or
+router closure). `codex.worker_recovery` records the one allowed startup or
+initialization recovery and final unavailability. `codex.tool_phase` separates
+tool queue and execution time using only a bounded namespace/tool label. These
+records make “Conectando con el servicio”, service-unavailable and
+`thread/read` timeout incidents correlatable without prompts, outputs, paths,
+tokens, error text or credentials.
+
+The runtime invariant remains `web_search: "live"` for every thread and every
+turn. Web availability is not discovered or disabled on the chat admission hot
+path; server policy and egress enforcement remain authoritative.
+
+Operators read these records only from the existing authenticated operational
+log sink or an approved server-side acceptance artifact. A visible TTFT or
+paint cadence must continue to come from the client benchmark, not these server
+records.
+
+## Capacity gate for three to four employees
+
+The Compose defaults are a verified configuration limit, not a measurement of
+the Hetzner host: `app` is capped at **2 CPU / 4 GiB**
+(`infra/hetzner/compose.yaml`). It is therefore insufficient evidence for a
+three-to-four-employee claim, particularly when workers, browser tasks or
+document conversion overlap.
+
+`npm run test:soak -- --concurrency 4 --cycles 20 --restart-every 5` is the
+safe local equivalent: it runs four isolated worker transports, durable replay
+and restart/recovery without a customer prompt, provider action or deployment.
+The JSON report captures request latency plus process CPU (`userMicros`,
+`systemMicros`), process filesystem I/O counters (`fsRead`, `fsWrite`), memory,
+journal growth and leaked resources. It does **not** simulate model inference,
+real browsers or live Hetzner contention, so it cannot be called production
+capacity proof by itself.
+
+| Tier | Host / app limit | Operating envelope | Required evidence before using it |
+| --- | --- | --- | --- |
+| Current configured default | app: 2 CPU / 4 GiB | Single-user canary or one active worker; not a 3–4 employee commitment | Read back the real host and container limits; no resizing is implied here. |
+| Minimum provisional | host: 4 vCPU / 8 GiB; app: 3 CPU / 6 GiB | 3 employees, text-first turns, one browser/conversion burst at a time | Four-worker soak plus a matched live turn sample with p95 CPU below 70% and memory below 75% of the app cap. |
+| Recommended | host: 8 vCPU / 16 GiB SSD; app: 6 CPU / 12 GiB | 3–4 employees with overlapping text turns and controlled browser/document work | Same evidence for a sustained window, no queue/backpressure growth and at least 30% CPU/RAM headroom. |
+
+The host readback is strictly diagnostic and must be captured before any
+resize: resolve the installation-specific Compose environment, then collect
+`docker compose ... config`, `docker stats --no-stream` for `app`, `free -h`,
+`df -h`, `iostat -xz 1 3` (when available), and the last 200 `app` log lines.
+The operational log slice must include `chat.request_phase`,
+`codex.app_server_request`, `codex.worker_recovery`, `codex.tool_phase`,
+`codex.turn_phase`, `codex.turn_lifecycle`, and `codex.turn_metrics`; correlate
+only opaque IDs and numeric timings. Record the immutable revision, limits,
+sample period and raw counters with the report. Never treat a healthy endpoint,
+an empty log, or this local fixture as host-capacity acceptance.
+
+## Client paint telemetry readback
+
+Baseline: candidate `fcb30b15a28f037d70a0eec4141b914e67e7182b` has no
+client-side send-to-rAF timing, client paint cadence, terminal paint or
+reconnect-to-snapshot measurement. Runtime's private telemetry cannot observe
+those client scheduling points.
+
+`src/ui/client-turn-performance.ts` holds at most 24 schema-2 per-turn readbacks in the
+authenticated client's memory. A readback has only numeric durations/counts and
+a terminal enum: no prompt, response text, tokens, identifiers, filenames,
+error detail or secret. It is not exposed as a per-message control; the focal
+browser test attaches its numeric benchmark JSON only to that local test run.
+This change adds no API route, analytics POST, shared storage or server logger.
+
+The first nonempty chunk is applied immediately in full; subsequent chunks are
+batched in full at the next rAF or 48 ms fallback. Non-delta/terminal events and
+close flush pending text exactly first. The measurement then schedules rAF. The resulting
+timestamp is a controlled local proxy for a paint opportunity. The Chromium
+initial-feedback test is real-browser evidence for the local shell only;
+authenticated Arnall validation remains required before claiming live provider
+or user-perceived model latency.
+
+## Historical live observations, not current acceptance
+
+Repository evidence records first-text/total pairs of 3003/4891 ms,
+2021/3513 ms and 2250/3774 ms for one earlier deployed revision, and a later
+Computer Use turn at 15219/22741 ms. These numbers demonstrate large prompt/tool
+variance; they do not prove the current branch, current production revision or
+ChatGPT Work parity. Repeat the matched benchmark after release and attach the
+immutable revision, model, prompt, timestamps, raw NDJSON event timing and final
+persisted turn/usage readback.
+
+## Warm-path implementation
+
+Opening a project verifies the private worker account and starts a non-blocking,
+project-scoped catalog preload. Catalog data is fresh for five minutes; for the
+next 25 minutes a turn uses the last verified value immediately while a single
+deduplicated refresh runs in the background. A cold or older-than-30-minute
+catalog still fails closed by awaiting a verified refresh.
+
+Filesystem workbench state is cached only after strict schema validation and is
+invalidated by inode, mtime or size changes. Cached entries are cloned before
+use, limited to 16 MiB each and 128 MiB process-wide. The durable file lock,
+atomic write, tenant/user binding and projection overlay remain authoritative.
+Unchanged shared-access fingerprints no longer rewrite the access index or add
+a redundant audit entry; actual membership, role or project changes still
+invalidate the fingerprint and update the index synchronously.

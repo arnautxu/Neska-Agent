@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "installationId": "company-qa",
+  "companyName": "Arnall",
+  "companySlug": "arnall",
+  "publicUrl": "https://arnall.graphikai.com",
+  "usageLimits": { "weeklyTokens": 15000000, "timeZone": "Europe/Madrid", "unlimitedUntil": "2026-10-31T23:00:00.000Z" },
+  "branding": {
+    "productName": "Arnall AI",
+    "logoPath": "/branding/arnall/logo.jpg",
+    "faviconPath": "/branding/arnall/logo.jpg",
+    "accentColor": "#315ee7"
+  },
+  "paths": {
+    "dataRoot": "/var/lib/aibrain/data",
+    "companyContextRoot": "/var/lib/aibrain/data/company-context",
+    "usersRoot": "/var/lib/aibrain/data/users",
+    "sourceReadRoot": "/srv/aibrain/source-ro",
+    "publishWriteRoot": "/srv/aibrain/publish-rw",
+    "backupsRoot": "/var/lib/aibrain/data/backups"
+  },
+  "connectors": {
+    "companyMail": { "enabled": true, "host": "hc65.infoselfcloud.com", "emailDomain": "arnall.cat" },
+    "gmail": { "enabled": true },
+    "outlook": { "enabled": true }
+  },
+  "catalog": {
+    "graphikAIManagedSkills": [
+      { "id": "business-processes", "label": "Negocio y procesos" },
+      { "id": "local-documents", "label": "Documentos locales" },
+      { "id": "web-research", "label": "Investigación y web" },
+      { "id": "business-communication", "label": "Comunicación empresarial" },
+      { "id": "governed-automations", "label": "Automatizaciones gobernadas" },
+      { "id": "graphikai-business-work", "label": "Trabajo empresarial GraphikAI" },
+      { "id": "company-context-work", "label": "Trabajo con contexto de empresa" },
+      { "id": "arnall-company-brief", "label": "Contexto confirmado de Arnall" },
+      { "id": "impeccable", "label": "Impeccable · Diseño y UX" }
+    ]
+  }
+}

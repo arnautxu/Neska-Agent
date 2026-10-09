@@ -1,0 +1,268 @@
+Arnall documents and historical incidents — 7 October 2026
+
+Latest live checks (7 October, after the invoice-batch release):
+The same live grid left Neus free on Wednesday while marking "afternoon-only"
+as respected. The actual retained 6 October request explicitly said to put her
+to work that afternoon. Keep availability restrictions backward-compatible,
+and add draft-only requiredShiftsByDay for an actual assignment. Final bounded
+repair prioritizes that assignment over coverage, while preserving contract,
+absence, closed-day, cross-shop, fixed availability and coverage maximum bounds.
+An impossible assignment stays a visible conflict; it never becomes fake work
+or an increased contract. The final review also checks saved structured exact
+counts and maxima, including Gemma's maxPartidos=1, which the prose-only checker
+omitted when the actual draft contained two splits. No employee or business
+schedule is persisted. Live repetition with PROVA excluded is still required.
+The follow-up real Girona draft excluding PROVA produced its valid Excel and
+coverage audit, then the delivery guard falsely rejected the answer because
+the prompt said "No amplíes ... mínimos ficticios". A negated reference to
+invented data is not an affirmative simulation request. The template gate now
+ignores negated fiction mentions while retaining mandatory artifacts for an
+affirmative invented-shop request. Worker-event regressions cover both paths;
+fresh authenticated UI acceptance is still required after this candidate ships.
+The UI accepted and reopened 33 synthetic PDFs in a single message, identified
+all 33 invoice numbers, and independently totalled EUR 561. The original bytes,
+sizes and upload bindings all match the private fixture oracle. This accepts
+the 33-file transport/reading case; it cannot recover 23 missing historical
+Marta attachments. The scheduled invoice run at 17:27 Europe/Madrid completed
+at 17:37 on attempt 1: 17 genuine new documents, 28 originals total, no duplicate
+hashes/receipts, 1 reviewed, 27 needs_attention and 0 unread. Its final tracking
+Excel was previewed/downloaded through David's authorized admin UI; all 28 rows
+match the ledger, and the earlier 11 originals are unchanged. Next run 20:27.
+
+This acceptance exposed a result-view bug: automation audiences receive a
+conversation without access to its owner's private project, but the UI used
+the missing project's legacy owner fallback. It consequently displayed an
+editable composer and a misleading unavailable-runtime warning. Project
+editors can also be viewers of individual automation results. Project grants
+are not a substitute for conversation authorization. Project the existing
+server-resolved conversation role into both workbench snapshots and direct
+thread reads; use it for chat, inspector and sidebar edit controls. No server
+permissions or owner connector bindings change. Continue read-only polling of
+healthy long-running results at 15-second intervals; after a minute of failed
+reads pause with a read-only reconnect control. Never start another turn during
+reconciliation. Foreign/denied result reads retain the existing rejection.
+Local focused tests cover an unshared project, a project editor with viewer-only
+result access, revoked audience, terminal recovery and nine-minute healthy
+background execution. Publication, deployment and live UI remain separate gates
+for this follow-up until their exact candidate receipts are recorded.
+
+GP/Estartit remains absent from horarIA. David has said he does not know its
+official details: record name, address, opening days/hours and manager as facts
+to ask Arnall, without inventing a centre or aliasing it to Girona. Two independent
+complete enumerations, one using production shiftHours/puntuacio, prove that
+real Girona staff excluding PROVA cannot meet the aggregate 33 morning and 22
+afternoon sales-role slots under current contract/fixed-count bounds, even after
+relaxing day-specific conditions and synchronization. At most 52/55 slots fit.
+This is a staffing/conditions decision; it does not certify an optimal daily grid
+or authorize changing employment contracts or treating test PROVA as real staff.
+
+Base: cc7ffa7906da7ee4dcb6f8393b46db5500512d00.
+Recovered the 57-path 6 October incident candidate from its preserved
+checkout into a fresh worktree. Three iCloud reads were incomplete: rebuilt
+the afternoon-entry helper, its Meta guard test and fixture attributes, then
+verified all 704 horarIA tests. That candidate was never pushed/deployed.
+Do not equate the recovered content with its historical commit identity.
+
+Marta's five XLSM originals were obtained from the exact link in her email.
+The live UI reproduced UPLOAD_MACROS_REJECTED on the Girona original.
+New admission retains the exact original in the private original vault and
+reads saved worksheet XML directly; it never gives VBA/objects/external links
+to LibreOffice, the worker, or the browser. The normal boundary remains strict.
+Only a newly generated passive XLSX enters staging/workspaces/project sources.
+Missing formula caches are explicit, formulas are inert text, dates retain the
+Excel epoch. Formatting/macros are not represented as preserved by this reader.
+Original hashes and readback evidence remain private, outside Git.
+
+All five actual files pass local full admission/conversion/retry checks:
+Girona 50 sheets / 71,214 formulas; Calonge 48 / 50,367;
+S'Agaro 50 / 109,923; Begur 48 / 68,744; GP 49 / 68,339.
+No tabular sheets omitted; each original remained byte-identical.
+The XLSM derivative supports up to 500k cells/formulas and the 50 MiB input
+boundary. OOXML output uses bounded 200 MiB XML/50 MiB compressed output;
+legacy BIFF retains its original extraction/output boundaries.
+
+The initial available-history inventory contains 355 threads / 1,530 messages
+and includes archived chats. The pre-change backup captured later activity
+(355 threads / 1,546 messages). Preserve deleted-history uncertainty and
+separate real employee conversations from onboarding/technical tests.
+New 7 October Meta readback: solicitud_preferencies is APPROVED, language ca,
+three BODY parameters. It was not configured in horarIA. Stage only that
+binding, without sending or enabling automatic sending. Other templates remain
+PENDING; the submitted schedule template lacks the required DOCUMENT header.
+A human authorization now permits a live test only to the designated PROVA
+number; no other employee or general sends. No provider template was modified.
+The service now reads actual Meta approval/language/body/header schemas,
+admits supported 3/4 initial and 2/4 reminder variables before state changes,
+accepts a strictly checked employeeIds subset for limited tests, skips expired
+reminders, and exposes an explicit manager-notifications disable switch.
+The new pending reminder has four variables and the old sender had two; the
+new sender uses its actual approved schema. The initial template stays three.
+
+Invoice tables now preserve inert <br> line breaks and usable minimum column
+width, with horizontal scrolling instead of squeezing long invoice numbers.
+Arbitrary HTML remains disabled. Preserve users' existing project criteria;
+PUNTEIG_FORMAT.md is present but explicit old/new project notes need a fresh
+conversation readback before declaring preferences effective.
+The new remember_preferences tool requires an explicit current-user request,
+the current owned project, turn-bound identity and tools permission. It saves
+consolidated criteria through the locked workbench, verifies the actual text,
+and rejects concurrent stale edits. Project criteria/instructions accept ordinary
+line breaks and tabs while still rejecting hidden/control characters; the old
+validator rejected multiline criteria, another observed persistence failure. A local procedure file or assistant promise
+does not count as persistence. Fresh-chat readback remains a live gate.
+
+Operational evidence: fresh verified backup
+20261007T102900Z-13d25108-ec40-4234-824f-1020320906a3.
+An isolated dual-root restore recovered 23 workbenches, 355 threads and 1,546
+messages. Only the temporary QA restore created by this task was cleaned;
+all verified snapshots and previous restores remain preserved.
+The off-host replica configuration contains a placeholder; an authorized real
+destination is needed. Do not invent one or reuse InsiJets/BGreenly resources.
+The knowledge backup exceeds its 20-minute deadline under 25% CPU throttling.
+The bounded service configuration gives it 50% of one CPU and 60 minutes,
+without changing isolation, memory limit or retention. Verify execution before
+claiming that operational incident resolved.
+
+Local evidence: types and production build pass; 13 authenticated upload route
+tests pass, 34 parser/UI tests pass, 82 incident regressions pass. The initial
+contended broad suite was interrupted after timeouts; it is not release proof.
+Require the complete unchanged CI suite and exact immutable release identity.
+Live UI acceptance with all five originals is a separate post-deploy gate.
+Staffing minima, real Meta sends, editable My Maps sessions, mailbox connection
+credentials and Microsoft Excel acceptance remain separately observable gates.
+
+Scoped invoice criteria reconciliation completed through the locked workbench
+with exact pre-change workbench/procedure backups and verified saved text.
+The current production-compatible record uses ordinary spaces until the
+multiline-capable release is live. No sharing, tariffs or invoice totals changed.
+
+First release accepted at 017f1c0bbb79d0385eab7abfad3f786a3e478204.
+Backend CI 37612210698, GHCR publication 37612858091 and deployment
+37613289366 all passed; live/ready and app/gateway/horaria OCI match.
+Authenticated David UI accepted all five actual XLSM books and returned the
+exact original sheet counts and sampled values. Fresh-project criteria were
+saved through remember_preferences and a separate chat correctly ignored 0.04
+while reviewing exactly 0.05. Twenty synthetic PDFs were accepted and an
+attachment-only turn completed. Full PDF reading and schedules remain in QA.
+Knowledge backup 12aa6813-3b81-445b-87ad-6245031eaeab completed verified after
+30m16s, inside the revised bounded service limit; off-host replica still absent.
+Meta rejected editing the pending malformed PDF template (code 100/subcode
+2388003). A corrected DOCUMENT template enviament_horari_pdf_document was
+submitted PENDING, with unchanged body and synthetic sample, preserving the
+original template. Its named binding is active; automatic/general sends remain
+disabled. At that checkpoint no WhatsApp was sent; see the later scoped PROVA
+UI result below. Reminder/document approval remains a provider gate.
+
+New authenticated UI finding: current David identity has no horaria mapping.
+The service is healthy but run failed immediately while catalog worked. The
+existing access boundary correctly denied it, yet the generic dynamic tool
+error hid the cause and prompted pointless retries. Return a fixed, safe,
+non-retryable NOT_ASSIGNED/NOT_CONFIGURED result without calling the service.
+Scope/tenant/permissions mismatches stay fatal; do not grant access implicitly.
+David explicitly authorized linking his current account to the existing active
+general manager. The scoped integration mapping was backed up and atomically
+updated with no background operations, other mappings or secret changes.
+Authenticated UI config/employee reads then succeeded; only employee 123
+(+34 683 529 819) is authorized for real message tests. Windows browse independently timed out in readback on
+both C/Arnall/Compres and Y/FACTURES PROVEIDORS 2026; it is not accepted.
+
+Authenticated long-identifier invoice-table QA found that five 8rem minimum
+columns hid the final claim column even in the normal desktop message width.
+Use a smaller readable minimum and wrap unbroken identifiers so five columns
+fit the desktop response. Keep horizontal scrolling for genuinely wider tables.
+The live real schedule draft respected Neus Wednesday afternoon and 34/40h,
+but reported Eva/Jordi fixed-condition conflicts; it is not fully accepted.
+The downloaded workbook passed ZIP/XML checks and opened in Numbers; this
+is not Microsoft Excel acceptance or repair of original historical REF errors.
+David authorized the initial PROVA send; the UI and ledger show exactly one
+outbound message and none to others. Delivery to the phone is not yet proven.
+The additional invoice-email request found company-mail connected personally
+to Mª Àngels, factures@arnall.cat, INBOX, initial date 2026-10-08. No 3-hour task
+exists. Owner-session UI acceptance, duplicate-free repeat import and scheduled
+execution are pending; never copy the credential to another user.
+
+A feasible exact-count repair can require two people to exchange a half/split
+shift on the same day. The final bounds pass previously stopped as soon as
+hours and coverage passed and double-counted the replaced shift in its callback.
+Add a bounded recovery that improves structured conditions, keeps requested
+shifts and morning synchronization, and never worsens role coverage, contracts,
+absences or the partner's conditions. Unresolved conflicts still stay visible;
+this is not permission to increase Jordi's 14-hour contract or publish a draft.
+
+Local validation for this follow-up: all 711 horaria tests in 130 suites pass,
+including feasible pair recovery and refusal of contract/explicit-shift losses.
+Root lint passes. Company-mail tool wording now says next scheduled run rather
+than assuming two hours, so a configured three-hour interval stays authoritative.
+David explicitly authorized a temporary owner session for the invoice UI work.
+It is bounded to one hour and must be revoked after restoring David's cookie;
+no password or personal-connector ownership changes are authorized or required.
+
+Additional live invoice UI finding: the automation panel kept the manual run
+queued after the worker advanced, because it refreshed only when opened. Poll
+the authorized task/history receipts every 15 seconds while visible and idle,
+without disturbing open forms, overlapping requests or resubmitting work.
+The interval help must describe the selected interval instead of always two
+hours. Component regression (10 tests) passes, including queued-to-finished.
+
+The authorized owner UI reconnected the existing factures@arnall.cat INBOX
+credential without changing its password, moving its initial date from tomorrow
+to 7 October. One owner-only Puntejar factures automation was created from the
+UI with interval 180 minutes and Europe/Madrid. Its first real manual worker run
+finished, read two invoices against both source workbooks, recorded one reviewed
+and one needs_attention, and attached the tracking Excel. Seven more supplier
+PDFs failed strict signature validation: a bounded serialized HTTP header
+prefix preceded the PDF, and declared content-length exactly matched its body.
+Accept this narrowly verified envelope for mail reading only. Keep the entire
+original and original hash private; validate/materialize/download a clearly
+named reading copy. Arbitrary HTML, unknown/duplicate headers, wrong lengths
+and oversized prefixes remain rejected. 34 focused connector/runtime/UI tests
+pass; the two actual sampled attachments pass local envelope extraction.
+Release deployment, all-seven retry and duplicate-free repeat UI remain gates.
+7 October follow-up: the seven enveloped supplier PDFs were successfully
+imported and read from the owner UI after c29fe93 deployed. Another genuine
+mail arrival brought the ledger to ten originals. The second manual worker
+run succeeded and attached seven clearly named reading copies plus tracking
+Excel; missing delivery dates remain needs_attention. A duplicate-free repeat
+and the 17:27 Europe/Madrid scheduled tick remain separate acceptance gates.
+
+A third real C/Arnall/Compres browse from the owner UI still timed out after
+trying a bounded short launcher on the private redirected Linux job drive.
+The trial was not accepted. Restore the exact pre-trial host helpers, keep
+pinned TLS, source roots and Windows policies unchanged, and do not represent
+Windows browsing as fixed. A confirmed remote desktop/policy diagnosis is
+still needed; do not infer that a folder is absent from a failed readback.
+
+The automation badge distinguishes a worker lease (En curso) from a queued
+manual request and prevents manual resubmission during an automatic lease.
+Eleven automation component tests pass; root type/lint checks pass.
+Final follow-up: the main CI after PR16 caught a real initial-load race in
+the create-interval component test: Nueva could open before the authorized
+audience directory supplied currentUserId, so the default owner recipient
+was empty. Disable only new-task opening until that identity arrives; wait
+for the eligible button in the UI test. Add a delayed-directory regression
+that verifies the owner remains the selected default without implicit grants.
+The owner invoice UI has now completed four manual worker runs; the fourth
+reports zero new documents, zero unread invoices and eleven immutable originals
+with no duplicate hashes/receipts. Exact scheduled-time acceptance is separate.
+The fresh real Girona draft after PR15 passes Eva 3 mornings/3 afternoons,
+Neus Wednesday afternoon and 36/40 hours, all contracts and numeric coverage.
+Jordi's 14-hour condition conflict remains explicit; no schedule was persisted.
+
+The full historical review found Marta's explicit 33-invoice request on
+25 September still exceeded the shared 20-file limit. Raise the common count
+to 50 across composer, request contract and server binding, including mixed
+images/documents. Translate the actual shared limit instead of hardcoding it.
+Keep aggregate original-byte and prepared-input budgets, per-file validation,
+private originals, permissions and macro isolation unchanged. Binding tests
+cover real staged batches of 33/50, refusal of 51 before reads/conversion and
+unchanged aggregate budgets. A live 33-file UI acceptance remains a release gate;
+synthetic fixtures must not be described as Marta's missing 33 originals.
+
+The live Marta project-source UI then reproduced a proxy rejection of her
+4.3 MB CONTROL DE COSTOS workbook. Project-source POST fell through to the
+global 2 MB limit despite the UI/server 20 MB contract. Add an exact UUID
+project-source streaming location with a 22 MB multipart envelope; preserve
+the ordinary request limit and server-side 20 MB validation. The infrastructure
+validator now requires this route as well as the existing thread-document route.
+Apply only to Arnall's vhost after a private config backup and nginx validation.
+Preserve other client vhosts; accept only a successful repeat upload/save/reload.

@@ -1,0 +1,80 @@
+# Arnall — registro de incidencias y aceptación
+
+Actualizado: 5 septiembre 2026. Responsable de seguimiento: General Call y tarea coordinadora de correcciones.
+
+Este registro conserva las peticiones de David. Un commit, CI verde o health listo no cierran una incidencia. Estados: abierta, reproduciendo, corregida localmente, desplegada pendiente de comprobar, verificada en producción, bloqueada. Una incidencia reabre si vuelve a reproducirse. No se promete ausencia permanente de errores: se exige evidencia y una regresión que detecte su retorno.
+
+Cada cierre debe incluir causa raíz, commit, versión desplegada, prueba en la cuenta real, fecha y evidencia. Los bloqueos de proveedor permanecen visibles. Ninguna casilla está completada por los informes anteriores.
+
+## Ronda actual: fallos observados por David después de 622a21d
+
+- [ ] R5-01 — Iconos de proyectos descolocados. Los tres controles deben pertenecer a la fila del nombre, centrados verticalmente, incluso con chats expandidos, hover, sidebar estrecho y móvil. Revisar también los puntos de chats. Estado: corregida localmente en `044eafe`; pruebas de componente aprobadas; pendiente de despliegue y comprobación visual independiente.
+- [x] R5-02 — Archivar aproximadamente el 90% de conversaciones de David dentro de arnall.graphikai.com. Verificar usuario exacto; inventario previo, conservar anclados y conversaciones recientes/importantes, priorizar antiguas y QA, archivado reversible, contar antes/después y conservar identificadores para restaurar. No confundir con las tareas de Codex. Estado: verificada en producción el 5 septiembre 2026 para David Liria (`fc71…`): 81 totales, 69 activas y 12 archivadas antes; 8 activas y 73 archivadas después (90,12%). Se conservaron las 5 conversaciones de Testing 1, la prueba P0 reciente y dos conversaciones recientes con documentos. Copia íntegra, manifiesto privado y recibo de restauración: `.../audit/chat-archives/r5-02-20260905T151451452Z/`.
+- [ ] R5-03 — Idioma del navegador remoto. Inglés por defecto del producto y español para Arnall, con configuración por empresa/usuario si procede. Comprobar contexto Chrome, cabeceras y preferencias persistentes; distinguir idioma de país que un sitio deduce por IP. Estado: el postdeploy de `1e4e29c` confirmó `--lang=es-ES`, pero httpbin recibió `en-US,en;q=0.9` porque el perfil persistente conservaba `intl.selected_languages`. El candidato siguiente fija `Accept-Language` y `navigator` por target CDP antes de navegar; pendiente de despliegue y readback real. País inferido por IP continúa separado.
+- [ ] R5-04 — Barra de progreso debajo de la URL durante navegación, incluidos enlaces pulsados dentro de la página. Inicio inmediato y final/error ligado al estado real. Estado: corregida localmente en `044eafe`, incluida navegación deliberada, enlaces, error, descarga y misma página; pendiente de despliegue y prueba real.
+- [ ] R5-05 — Latencia del navegador. Medir clic/rueda/teclado hasta frame visible, captura, transporte, cola y render; comparar con Melso, corregir cuello de botella y entregar medidas antes/después. No cerrar por aceptar una orden o conservar conectado el stream. Estado: corregida localmente en `8b1c465`: la toma de control bajó de unos 501 ms a 12–23 ms en la regresión al preemptar capturas repetidas; pendiente de medición extremo a extremo en producción y comparación independiente.
+- [ ] R5-06 — Scroll natural. Rueda/trackpad/touch deben actuar sobre la página remota bajo el puntero, sin desplazar el contenedor exterior de Arnall, saltos ni cola de órdenes tardías. Comprobar contenedores anidados y ráfagas en producción. Estado: backpressure y preempción corregidos localmente en `8b1c465`; pendiente de scroll real, contenedores anidados y ráfagas en producción.
+- [ ] R5-07 — Viewport responsive. El navegador remoto debe ocupar el área útil del panel y cambiar su viewport al redimensionar, abrir/cerrar sidebar y entrar/salir de fullscreen. Sin bandas vacías añadidas por el visor ni recortes que oculten contenido. Estado: corregida localmente en `044eafe`, con redimensionado CDP y mapeo de coordenadas; pendiente de Chromium real y matriz visual.
+- [ ] R5-08 — Ayuda y feedback: bordes redondeados superiores e inferiores y clipping correcto del encabezado, temas claro/oscuro y móvil. Estado: corregida localmente en `044eafe`, incluido diálogo desplazable en móvil; pendiente de matriz visual desplegada.
+- [ ] R5-09 — Conectores vacíos/no conectables. Catálogo real por usuario, conexión OAuth funcional, persistencia, desconexión e aislamiento entre empleados. Revisar implementación y configuración desplegada, permisos y callbacks; leer Melso. No cerrar mostrando tarjetas si no se puede conectar. Proveedores sin credenciales/configuración deben constar bloqueados con requisito exacto. Estado: bloqueada parcialmente. El 5 septiembre 2026 se publicó y verificó para David el catálogo personal real de Google y Microsoft 365; ambos muestran “Falta configuración” y no ofrecen conexión engañosa. Gmail requiere client ID, client secret y clave de cifrado OAuth de Google Cloud, con callback `https://arnall.graphikai.com/api/connectors/gmail/oauth/callback`. Microsoft 365 requiere además UUID de tenant Entra, sus credenciales, clave de cifrado y callback `https://arnall.graphikai.com/api/connectors/outlook/oauth/callback`. Faltan esos valores externos; conexión, persistencia, desconexión y aislamiento entre dos empleados no se declaran cerrados.
+- [ ] R5-10 — Todos los mensajes fallan por autenticación. Estado: recuperación puntual verificada en producción el 5 septiembre 2026, pero cierre durable bloqueado por auditoría independiente. Hubo dos fallos consecutivos: primero faltaba `auth.openai.com` en el egress; después, al caducar el access token, la fuente `shared-qa` volvió a distribuir un refresh token que otra copia aislada ya había rotado. El egress quedó limitado a los tres hosts exactos y con preflight DNS/CONNECT/TLS; App Server recibe el proxy en mayúsculas y minúsculas, y la carrera de dos relecturas por generación quedó corregida y probada. La fuente QA se reconcilió desde la copia privada ya renovada de Arnau, con backups 0600 de fuente y David, sin login interactivo; David respondió desde la UI real. Falta implementar y probar el protocolo global CAS/lock que serialice `provision → refresh → promoción` entre usuarios para impedir rollback tras reinicio/caducidad. Este mecanismo compartido sigue siendo solo QA: antes del cutover se requiere identidad por empleado o API empresarial.
+
+## Peticiones anteriores: conservar y verificar sin ampliar el alcance de esta ronda
+
+- [ ] H-01 — PDF y Office abren desde conversaciones autorizadas, incluidos archivos previos/compartidos; Excel con presentación útil y fullscreen de documentos.
+- [ ] H-02 — Arrastrar/pegar imágenes y archivos prepara adjuntos para enviar; imágenes no se convierten en tarjetas de publicación a knowledge.
+- [ ] H-03 — Logo oficial Arnall, nombre completo y alineación coherente del sidebar; chats anclados encima de proyectos/chats.
+- [ ] H-04 — Fondo oscuro #000000, tipografía ligeramente menor, composer de landing amplio; móvil sin selector sin foco y dos filas al enfocar.
+- [ ] H-05 — Automatizaciones: un owner con edición/eliminación autorizadas, varios destinatarios, ejecución y acceso móvil al sidebar.
+- [ ] H-06 — Micrófono solicita permiso nativo cuando sea posible y explica permisos previamente denegados; comprobar captura real.
+- [ ] H-07 — Selector de modelos contrastado entre UI, backend y runtime sin revelar identificadores en respuestas del producto.
+- [ ] H-08 — Ajustes de proyecto bien maquetados, sin opción de desactivar memoria; menús encima de otros puntos/iconos.
+- [ ] H-09 — Formulario de ayuda persiste envío y notificación al equipo funciona si está configurada; no inventar entrega Telegram.
+- [ ] H-10 — Chat rápido, streaming y herramientas fieles, recuperación de sesiones, observabilidad correlacionada y diagnóstico de errores.
+
+## Reglas de entrega
+
+Preservar cambios de Arnau mediante fetch antes de integrar y antes de push. Sin force push. Agrupar publicación para ahorrar Actions. Máximo cuatro tareas locales adicionales, preferiblemente coordinador y dos trabajadores, una prueba pesada a la vez. Sin goals. Comprobar uso y respetar el mínimo del 20% restante si sigue aplicando. Pruebas finales sobre arnall.graphikai.com con evidencia del resultado visible; declarar lo no comprobado. Incorporar este registro al repositorio y mantenerlo sincronizado con este enlace de seguimiento.
+
+### R5-10 — readiness forcing proactive renewal (2026-09-06)
+
+The 0.149.1 `GetAccountParams` contract defines `refreshToken: true` as a
+proactive renewal. A same-environment production diagnostic returned a ChatGPT
+account with `false`, but returned `account: null` and `refresh_token_reused`
+with `true`, while the access token remained valid until September 15.
+Readiness initialization and its bounded cold-start recheck now use `false`;
+normal authenticated work remains responsible for provider-managed renewal.
+This restores account discovery without copying credentials or bypassing
+provider authorization. It does not solve shared-QA credential rotation:
+renewal reconciliation/per-user identity remains a separate unresolved issue.
+The focused regression models a valid account whose proactive renewal fails.
+Deployment and an authenticated real turn must be verified separately.
+
+#### 2026-09-21 — expired shared-QA session recovered
+
+After the successful deployment of `5a62263`, the authenticated Arnau session
+still showed “The service is unavailable” and disabled sending. Live/readiness
+passed, but employee runtime status reported `codex: unavailable`. The worker
+log confirmed `token_expired` and `refresh_token_reused`; all five auth files
+inspected within this installation were expired. No viable local copy remained.
+
+Recovery used the installed Codex 0.153.4 device-login flow through the existing
+egress proxy, in a private recovery home on the same host. The user completed
+the provider email verification. The new credential matched the existing
+account and email, and its access token was valid. After private reversible
+backups, the configured shared-QA source and affected employee auth file were
+replaced atomically with owner 10001 and mode 0600. No credentials were copied
+from another installation or the operator's computer.
+
+Stopping the employee Codex child alone did not clear the application client's
+cached disconnected state. The operator maintenance endpoint confirmed zero
+active activities and drained successfully before restarting only the Arnall
+app container. The new worker connected, the unavailable banner disappeared,
+and the existing “Hola” draft received a real assistant reply. Reloading and
+reopening that conversation retained the reply. Readiness also passed after
+restart. This is authenticated one-user chat recovery, not acceptance of the
+revised-Excel distribution flow or two-user isolation.
+
+The shared-QA rotation/reconciliation issue above remains unresolved; this
+relogin does not establish a permanent fix or a production identity model.
+The disconnected-client restart behavior also needs a separate scoped fix.
