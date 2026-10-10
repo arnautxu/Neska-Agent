@@ -37,6 +37,8 @@ import { useComposerFileDrop } from "@/ui/use-composer-file-drop";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { DaySeparator } from "@/components/assistant-ui/elements/day-separator";
 import { MarkdownMessage } from "@/components/markdown-message";
+import { AgentStatusPanel, TaskStatusChip } from "@/components/agent-status-panel";
+import { isMultiStepTask, taskProgress } from "@/ui/task-progress";
 import { type LiveAnswerStore, useLiveAnswer } from '@/ui/live-answer-store';
 import { StreamingResponse } from "@/components/agents/streaming-response";
 import { MessageQueue, type QueuedMessage } from "@/components/assistant-ui/elements/message-queue";
@@ -582,6 +584,15 @@ export function ChatWorkspace({
   };
   const standaloneConversation = Boolean(project && isStandaloneProject(project));
   const latestAssistantMessageId = thread?.messages.filter((message) => message.role === "assistant").at(-1)?.id ?? null;
+  const latestAssistantIndex = thread ? thread.messages.findLastIndex((message) => message.role === "assistant") : -1;
+  const latestAssistant = latestAssistantIndex >= 0 ? thread?.messages[latestAssistantIndex] : undefined;
+  const latestRequest = latestAssistantIndex > 0 && thread?.messages[latestAssistantIndex - 1]?.role === "user" ? thread.messages[latestAssistantIndex - 1] : undefined;
+  const latestProgress = latestAssistant ? taskProgress(latestAssistant) : null;
+  const multiStepTask = latestProgress !== null && isMultiStepTask(latestProgress);
+  // The agent panel only opens for long work with steps, unless the employee asks for it.
+  const [agentPanelChoice, setAgentPanelChoice] = useState<{ threadId: string; open: boolean } | null>(null);
+  const agentPanelOpen = Boolean(thread && latestAssistant && latestProgress && latestProgress.total > 0) &&
+    (agentPanelChoice && agentPanelChoice.threadId === thread?.id ? agentPanelChoice.open : multiStepTask);
   const closeComposerMenuAndRestore = useCallback(() => {
     setComposerMenuOpen(false);
     requestAnimationFrame(() => composerAddButtonRef.current?.focus());
@@ -904,8 +915,15 @@ export function ChatWorkspace({
             {thread ? <h1 className="max-w-[calc(100vw-5.5rem)] truncate text-[13px] font-semibold leading-4 text-[var(--text)] sm:max-w-72">{thread.title}</h1> : null}
           </div>
         </div>
-        <div aria-hidden="true" className="workbench-navigation-balance" />
+        {thread && latestProgress && latestProgress.total > 0 ? (
+          <div className="workbench-navigation-balance col-start-3 flex items-center justify-end gap-2 pr-2">
+            <TaskStatusChip progress={latestProgress} />
+            {!agentPanelOpen ? <button type="button" className="neska-px hidden min-h-9 border-2 border-[var(--neska-ink)] px-3 text-[11px] text-[var(--text)] hover:bg-[var(--surface-hover)] xl:inline-flex xl:items-center" onClick={() => setAgentPanelChoice({ threadId: thread.id, open: true })}>{t("Estado del agente")}</button> : null}
+          </div>
+        ) : <div aria-hidden="true" className="workbench-navigation-balance" />}
       </header>
+      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-w-0 flex-1 flex-col">
 
 
       <div
@@ -1165,12 +1183,12 @@ export function ChatWorkspace({
                 <VoiceDictationControl
                   value={prompt}
                   disabled={!project || sending || documentUploading}
-                  language={locale === "en" ? "en-US" : "es-ES"}
+                  language={locale === "en" ? "en-US" : locale === "ca" ? "ca-ES" : "es-ES"}
                   onChange={onPromptChange}
                   onNotice={onComposerNotice}
                 />
                 <RadialGlowButton
-                  active={!thread && !sending && !readOnly}
+                  active={false}
                   aria-label={queueingMessage ? t("Añadir mensaje a la cola") : sending ? (stopping ? t("Deteniendo respuesta") : t("Detener respuesta")) : t("Enviar mensaje")}
                   aria-busy={(!queueingMessage && stopping) || undefined}
                   className="composer-submit grid size-11 place-items-center rounded-xl bg-[var(--send-button)] text-[var(--send-button-text)] transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 sm:rounded-full"
@@ -1218,6 +1236,11 @@ export function ChatWorkspace({
           </div> : null}
         </div>
       </div>}
+      </div>
+      {agentPanelOpen && thread && latestAssistant && latestProgress ? (
+        <AgentStatusPanel progress={latestProgress} message={latestAssistant} request={latestRequest} onClose={() => setAgentPanelChoice({ threadId: thread.id, open: false })} />
+      ) : null}
+      </div>
     </main>
   );
 }

@@ -15,7 +15,7 @@ export async function PATCH(request: Request) {
   const installation = await loadInstallationConfig();
   if (session.tenant.id !== installation.installationId || !await isWorkspaceAdmin(session)) return NextResponse.json({ code: "ADMIN_ROLE_REQUIRED", error: "Workspace administrator required." }, { status: 403, headers });
   const body: unknown = await request.json().catch(() => null);
-  if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length !== 1 || !("locale" in body) || !isUiLocale(body.locale)) return NextResponse.json({ code: "LOCALE_INVALID", error: "Choose English or Spanish." }, { status: 400, headers });
+  if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length !== 1 || !("locale" in body) || !isUiLocale(body.locale)) return NextResponse.json({ code: "LOCALE_INVALID", error: "Choose English, Spanish or Catalan." }, { status: 400, headers });
   try {
     const locale = await new FileInstallationLanguageStore(installation.installationId, installation.paths.dataRoot).write(body.locale, session.user.id);
     return NextResponse.json({ locale }, { headers });

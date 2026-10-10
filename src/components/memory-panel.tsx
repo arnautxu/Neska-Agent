@@ -1,4 +1,5 @@
 "use client";
+import type { UiLocale } from "@/i18n/locale";
 import { useUiLocale } from "@/i18n/provider";
 import { useUiText } from "@/i18n/provider";
 
@@ -20,7 +21,7 @@ import {
 import { useModalFocus } from "@/ui/use-modal-focus";
 import { KnowledgeReviewPanel } from "@/components/knowledge-review-panel";
 
-function memoryDate(value: string, locale: "en" | "es" = "es") {
+function memoryDate(value: string, locale: UiLocale = "es") {
   const date = new Date(value);
   return Number.isNaN(date.valueOf()) ? "" : new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
 }

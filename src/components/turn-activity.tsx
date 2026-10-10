@@ -45,6 +45,8 @@ import {
 import {
   ThinkingStep,
 } from "@/components/ui/thinking-steps";
+import { TaskPlan } from "@/components/task-plan";
+import { taskProgress } from "@/ui/task-progress";
 
 type TurnActivityProps = {
   message: ChatMessage;
@@ -245,10 +247,9 @@ export function TurnActivity({
     ? manualDisclosure.open
     : false;
 
-  const visiblePlan = message.plan.flatMap((step) => {
-    const publicStep = publicActivityText(step.step, 1_000);
-    return step.status !== "pending" && publicStep ? [{ ...step, step: publicStep }] : [];
-  });
+  // The plan is always visible as its own checklist; the collapsible
+  // timeline below only carries the activity log.
+  const progress = taskProgress(message);
   const visibleActivity = message.activity
     .filter((item) => item.status !== "pending" && isRelevantProcessActivity(item))
     .map((item) => ({
@@ -264,8 +265,8 @@ export function TurnActivity({
       } : {}),
     }));
   const timeline = buildTurnTimeline(visibleActivity, message.toolResults ?? []);
-  const hasWorkProcess = visiblePlan.length > 0 || timeline.length > 0;
-  const hasDetails = hasWorkProcess || message.approvals.length > 0 ||
+  const hasWorkProcess = timeline.length > 0;
+  const hasDetails = hasWorkProcess || progress.total > 0 || message.approvals.length > 0 ||
     Boolean(message.diff) || Boolean(message.toolResults?.length);
   if (!hasDetails && !managedAppAction) return null;
   const duration = turnDurationMs(message);
@@ -282,10 +283,11 @@ export function TurnActivity({
           : t("Ha trabajado durante unos segundos");
 
   const activeActivity = [...visibleActivity].reverse().find((item) => item.status === "running" || item.status === "waiting");
-  const visibleStepCount = visiblePlan.length + timeline.length;
+  const visibleStepCount = timeline.length;
 
   return (
     <div className={compact ? "space-y-4" : "mt-4 space-y-3"}>
+      {progress.total > 0 ? <TaskPlan progress={progress} /> : null}
       {hasWorkProcess ? (
         <ToolTimeline
           open={executionOpen}
@@ -297,22 +299,9 @@ export function TurnActivity({
             ? <AgentStatusOrb kind={activeActivity?.kind ?? "system"} />
             : message.status === "stopped" || message.status === "error" ? <X size={14} /> : <Check size={14} />}
         >
-            {visiblePlan.map((step, index) => (
-              <ThinkingStep
-                key={`${step.step}-${index}`}
-                indicator={streaming && step.status === "in_progress"
-                  ? <SpinnerGap size={12} className="motion-safe:animate-spin" />
-                  : <ListChecks size={12} />}
-                label={step.step}
-                status={step.status === "in_progress" && message.status === "streaming" ? recoveryPaused ? "pending" : "active" : "complete"}
-                delay={Math.min(index * 0.035, 0.18)}
-                isLast={index === visibleStepCount - 1}
-              />
-            ))}
-
             <div role="list" aria-label={t("Actividad del trabajo")}>
               {timeline.map((entry, index) => {
-                const stepIndex = visiblePlan.length + index;
+                const stepIndex = index;
                 if (entry.type === "tool") {
                   return (
                     <div
@@ -346,8 +335,8 @@ export function TurnActivity({
                       ) : null}
                       {item.output ? (
                         <details className="mt-2">
-                          <summary className="w-fit cursor-pointer text-[9px] font-medium text-[var(--text)]">{t("Ver salida")}</summary>
-                          <pre tabIndex={0} className="scrollbar-thin mt-2 max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-[#222220] px-2.5 py-2 font-mono text-[9px] leading-4 text-[#deddd9]">{publicToolOutput(item.output)}</pre>
+                          <summary className="w-fit cursor-pointer text-[12px] font-medium text-[var(--text)]">{t("Ver salida")}</summary>
+                          <pre tabIndex={0} className="scrollbar-thin mt-2 max-h-32 overflow-auto whitespace-pre-wrap border-2 border-[var(--neska-ink)] bg-[var(--surface)] px-2.5 py-2 font-mono text-[12px] leading-5 text-[var(--text)]">{publicToolOutput(item.output)}</pre>
                         </details>
                       ) : null}
                     </ThinkingStep>

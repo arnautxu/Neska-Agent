@@ -1,4 +1,5 @@
 "use client";
+import type { UiLocale } from "@/i18n/locale";
 import { useUiLocale } from "@/i18n/provider";
 import { useUiText } from "@/i18n/provider";
 
@@ -42,7 +43,7 @@ function draftSignature(draft: AutomationDraft) {
   return JSON.stringify(draft);
 }
 
-function dateLabel(value: string | null, timeZone: string, locale: "en" | "es" = "es") {
+function dateLabel(value: string | null, timeZone: string, locale: UiLocale = "es") {
   if (!value) return "—";
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone }).format(new Date(value));
 }
@@ -82,7 +83,7 @@ export function AutomationsPanel({ open, projects, onOpenThread, onToggleSidebar
   onBlockingSurfaceChange?: (open: boolean) => void;
 }) {
   const locale = useUiLocale();
-  const weekdays = locale === "en" ? ["S", "M", "T", "W", "T", "F", "S"] : ["D", "L", "M", "X", "J", "V", "S"];
+  const weekdays = locale === "en" ? ["S", "M", "T", "W", "T", "F", "S"] : locale === "ca" ? ["Dg", "Dl", "Dt", "Dc", "Dj", "Dv", "Ds"] : ["D", "L", "M", "X", "J", "V", "S"];
   const t = useUiText();
   const availableProjects = useMemo(() => projects.filter((project) => project.status === "active"), [projects]);
   const [tasks, setTasks] = useState<AutomationTaskView[]>([]);

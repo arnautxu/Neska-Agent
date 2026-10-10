@@ -21,7 +21,7 @@ export function InstallationLanguage() {
         if (!response.ok || !result || typeof result !== "object" || !("locale" in result) || result.locale !== next) throw new Error("Language save failed");
         router.refresh();
       } catch { setError(true); } finally { setBusy(false); }
-    }}><option value="en">English</option><option value="es">Español</option></select>
+    }}><option value="en">English</option><option value="es">Español</option><option value="ca">Català</option></select>
     {busy ? <p role="status">{locale === "es" ? "Guardando…" : "Saving…"}</p> : null}
     {error ? <p role="alert" className="mt-2 text-[var(--danger)]">{locale === "es" ? "No se ha podido guardar el idioma. Vuelve a intentarlo." : "Could not save the language. Please try again."}</p> : null}
   </section>;

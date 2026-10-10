@@ -1329,5 +1329,20 @@
   "No se ha podido guardar la referencia.": "Could not save the reference.",
   "Error al subir el archivo.": "File upload failed.",
   "El proyecto admite hasta 100 referencias.": "The project supports up to 100 references.",
-  "Subiendo archivos…": "Uploading files…"
+  "Subiendo archivos…": "Uploading files…",
+  "Plan de la tarea": "Task plan",
+  "Plan": "Plan",
+  "{done} de {total} pasos completados": "{done} of {total} steps completed",
+  "Pendiente": "Pending",
+  "Aprobación": "Approval",
+  "Esperando tu aprobación": "Waiting for your approval",
+  "Lista": "Ready",
+  "Detenida": "Stopped",
+  "Paso {current}/{total}": "Step {current}/{total}",
+  "Estado del agente": "Agent status",
+  "Ocultar estado del agente": "Hide agent status",
+  "Progreso": "Progress",
+  "Archivos": "Files",
+  "Adjunto": "Attached",
+  "Nuevo": "New"
 }

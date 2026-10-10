@@ -79,6 +79,32 @@ spacing:
 
 # Design System: AiBrain
 
+## Neska (octubre 2026, fases 0 i 1 del pla de UX/UI)
+
+La instal·lació Neska aplica una capa visual pròpia a `src/styles/neska.css`,
+carregada després de `globals.css`. Substitueix «Mineral Quiet» en tema clar;
+el mode fosc es redissenyarà a la fase 3 i fins llavors conserva els tokens
+antics.
+
+- Color: blanc `#ffffff`, tinta `#161616`, secundari `#5c5c5c`, línies
+  `rgba(22,22,22,.22)` i marró `#6B3A1E` només com a accent (acció principal,
+  pas actual, aprovació pendent).
+- Tipografia: Rubik per a la lectura (16 px a la conversa) i Geist Pixel
+  Square només per a etiquetes curtes en majúscules (`.neska-px`). Geist Mono
+  queda per a codi i activitat.
+- Forma: vores de 2 px i ombra desplaçada sense difuminar (`--neska-offset`)
+  només en el que demana acció: composer, targeta d'aprovació, botó principal
+  i petició de l'usuari. Sense radis.
+- Tasca viva: el pla es mostra sempre com a llista (`TaskPlan`) amb el pas
+  actual invertit; el registre d'activitat continua plegat. La capçalera
+  mostra l'estat i el pas (`TaskStatusChip`) i el panell «Estat de l'agent»
+  (`AgentStatusPanel`) apareix només en tasques amb passos o quan l'usuari
+  l'obre, a partir de 1280 px.
+- Idioma: la UI té locale `ca` (`src/i18n/ca.json`), seleccionable per
+  instal·lació.
+- Textures duotò (`public/neska/`) només en estats, mai com a contingut.
+
+
 Actualitzat el 2026-09-06 a partir de `src/app/globals.css`,
 `src/styles/typography.css`, `src/styles/theme.css` i els components del workbench.
 Aquest document descriu la direcció **Mineral Quiet**: una interfície gairebé

@@ -5,10 +5,10 @@
   "companySlug": "neska-agent",
   "publicUrl": "http://localhost:3102",
   "branding": {
-    "productName": "Neska Agent",
-    "logoPath": "/branding/example-lab/logo.svg",
-    "faviconPath": "/branding/example-lab/favicon.svg",
-    "accentColor": "#315ee7"
+    "productName": "Neska",
+    "logoPath": "/branding/neska/logo.svg",
+    "faviconPath": "/branding/neska/favicon.svg",
+    "accentColor": "#6B3A1E"
   },
   "paths": {
     "dataRoot": "/tmp/neska-agent-dev/data",
