@@ -49,7 +49,7 @@ import { executeScheduledTurn } from "@/automations/executor";
 
 const session: AuthSession = {
   provider: "local",
-  user: { id: "00000000-0000-4000-8000-000000000001", name: "David", email: "david@example.test" },
+  user: { id: "00000000-0000-4000-8000-000000000001", name: "Example Employee", email: "employee@example.test" },
   tenant: { id: "automation-qa", name: "Automation QA" },
   expiresAt: "2030-01-01T00:00:00.000Z",
 };

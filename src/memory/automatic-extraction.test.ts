@@ -88,13 +88,13 @@ describe("automatic private conversation memory", () => {
 
   it("returns the relevant automatic memory in the next turn", async () => {
     const { config, store, a } = await fixture();
-    await runAutomaticMemoryExtraction({ config, context: a, threadId: "thread-1", turnId: "turn-name", message: "Mi nombre es David Liria y trabajo en GraphikAI.", store });
+    await runAutomaticMemoryExtraction({ config, context: a, threadId: "thread-1", turnId: "turn-name", message: "Mi nombre es Alex Example y trabajo en Example Company.", store });
     const preferred = await runAutomaticMemoryExtraction({ config, context: a, threadId: "thread-1", turnId: "turn-report", message: "Prefiero recibir los informes semanales en PDF.", store });
     const service = new LocalFileMemoryService({ config });
     const snapshot = await service.buildPromptSnapshot(a, { maxItems: 1, maxCharacters: 12_000, query: "¿En qué formato preparo el informe semanal?" });
     expect(snapshot.memoryIds).toEqual([preferred[0].memory.memoryId]);
     expect(snapshot.text).toContain("informes semanales en PDF");
-    expect(snapshot.text).not.toContain("David Liria");
+    expect(snapshot.text).not.toContain("Alex Example");
   });
 
   it("persists the job before background extraction and resumes it after restart", async () => {

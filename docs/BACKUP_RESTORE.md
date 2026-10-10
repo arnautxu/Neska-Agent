@@ -67,7 +67,7 @@ Después del command:
 5. para rollback, cambiar de forma atómica la ruta de release/configuración al root restaurado y reiniciar solo AiBrain;
 6. volver a ejecutar health y smoke tests.
 
-No modificar la ruta de BGreenly, no reutilizar sus redes/volúmenes y no borrar el root anterior ni el snapshot. Si una restauración falla, el estado parcial se conserva con sufijo `.failed.<uuid>` para diagnóstico; no se presenta como restauración válida.
+No modificar la ruta de otra instalación, no reutilizar sus redes/volúmenes y no borrar el root anterior ni el snapshot. Si una restauración falla, el estado parcial se conserva con sufijo `.failed.<uuid>` para diagnóstico; no se presenta como restauración válida.
 
 ## Evidencia local automatizada
 

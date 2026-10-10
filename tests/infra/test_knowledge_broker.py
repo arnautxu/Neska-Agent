@@ -24,8 +24,8 @@ class BrokerTests(unittest.TestCase):
                 os.umask(previous)
 
     def setUp(self):
-        self.manifest={"installationId":"test","connectionId":"arnall","appUid":10001}
-        self.value={"schemaVersion":1,"installationId":"test","connectionId":"arnall","requestId":"12345678-1234-4234-9234-123456789abc",
+        self.manifest={"installationId":"test","connectionId":"example-company","appUid":10001}
+        self.value={"schemaVersion":1,"installationId":"test","connectionId":"example-company","requestId":"12345678-1234-4234-9234-123456789abc",
                     "operation":"search","audiences":[{"scope":"company","scopeId":None}],"input":{"query":"contrato","limit":20}}
         self.bindings={"schemaVersion":1,"installationId":"test","rules":[]}
 

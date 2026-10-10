@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   session: {
     provider: "local" as const,
-    user: { id: "00000000-0000-4000-8000-000000000001", name: "David", email: "david@example.test" },
+    user: { id: "00000000-0000-4000-8000-000000000001", name: "Example Employee", email: "employee@example.test" },
     tenant: { id: "connector-qa", name: "Connector QA" },
     expiresAt: "2026-08-29T00:00:00.000Z",
   },
@@ -57,7 +57,7 @@ describe("runtime connector approval route", () => {
   beforeEach(() => {
     mocks.session = {
       provider: "local",
-      user: { id: "00000000-0000-4000-8000-000000000001", name: "David", email: "david@example.test" },
+      user: { id: "00000000-0000-4000-8000-000000000001", name: "Example Employee", email: "employee@example.test" },
       tenant: { id: "connector-qa", name: "Connector QA" },
       expiresAt: "2026-08-29T00:00:00.000Z",
     };
@@ -138,7 +138,7 @@ describe("runtime connector approval route", () => {
   it("cannot resolve another employee's connector approval", async () => {
     mocks.session = {
       ...mocks.session,
-      user: { id: "00000000-0000-4000-8000-000000000002", name: "Arnau", email: "arnau@example.test" },
+      user: { id: "00000000-0000-4000-8000-000000000002", name: "Example Member", email: "member@example.test" },
     };
     mocks.readConnectorApproval.mockResolvedValue(null);
     mocks.resolve.mockResolvedValue({ outcome: "not-found" });

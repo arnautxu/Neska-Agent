@@ -288,18 +288,18 @@ describe("physical egress gateway", () => {
     const port = await listen(echo);
     const observed: GatewayConnection[] = [];
     const lookup = vi.fn(async () => [{ address: "104.18.38.10", family: 4 as const }]);
-    const gateway = new EgressGateway({ config: config({ mailHosts: new Set(["hc65.infoselfcloud.com"]) }), lookup, connect: localConnector(port, observed) });
+    const gateway = new EgressGateway({ config: config({ mailHosts: new Set(["mail.example.invalid"]) }), lookup, connect: localConnector(port, observed) });
     gateways.push(gateway); const url = await gateway.start();
-    expect((await connectExchange(url, "hc65.infoselfcloud.com:993", basic(SERVER_TOKEN))).status).toBe(200);
-    expect(observed[0]).toMatchObject({ hostname: "hc65.infoselfcloud.com", port: 993, channel: "server" });
-    expect((await connectExchange(url, "hc65.infoselfcloud.com:993", basic(WORKER_TOKEN))).status).toBe(403);
-    expect((await connectExchange(url, "other.infoselfcloud.com:993", basic(SERVER_TOKEN))).status).toBe(403);
-    expect((await connectExchange(url, "hc65.infoselfcloud.com:443", basic(SERVER_TOKEN))).status).toBe(403);
-    expect((await connectExchange(url, "hc65.infoselfcloud.com:143", basic(SERVER_TOKEN))).status).toBe(403);
+    expect((await connectExchange(url, "mail.example.invalid:993", basic(SERVER_TOKEN))).status).toBe(200);
+    expect(observed[0]).toMatchObject({ hostname: "mail.example.invalid", port: 993, channel: "server" });
+    expect((await connectExchange(url, "mail.example.invalid:993", basic(WORKER_TOKEN))).status).toBe(403);
+    expect((await connectExchange(url, "other.example.invalid:993", basic(SERVER_TOKEN))).status).toBe(403);
+    expect((await connectExchange(url, "mail.example.invalid:443", basic(SERVER_TOKEN))).status).toBe(403);
+    expect((await connectExchange(url, "mail.example.invalid:143", basic(SERVER_TOKEN))).status).toBe(403);
     lookup.mockResolvedValue([{ address: "127.0.0.1", family: 4 }]);
-    expect((await connectExchange(url, "hc65.infoselfcloud.com:993", basic(SERVER_TOKEN))).status).toBe(403);
+    expect((await connectExchange(url, "mail.example.invalid:993", basic(SERVER_TOKEN))).status).toBe(403);
     expect(observed).toHaveLength(1);
-    expect(() => new EgressGateway({ config: config({ mailHosts: new Set(["*.infoselfcloud.com"]) }) })).toThrow();
+    expect(() => new EgressGateway({ config: config({ mailHosts: new Set(["*.example.invalid"]) }) })).toThrow();
   });
 
   it("has idempotent lifecycle, loopback health and fail-closed secret validation", async () => {

@@ -61,6 +61,6 @@ una quota comercial de treballadors, projectes, chats, turns o tokens; els
 registries apliquen backpressure i límits de saturació tècnics.
 
 Els contractes exactes són a `docs/UI_BACKEND_CONTRACT.md`. Les comprovacions,
-resultats i gates externs són a `docs/AIBRAIN_BACKEND_PROGRESS.md` i als runbooks
+resultats i gates externs són a `docs/OPERATING_TRUTH.md` i als runbooks
 d’operació. DNS, cutover, dades reals, NAS real i subscripcions requereixen una
 autorització separada.

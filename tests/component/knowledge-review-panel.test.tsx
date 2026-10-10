@@ -11,7 +11,7 @@ describe("document knowledge review", () => {
   it("loads on explicit opening and sends only record version/decision, never actor permissions", async () => {
     const fetcher = vi.fn(async (_url: string, options?: RequestInit) => {
       if (options?.method === "POST") return Response.json({ available: true, record: { ...record, status: "confirmed", revision: 2 } });
-      return Response.json(_url.includes("scope=") ? { available: true, connectionId: "arnall", records: [record], nextCursor: null } : { scopes });
+      return Response.json(_url.includes("scope=") ? { available: true, connectionId: "example-company", records: [record], nextCursor: null } : { scopes });
     });
     vi.stubGlobal("fetch", fetcher);
     render(<KnowledgeReviewPanel projectId={projectId} />);
@@ -22,11 +22,11 @@ describe("document knowledge review", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
     await waitFor(() => expect(fetcher.mock.calls.some(([, options]) => options?.method === "POST")).toBe(true));
     const sent = fetcher.mock.calls.find(([, options]) => options?.method === "POST")![1]!;
-    expect(JSON.parse(String(sent.body))).toEqual({ projectId, scope: "company", scopeId: null, connectionId: "arnall", recordId: record.id, revision: 1, decision: "confirm" });
+    expect(JSON.parse(String(sent.body))).toEqual({ projectId, scope: "company", scopeId: null, connectionId: "example-company", recordId: record.id, revision: 1, decision: "confirm" });
   });
   it("keeps unavailable indexes distinct from empty pages and hides old data after reopening", async () => {
     let unavailable = false;
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => Response.json(url.includes("scope=") ? unavailable ? { available: false } : { available: true, connectionId: "arnall", records: [record], nextCursor: null } : { scopes })));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => Response.json(url.includes("scope=") ? unavailable ? { available: false } : { available: true, connectionId: "example-company", records: [record], nextCursor: null } : { scopes })));
     render(<KnowledgeReviewPanel projectId={projectId} />);
     fireEvent.click(screen.getByRole("button", { name: "Revisar propuestas" }));
     await screen.findByText(record.content);
@@ -38,7 +38,7 @@ describe("document knowledge review", () => {
     expect(screen.queryByText(/No hay registros disponibles/)).not.toBeInTheDocument();
   });
   it("offers no mutation controls for a read-only scope", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => Response.json(url.includes("scope=") ? { available: true, connectionId: "arnall", records: [record], nextCursor: null } : { scopes: [{ ...scopes[0], canReview: false }] })));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => Response.json(url.includes("scope=") ? { available: true, connectionId: "example-company", records: [record], nextCursor: null } : { scopes: [{ ...scopes[0], canReview: false }] })));
     render(<KnowledgeReviewPanel projectId={projectId} />);
     fireEvent.click(screen.getByRole("button", { name: "Revisar propuestas" }));
     await screen.findByText(record.content);

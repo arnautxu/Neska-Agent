@@ -1,8 +1,19 @@
-# AiBrain product north star
+# Neska product north star
 
-Last versioned refresh: 2026-08-30. See [OPERATING_TRUTH.md](OPERATING_TRUTH.md) for the current evidence boundary.
+Last product-direction refresh: 2026-10-10. See [OPERATING_TRUTH.md](OPERATING_TRUTH.md) for the current evidence boundary.
 
-AiBrain succeeds when a company can use one isolated installation as durable working memory and an authorized execution layer: real employees keep private and shared work, retrieve only permitted information, complete real turns without duplication, approve sensitive effects, and trace every accepted result to the exact product release.
+Neska succeeds when a company can use one isolated installation as durable working memory and an authorized execution layer: real employees keep private and shared work, retrieve only permitted information, complete real turns without duplication, approve sensitive effects, and trace every accepted result to the exact product release.
+
+## Product boundary
+
+Neska is the reusable brain; customer-specific applications are optional external
+integrations. Its own server owns the application runtime, isolated workspaces,
+permissions, durable memory and audit. Each company connection is explicitly
+provisioned and scoped: API, document import or a separately governed adapter.
+A customer server remains the source of truth for its business data; networking
+alone never grants an employee access. Do not bake a customer's scheduling engine,
+branding, credentials, host names or workflows into the core.
+
 
 ## Mandatory product outcomes
 

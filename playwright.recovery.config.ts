@@ -14,7 +14,7 @@ export default defineConfig({
       testMatch: ["**/connector-editing-webkit.spec.ts"] },
   ],
   webServer: {
-    command: `node scripts/prepare-playwright-language.mjs config/installations/playwright.example.json && AIBRAIN_INSTALLATION_CONFIG=${JSON.stringify(path.resolve("config/installations/playwright.example.json"))} VERCEL_ENV= AIBRAIN_AUTH_MODE=demo AIBRAIN_ENABLE_PREVIEW_DEMO=0 CHAT_RUNTIME=demo npm run dev -- --hostname 127.0.0.1 --port 3100`,
+    command: `node scripts/prepare-playwright-language.mjs config/installations/playwright.example.json && AIBRAIN_INSTALLATION_CONFIG=${JSON.stringify(path.resolve("config/installations/playwright.example.json"))} VERCEL_ENV= AIBRAIN_AUTH_MODE=demo AIBRAIN_ENABLE_PREVIEW_DEMO=0 CHAT_RUNTIME=demo node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3100`,
     url: `${baseURL}/login`, reuseExistingServer: !process.env.CI, timeout: 120_000,
   },
 });

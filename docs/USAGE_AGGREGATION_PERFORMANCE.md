@@ -38,12 +38,6 @@ Regression tests cover nearest-rank p95 and arithmetic on 100,000 records,
 empty/missing/zero measurements, statuses, dates, rounding, input preservation,
 and aggregation after persisted per-user selection, including an absent user.
 
-This measures aggregation CPU only, not disk reads, endpoint latency or live
-Arnall response time. Exact sorting still costs O(n log n); buffers still cost
-O(n). Measurements used Node 24.4.1 on the local Mac and alternating execution
-order across 15 samples, with 10 warmup batches. No UI, contracts, permissions,
-storage or release behavior is changed. CI, publication, deployment and live
-acceptance must be checked separately for the resulting integration SHA.
 
 Local integration validation: 58 focal tests passed, plus TypeScript, full lint,
 generated Codex contracts, static infrastructure checks and the production build.

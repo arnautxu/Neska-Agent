@@ -150,26 +150,7 @@ not model correctness on customer documents.
 
 ### Linux deployment validation
 
-The first Arnall host smoke test exposed a mount-time permission failure: after
-selecting UID 65534, bwrap could not traverse the host's private binary/catalog
-directories. The adapter now passes already-open descriptors through
-`--ro-bind-data`, with explicit read/execute modes. It does not broaden host
-directory permissions. The corrected host smoke test ran the exact Codex 0.153.4
-binary as UID 65534, wrote to its disposable home, and verified that host data and
-employee home directories were absent. Service-level and model-quality acceptance
-are separate gates. No actual credential or customer document was used for this
-filesystem smoke test.
 
-The protected service additionally rejects nested procfs mounts. The adapter
-uses a read-only synthetic `/proc` containing only `self/exe -> /run/codex`,
-which Codex needs to resolve its executable at startup. No process table, host
-PID, descriptors or environment are exposed. The complete
-`scripts/probe-knowledge-linux-isolation.py` passed on Arnall under the service
-restrictions plus `PrivateNetwork=yes`: filesystem denial, ephemeral writable
-home, external fictional login, exactly one loopback model request, zero model
-tools and a correctly decoded structured response. Peak service memory was
-326.2 MiB. This proves isolated transport with a fixture, not real-document
-quality or actual account acceptance.
 
 Before migration, the existing scheduled backup failure was traced to permissive
 modes on old diagnostic/archive copies inside the private knowledge tree. Their

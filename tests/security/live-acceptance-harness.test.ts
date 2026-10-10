@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  CANONICAL_LIVE_TARGET,
   REQUIRED_LIVE_GATES,
   evaluateAcceptance,
   renderAcceptanceReport,
@@ -16,17 +15,19 @@ import {
 import { createPredeployReleaseEvidence } from "../../scripts/create-predeploy-release-evidence";
 import { collectReleaseReadbacks, type ReleaseReadbackRoute } from "../../scripts/collect-release-readbacks";
 
+const EXPECTED_LIVE_TARGET = "https://brain.example.invalid";
+
 const roots: string[] = [];
 const releaseSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: process.cwd(), encoding: "utf8" }).trim();
 const startedAt = "2026-08-28T10:00:00.000Z";
 const completedAt = "2026-08-28T10:10:00.000Z";
-const tenantId = "arnall";
+const tenantId = "example-company";
 const connectorAction: ConnectorAction = {
   connectorId: "crm",
   provider: "attio",
   tenantId,
-  actorId: "david",
-  credentialReference: "oauthref-arnall-david",
+  actorId: "employee",
+  credentialReference: "oauthref-example-company-employee",
   authorization: "oauth",
   providerLive: true,
   operationId: "operation-create-note-001",
@@ -119,7 +120,7 @@ async function fixture() {
     headSha: releaseSha,
     backendCi: { workflow: "Backend CI", conclusion: "success", headSha: releaseSha, runId: "33165012869" },
     publish: { workflow: "Publish GHCR images", conclusion: "success", headSha: releaseSha, runId: "33165012870" },
-    deploy: { workflow: "Deploy Arnall", headSha: releaseSha, runId: "33165012871" },
+    deploy: { workflow: "Deploy Neska", headSha: releaseSha, runId: "33165012871" },
     images: { appDigest: appImage.split("@")[1], gatewayDigest: gatewayImage.split("@")[1] },
   })}\n`, { mode: 0o600 });
   await writeFile(releaseState, `${JSON.stringify({ schemaVersion: 3, current: { revision: releaseSha, image: appImage, egressImage: gatewayImage } })}\n`, { mode: 0o600 });
@@ -160,7 +161,7 @@ async function fixture() {
           appOciDigest: `sha256:${"b".repeat(64)}`,
           gatewayOciDigest: `sha256:${"c".repeat(64)}`,
         }, process.cwd()))}\n` : `${JSON.stringify(releaseArtifacts.get(route as ReleaseReadbackRoute))}\n`
-        : `${JSON.stringify({ gateId, kind, route, target: CANONICAL_LIVE_TARGET, releaseSha })}\n`;
+        : `${JSON.stringify({ gateId, kind, route, target: EXPECTED_LIVE_TARGET, releaseSha })}\n`;
       await writeFile(path.join(evidenceRoot, artifact), contents, { mode: 0o600 });
       artifacts.set(artifact, sha256(contents));
     }
@@ -173,7 +174,7 @@ function manifest(artifacts: Map<string, string>): AcceptanceManifest {
     schemaVersion: 1,
     acceptanceKind: "live",
     environment: "live",
-    target: CANONICAL_LIVE_TARGET,
+    target: EXPECTED_LIVE_TARGET,
     releaseSha,
     tenantId,
     releaseIdentity: {
@@ -187,19 +188,19 @@ function manifest(artifacts: Map<string, string>): AcceptanceManifest {
     startedAt,
     completedAt,
     actors: [
-      { id: "david", role: "owner" },
-      { id: "arnau", role: "member" },
+      { id: "employee", role: "owner" },
+      { id: "member", role: "member" },
     ],
     gates: REQUIRED_LIVE_GATES.map((id) => ({
       id,
       status: "passed",
       environment: "live",
-      target: CANONICAL_LIVE_TARGET,
+      target: EXPECTED_LIVE_TARGET,
       releaseSha,
       startedAt: "2026-08-28T10:01:00.000Z",
       completedAt: "2026-08-28T10:09:00.000Z",
       actorIds: ["two-user-isolation", "real-turn", "files-search-library-memory"].includes(id)
-        ? ["david", "arnau"] : ["david"],
+        ? ["employee", "member"] : ["employee"],
       routes: gateRoutes[id],
       ...(id === "performance-concurrency" ? {
         latencyMs: {
@@ -223,7 +224,7 @@ function manifest(artifacts: Map<string, string>): AcceptanceManifest {
           toolReadbackP95Ms: 1_500,
         },
       } : {}),
-      ...(id === "real-action-approval-readback" ? { connectorAction } : {}),
+      ...(id === "real-action-approval-readback" ? { connectorAction: { ...connectorAction } } : {}),
       evidence: gateEvidence[id].map(({ kind, route }) => ({
         kind,
         artifactPath: artifactPath(id, kind, route),
@@ -256,13 +257,19 @@ afterEach(async () => {
 });
 
 describe("live acceptance evidence contract", () => {
-  it("accepts separate CI, deploy, runtime and OCI source fixtures tied to the verified checkout", async () => {
+  it("rejects live evidence without an independently configured expected origin", async () => {
     const files = await fixture();
     const result = await evaluateAcceptance(manifest(files.artifacts), { evidenceRoot: files.evidenceRoot });
-    expect(result.verdict).toBe("accepted");
+    expect(result.verdict).toBe("rejected");
+    expect(result.reasons).toContain("expected_live_target_required");
+  });
+  it("accepts separate CI, deploy, runtime and OCI source fixtures tied to the verified checkout", async () => {
+    const files = await fixture();
+    const result = await evaluateAcceptance(manifest(files.artifacts), { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
+    expect(result.verdict, result.reasons.join("\n")).toBe("accepted");
     expect(result.reasons).toEqual([]);
     expect(renderAcceptanceReport(result)).toContain("**ACCEPTED**");
-    expect(renderAcceptanceReport(result)).toContain("david (owner), arnau (member)");
+    expect(renderAcceptanceReport(result)).toContain("employee (owner), member (member)");
     expect(renderAcceptanceReport(result)).toContain("ttftP95Ms=900");
   });
 
@@ -276,7 +283,7 @@ describe("live acceptance evidence contract", () => {
       gate.environment = "ci";
       gate.target = local.target;
     }
-    const result = await evaluateAcceptance(local, { evidenceRoot: files.evidenceRoot });
+    const result = await evaluateAcceptance(local, { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("prefilter-only");
     expect(result.reasons).toContain("local_or_ci_prefilter_is_not_live_acceptance");
   });
@@ -284,15 +291,15 @@ describe("live acceptance evidence contract", () => {
   it("rejects missing gates, wrong live target, release drift, incomplete metrics and open high failures", async () => {
     const files = await fixture();
     const incomplete = manifest(files.artifacts);
-    incomplete.target = "https://preview.graphikai.com";
+    incomplete.target = "https://preview.example.invalid";
     incomplete.gates = incomplete.gates.filter(({ id }) => id !== "real-turn");
     incomplete.gates[0].releaseSha = "b".repeat(40);
     incomplete.gates.find(({ id }) => id === "performance-concurrency")!.latencyMs = { ttftP95Ms: 900 };
     incomplete.failures.push({ id: "isolation-gap", severity: "high", status: "open", summary: "Live isolation is not proved." });
-    const result = await evaluateAcceptance(incomplete, { evidenceRoot: files.evidenceRoot });
+    const result = await evaluateAcceptance(incomplete, { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons).toEqual(expect.arrayContaining([
-      "canonical_live_target_required",
+      "configured_live_target_required",
       "required_gate_missing:real-turn",
       "release_sha_mismatch:release-identity-readiness",
       "performance_metric_missing:navigationP95Ms",
@@ -305,14 +312,14 @@ describe("live acceptance evidence contract", () => {
     const bypass = manifest(files.artifacts);
     bypass.releaseIdentity.runtimeSha = "b".repeat(40);
     const turn = bypass.gates.find(({ id }) => id === "real-turn")!;
-    turn.actorIds = ["david"];
+    turn.actorIds = ["employee"];
     turn.routes = ["acceptance:real-turn"];
     turn.evidence = turn.evidence.filter(({ kind }) => kind === "turn");
     const operations = bypass.gates.find(({ id }) => id === "logs-backup-rollback")!;
     operations.evidence = operations.evidence.filter(({ kind }) => kind !== "restore");
     bypass.gates.find(({ id }) => id === "performance-concurrency")!.latencyBudgetMs!.ttftP95Ms = 100;
 
-    const result = await evaluateAcceptance(bypass, { evidenceRoot: files.evidenceRoot });
+    const result = await evaluateAcceptance(bypass, { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons).toEqual(expect.arrayContaining([
       "release_identity_mismatch:runtimeSha",
@@ -337,7 +344,7 @@ describe("live acceptance evidence contract", () => {
       route: "GET /api/runtime/status",
       releaseSha,
     }];
-    const result = await evaluateAcceptance(healthOnly, { evidenceRoot: files.evidenceRoot });
+    const result = await evaluateAcceptance(healthOnly, { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons).toEqual(expect.arrayContaining([
       "required_route_missing:real-action-approval-readback:POST /api/runtime/approvals",
@@ -359,7 +366,7 @@ describe("live acceptance evidence contract", () => {
       route: "audit:connector",
       releaseSha,
     }];
-    let result = await evaluateAcceptance(genericAudit, { evidenceRoot: files.evidenceRoot });
+    let result = await evaluateAcceptance(genericAudit, { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons).toEqual(expect.arrayContaining([
       "connector_generic_audit_rejected",
@@ -369,7 +376,7 @@ describe("live acceptance evidence contract", () => {
     const noReadback = manifest(files.artifacts);
     const liveAction = noReadback.gates.find(({ id }) => id === "real-action-approval-readback")!;
     liveAction.evidence = liveAction.evidence.filter(({ kind }) => kind !== "connector-readback");
-    result = await evaluateAcceptance(noReadback, { evidenceRoot: files.evidenceRoot });
+    result = await evaluateAcceptance(noReadback, { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons).toContain("connector_evidence_missing:connector-readback");
   });
@@ -381,7 +388,7 @@ describe("live acceptance evidence contract", () => {
     action.authorization = "none";
     action.credentialReference = "";
     action.providerLive = false;
-    const result = await evaluateAcceptance(unavailable, { evidenceRoot: files.evidenceRoot });
+    const result = await evaluateAcceptance(unavailable, { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons).toEqual(expect.arrayContaining([
       "connector_oauth_missing",
@@ -397,7 +404,7 @@ describe("live acceptance evidence contract", () => {
     const generic = `${JSON.stringify({ gateId: "release-identity-readiness", kind: "release", releaseSha })}\n`;
     await writeFile(path.join(files.evidenceRoot, artifactPath), generic, { mode: 0o600 });
     files.artifacts.set(artifactPath, sha256(generic));
-    let result = await evaluateAcceptance(manifest(files.artifacts), { evidenceRoot: files.evidenceRoot });
+    let result = await evaluateAcceptance(manifest(files.artifacts), { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons).toContain(`release_identity_evidence_invalid:release-identity-readiness:${artifactPath}`);
 
@@ -415,7 +422,7 @@ describe("live acceptance evidence contract", () => {
     const incomplete = `${JSON.stringify(evidence)}\n`;
     await writeFile(path.join(files.evidenceRoot, artifactPath), incomplete, { mode: 0o600 });
     files.artifacts.set(artifactPath, sha256(incomplete));
-    result = await evaluateAcceptance(manifest(files.artifacts), { evidenceRoot: files.evidenceRoot });
+    result = await evaluateAcceptance(manifest(files.artifacts), { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.reasons).toContain(`release_identity_evidence_mismatch:release-identity-readiness:${artifactPath}`);
   });
 
@@ -424,7 +431,7 @@ describe("live acceptance evidence contract", () => {
     const selfAsserted = manifest(files.artifacts);
     const releaseGate = selfAsserted.gates.find(({ id }) => id === "release-identity-readiness")!;
     releaseGate.evidence = releaseGate.evidence.filter(({ route }) => route === "release:identity" || route.startsWith("GET /api/health/"));
-    const result = await evaluateAcceptance(selfAsserted, { evidenceRoot: files.evidenceRoot });
+    const result = await evaluateAcceptance(selfAsserted, { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons).toContain("release_identity_gate_blocked:independent_sources_missing:release:ci-readback,release:deploy-state,release:runtime-readback,release:app-oci-inspect,release:gateway-oci-inspect");
   });
@@ -446,7 +453,7 @@ describe("live acceptance evidence contract", () => {
     const contents = `${JSON.stringify(evidence)}\n`;
     await writeFile(path.join(files.evidenceRoot, artifact), contents, { mode: 0o600 });
     files.artifacts.set(artifact, sha256(contents));
-    const result = await evaluateAcceptance(manifest(files.artifacts), { evidenceRoot: files.evidenceRoot });
+    const result = await evaluateAcceptance(manifest(files.artifacts), { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons).toContain("release_identity_checkout_fingerprint_mismatch:scripts/orchestrate-backup.mjs");
   });
@@ -458,7 +465,7 @@ describe("live acceptance evidence contract", () => {
     await rm(path.join(files.evidenceRoot, "visual-visual.json"));
     await symlink(path.join(files.evidenceRoot, "accessibility-accessibility.json"), path.join(files.evidenceRoot, "visual-visual.json"));
     await link(path.join(files.evidenceRoot, "threat-model-contracts-contract.json"), path.join(files.evidenceRoot, "duplicate-evidence.json"));
-    const result = await evaluateAcceptance(changed, { evidenceRoot: files.evidenceRoot });
+    const result = await evaluateAcceptance(changed, { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons.some((reason) => reason.startsWith("evidence_digest_mismatch:real-turn"))).toBe(true);
     expect(result.reasons.some((reason) => reason.startsWith("evidence_not_private_regular_file:visual"))).toBe(true);
@@ -469,12 +476,12 @@ describe("live acceptance evidence contract", () => {
     const files = await fixture();
     const leaked = manifest(files.artifacts) as AcceptanceManifest & { token?: string };
     leaked.failures.push({ id: "leak", severity: "low", status: "resolved", summary: "Authorization: Bearer abcdefghijklmnop" });
-    let result = await evaluateAcceptance(leaked, { evidenceRoot: files.evidenceRoot });
+    let result = await evaluateAcceptance(leaked, { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons).toContain("secret_or_email_material_detected");
 
     leaked.token = "must-not-be-accepted";
-    result = await evaluateAcceptance(leaked, { evidenceRoot: files.evidenceRoot });
+    result = await evaluateAcceptance(leaked, { evidenceRoot: files.evidenceRoot, expectedLiveTarget: EXPECTED_LIVE_TARGET });
     expect(result.verdict).toBe("rejected");
     expect(result.reasons.some((reason) => reason.includes("must NOT have additional properties"))).toBe(true);
   });

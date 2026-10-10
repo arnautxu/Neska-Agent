@@ -32,7 +32,6 @@ Browser capability discovery is versioned from the same inventory as the dynamic
 
 Run real Chromium only under the shared release QA mutex on the constrained workstation. `AIBRAIN_REAL_CHROME_TEST=1 npm run test:browser:real` enables the real suite. `AIBRAIN_BROWSER_STORE_EVIDENCE=/tmp/browser-store-evidence.json` enables the small local filesystem lease-check measurement in `browser.test.ts`. These measurements do not include the production gateway or UI paint.
 
-After integration/deployment, use a dedicated authenticated Arnall QA tab and measure event-to-useful-image paint inside the page, separately from HTTP acknowledgment and automation-tool duration. Collect enough cold/warm repetitions for median and p95. Exercise clicks, wheel, drag, Unicode/paste in a form, URL Enter, history, reload, resize, mobile, more than one token renewal, explicit release, reattachment and two-user separation. Check chat responsiveness while the viewer is active. Verify server-side release/stream cleanup. Do not claim live acceptance from local tests, immediate loading indicators, or unchanged screenshots.
 
 ## Melso comparison boundary
 

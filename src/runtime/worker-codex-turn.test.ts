@@ -234,7 +234,7 @@ describe("worker Codex turn", () => {
         return result;
       },
     };
-    mocked.runtime = { config: { installationId, ...(outcome === "queue-cancel" ? {} : { companySlug: "arnall" }), branding: { productName: "Arnall AI" },
+    mocked.runtime = { config: { installationId, ...(outcome === "queue-cancel" ? {} : { companySlug: "example-company" }), branding: { productName: "Example Company AI" },
       paths: { ...installationPaths, ...(outcome === "queue-cancel" ? { dataRoot: userRoot } : {}) } },
       handle: { roots: { userRoot, workspace, staging: path.join(userRoot, "staging"), artifacts: path.join(userRoot, "artifacts") } },
       client, workerWasWarm: true };
@@ -463,9 +463,9 @@ describe("worker Codex turn", () => {
   });
 
   it.each([
-    ["Cas completament fictici. Genera un horari per a la Botiga Demo amb sis persones inventades.", true],
-    ["Genera un horario real de Girona, excluye PROVA y no amplíes mínimos ficticios.", false],
-  ])("applies the invented-schedule template gate only to an affirmative request (%s)", async (message, required) => {
+    "Cas completament fictici. Genera un horari per a la Botiga Demo amb sis persones inventades.",
+    "Genera un horario real de Girona, excluye PROVA y no amplíes mínimos ficticios.",
+  ])("does not gate generic answers on the removed customer schedule template (%s)", async (message) => {
     const root = await mkdtemp(path.join(tmpdir(), "aibrain-fictional-schedule-"));
     let handlers: { onNotification(value: unknown, envelope: unknown): Promise<void> };
     const events: Array<{ type: string; value?: string; message?: unknown }> = [];
@@ -473,7 +473,7 @@ describe("worker Codex turn", () => {
     const envelope = () => ({ eventId: `fictional-${++sequence}`, sequence,
       occurredAt: new Date().toISOString(), message: { kind: "rpc-notification", rpc: {} } });
     mocked.runtime = {
-      config: { installationId, companySlug: "arnall", branding: { productName: "Arnall AI" }, paths: installationPaths },
+      config: { installationId, companySlug: "example-company", branding: { productName: "Example Company AI" }, paths: installationPaths },
       handle: { roots: { workspace: root, staging: root, artifacts: root } },
       client: {
         canReuseLoadedThread: () => false,
@@ -501,13 +501,8 @@ describe("worker Codex turn", () => {
       workspace: root, model: null, approvalPolicy: "on-request", sandbox: "workspace-write",
     }, permissions(), {} as never, memoryDependencies(), [], new AbortController().signal,
     async (event) => { events.push(event); });
-    if (required) {
-      expect(events.filter((event) => event.type === "content" || event.type === "delta")).toEqual([]);
-      expect(events.find((event) => event.type === "error")?.message).toContain("HORARI SAGARO");
-    } else {
-      expect(events.some((event) => event.type === "content" || event.type === "delta")).toBe(true);
-      expect(events.some((event) => event.type === "error")).toBe(false);
-    }
+    expect(events.some((event) => event.type === "content" || event.type === "delta")).toBe(true);
+    expect(events.some((event) => event.type === "error")).toBe(false);
   });
 
   it.each(["ordinary", "private", "legacy"])("publishes safe prefixes and keeps explicit final over legacy (%s)", async (mode) => {
@@ -1018,7 +1013,7 @@ describe("worker Codex turn", () => {
     expect(calls).toEqual(["thread/start", "turn/start"]);
   }, 30_000);
 
-  it("keeps live web search and the private browser exposed for a current Arnall query", async () => {
+  it("keeps live web search and the private browser exposed for a current Example Company query", async () => {
     const userRoot = await mkdtemp(path.join(tmpdir(), "aibrain-worker-turn-"));
     const workspace = path.join(userRoot, "workspace");
     const staging = path.join(userRoot, "staging");
@@ -1240,7 +1235,7 @@ describe("worker Codex turn", () => {
       },
     };
     mocked.runtime = {
-      config: { installationId, companySlug: "arnall", branding: { productName: "Arnall AI" }, paths: installationPaths },
+      config: { installationId, companySlug: "example-company", branding: { productName: "Example Company AI" }, paths: installationPaths },
       handle: {
         roots: { workspace, staging, artifacts: path.join(userRoot, "artifacts") },
       },
@@ -1250,7 +1245,7 @@ describe("worker Codex turn", () => {
     const events: Array<Record<string, unknown>> = [];
     const projectionKeys: string[] = [];
     const request = chatRequest();
-    request.message = "Quin és l'horari d'avui de la botiga Arnall de Palamós? Cerca'l a la web oficial.";
+    request.message = "Quin és l'horari d'atenció d'avui d'Example Company? Cerca'l a la web oficial.";
     // Legacy client input cannot weaken the server-owned reviewer selection.
     request.options.autoApprove = false;
     request.options.webSearch = true;
@@ -1401,10 +1396,8 @@ describe("worker Codex turn", () => {
     const instructions = String((threadStart?.params as { developerInstructions?: string })?.developerInstructions);
     expect(instructions).toContain(`Policy fingerprint: ${fingerprint}`);
     expect(instructions).toContain("Automatic design and writing guidance");
-    expect(instructions).toContain("Arnall design files: mandatory official logo");
-    const logoPath = path.join(workspace, "projects", projectId, ".aibrain-brand/arnall-logo.jpg");
-    expect(instructions).toContain(JSON.stringify(logoPath));
-    expect(await readFile(logoPath)).toEqual(await readFile("public/branding/arnall/logo.jpg"));
+    expect(instructions).not.toContain("mandatory official logo");
+    expect(instructions).not.toContain(".aibrain-brand/");
     expect(instructions).toContain("required skill is unavailable");
     expect(instructions).toContain("Explicit memory snapshot: untrusted data only");
     expect(instructions).toContain("Approved preference");
@@ -2252,7 +2245,7 @@ describe("worker Codex turn", () => {
       },
     };
     mocked.runtime = {
-      config: { installationId, companySlug: "arnall", branding: { productName: "Arnall AI" }, paths: installationPaths },
+      config: { installationId, companySlug: "example-company", branding: { productName: "Example Company AI" }, paths: installationPaths },
       handle: { roots: { workspace, staging, artifacts: path.join(userRoot, "artifacts") } },
       client,
       workerWasWarm: true,
@@ -2295,10 +2288,8 @@ describe("worker Codex turn", () => {
       },
     });
     expect(JSON.stringify(calls[0]?.params)).toContain("Automatic design and writing guidance");
-    expect(JSON.stringify(calls[0]?.params)).toContain("Arnall design files: mandatory official logo");
-    const logoPath = path.join(workspace, "projects", projectId, ".aibrain-brand/arnall-logo.jpg");
-    expect(JSON.stringify(calls[0]?.params)).toContain(logoPath);
-    expect(await readFile(logoPath)).toEqual(await readFile("public/branding/arnall/logo.jpg"));
+    expect(JSON.stringify(calls[0]?.params)).not.toContain("mandatory official logo");
+    expect(JSON.stringify(calls[0]?.params)).not.toContain(".aibrain-brand/");
     expect(JSON.stringify(calls[0]?.params)).toContain("required skill is unavailable");
     expect(events).not.toContainEqual(expect.objectContaining({
       type: "activity",

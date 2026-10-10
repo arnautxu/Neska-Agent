@@ -1,216 +1,23 @@
-# Neska Agent operating status
+# Neska operating status
 
-Neska Agent is an independent copy created on 2026-10-09. Read
-[NESKA_AGENT_BOOTSTRAP.md](NESKA_AGENT_BOOTSTRAP.md) first. The following AiBrain
-material is retained as upstream architecture and historical evidence; it does
-not claim any Neska deployment or authenticated acceptance. Neska uses its own
-development installation and the inherited publication/deployment jobs are
-disabled.
+Updated: 2026-10-10.
 
----
+## Current scope
 
-# AiBrain operating truth
+Neska is a reusable company brain. The current cleanup removes the legacy scheduling engine, customer-specific context, branding rules, personal account overrides, host deployment procedures and historical customer acceptance reports. Generic documents, connectors, employee isolation, memory, automations, backup and recovery remain.
 
-Last versioned refresh: 2026-08-30. Integration baseline: `origin/main=7e16429689da2de2734d73235cd848d5639667db`.
+See [NESKA_BASE_ARCHITECTURE.md](NESKA_BASE_ARCHITECTURE.md). Internal `aibrain_*` protocol names are retained for compatibility; they do not identify a customer or grant access.
 
-## Product
+## Connections
 
-AiBrain is one reusable company-brain product for isolated company installations. Arnall is the first real installation and canary, not a customer-specific fork or a disposable pilot. Each installation owns its configuration, branding, identities, company context, secrets, data, browsers, backups and release state. Company context is filesystem-first business data; `PERMISSIONS.md` and server-side identity remain authoritative for access and actions.
+No real company server, credential or customer data is provisioned by this code change. Optional Windows/document and mailbox adapters remain available as reusable mechanisms. Their installation, destination and operator credentials must be explicitly configured; defaults and examples use synthetic identities. Customer content never enables a capability or grants permission.
 
-The product is useful when employees can keep durable projects, conversations, files and company knowledge, use only authorized tools, approve sensitive effects, and recover work after reconnect or restart without crossing tenant or user boundaries.
+The document sync broker now requires operator-provided `--installation-id`, `--connection-id` and `--service-unit`, and rejects a manifest with a different binding. Acceptance validation requires a separately supplied `--target` for live acceptance. There is no built-in production domain.
 
-## Architecture and release chain
+## Release status
 
-```text
-GitHub main SHA
-  -> Backend CI run for that exact SHA
-  -> Publish GHCR run for the same SHA
-  -> immutable app + gateway digests
-  -> Deploy Arnall run with three distinct run IDs
-  -> restricted client pull by digest
-  -> transactional release manager + health/readiness
-  -> cleanup limited to validated inactive AiBrain images and legacy release directories
-  -> private release, runtime and OCI readbacks
-  -> separate authenticated live acceptance
-```
+This is local work on the fetched source revision in an isolated worktree. Validation results are recorded in the base architecture before completion. No publication, deployment, migration or authenticated production acceptance is performed by this cleanup. The customer deployment workflow and customer systemd units are removed; generic infrastructure templates and transactional release/backup tools remain.
 
-The deploy workflow must resolve the successful `Backend CI` push run through GitHub's API. The Publish run ID is not a CI run ID. Readback records Backend CI, Publish and Deploy IDs, the common full SHA and both digests; the host verifies those digests again against release state, running containers and OCI labels. Documentation-only changes do not start Backend CI. A newer `main` revision may cancel a superseded Publish run, but Deploy runs are serialized and are never cancelled mid-deployment.
+## Open security work
 
-## Current maturity at the inspected baseline
-
-| Area | Versioned state | Still required before calling it accepted |
-| --- | --- | --- |
-| Installation and identities | Multi-installation config, Supabase/local identity mapping, isolated users/workers and durable workspace roles are implemented with automated coverage | Real current user roster/roles and authenticated cross-user negative readback on the candidate |
-| Workbench and continuity | Projects, threads, library, files, streaming recovery, task center and governed settings are implemented; `faac15c` adds duplicate-safe scheduled-turn recovery and `af2c363` isolates app/automation runtime journals | Candidate restart/long-idle acceptance with persisted terminal state and no mixed turns |
-| Memory | Completed turns durably enqueue a minimal per-user extraction job after the terminal response; the offline worker resumes pending jobs after restart, then filters, deduplicates, revisions and retrieves stable preferences, facts and decisions from the employee/project store. The queue does not persist the full prompt. Settings shows the list plus edit/delete controls directly | Authenticated two-user live readback on a future candidate; automatic company-wide promotion remains intentionally disabled |
-| Documents and browser | Isolated document preview/publication boundaries and non-interactive, policy-bound browser effects are implemented | One real Arnall browser action without an approval pause and with controlling-system readback; no synthetic substitute |
-| Connectors | Credential binding, approvals, at-most-once dispatch and readback contracts are implemented | A reviewed Arnall connector/action manifest, real OAuth/credential binding and provider readback |
-| Automations | Durable scheduling, worker packaging, audience/lease/recovery logic and release reconciliation are versioned | Confirm the intended Arnall execution flag and run one bounded real automation acceptance; context text never enables execution |
-| Release operations | Immutable GHCR promotion, transactional deploy, bounded cleanup and private readback collectors are implemented | CI, Publish, Deploy and live gates must pass for the same future candidate; rollback-and-return remains a separate exercise |
-| Host storage maintenance | A deterministic dry-run-first script and server-side systemd timer remove only old failed Arnall staging and unreferenced Arnall images while preserving current/previous, volumes, data, backups and other workloads | Install/read back the timer and record the first safe post-release execution on the host; see `ARNALL_STORAGE_CLEANUP.md` |
-| Company context | A source-backed, unknown-aware Arnall seed is versioned; nested documents enter the bounded turn snapshot; a server-only per-installation product brief governs identity and capabilities; company/department/project/private files use turn-bound tools | Approved internal Arnall facts, preferences, processes, objectives, brand pack, tools and support ownership; current memberships and external file mounts |
-
-The Hetzner operator host also has a separately verified RDP path to the Arnall
-Terminal Server and Database Server. That path is governed by the host-only
-`read-only-export` policy documented in
-[WINDOWS_RDP_CONNECTION.md](WINDOWS_RDP_CONNECTION.md): inventory, read and
-copy-out are allowed; remote create/write/overwrite/delete/move/rename and
-arbitrary commands are denied. This is operator connectivity and bounded
-copy-out; employees read scoped, imported text through the existing document
-tools and never receive the RDP credentials or a Windows session.
-
-The 2026-09-02 operator tool and scheduled importer are documented in
-[WINDOWS_DOCUMENT_SYNC.md](WINDOWS_DOCUMENT_SYNC.md). One PDF copy at 08:16
-UTC matched Windows/Hetzner SHA-256 and 223219 bytes. A subsequent Windows
-policy regression at 08:28 UTC disabled redirection again (effective
-DriveMapping=1). The importer preserves that boundary and verified copies.
-The user authorized the company-wide audience. At 08:49 UTC a fresh service
-run completed all six documents: five new verified transfers and one reused
-verified PDF, with no unreadable documents. The complete text snapshot is
-published through the existing scoped document tools. An authenticated chat
-then read the updated status and a newly copied DOCX, confirming six readable
-documents, both folders and the document's actual agreement title.
-The service extractor uses an empty `/proc`, because mounting a process
-filesystem failed inside the protected systemd namespace. PDF and DOCX
-extraction passed under the same service restrictions after this correction.
-No Windows policy or customer source file was modified by the tool;
-Windows read-only ACL verification remains a separate gate.
-
-On-demand document refresh is implemented through the same scoped search/read
-tools and a host-only Unix broker. Requests are bound to the installation and
-authorized turn roots, coalesced across callers, and may reuse a successful
-check for thirty seconds. Failures retain verified copies with explicit stale
-status. See the document-sync runbook for installation and separate host,
-application-release and authenticated chat acceptance gates.
-
-The 2026-09-02 resumed-chat incident exposed a local RPC routing deadlock:
-a previous turn's usage notification waited for the new turn binding while
-blocking the `turn/start` response that supplied it. The candidate correction
-routes responses by request ID independently of ordered thread events, retaining
-contiguous durable acknowledgements and explicit turn ownership. It also makes
-empty company-file searches disclose their limited coverage even after a
-successful refresh. See the document-sync runbook for the observed source
-boundary and incident evidence; production acceptance remains separate.
-
-The 2026-09-05 Arnall restart acceptance also exposed a distinct authentication
-renewal failure. The private `CODEX_HOME` still reported a ChatGPT login, but its
-access token had expired and the shared-QA source still held a refresh token
-that another isolated copy had already rotated. Production evidence separated
-that credential-version problem from egress: the allowlisted OAuth endpoint was
-reachable, and the rejected renewal returned `refresh_token_reused`. The source
-was reconciled from the already-renewed private QA copy with reversible 0600
-backups; no interactive relogin was required. The candidate now lets
-`account/read` perform normal refresh, exports both standard proxy-variable
-spellings required by the Codex network client, and performs at most one
-coalesced account re-read per worker generation before remaining fail-closed.
-Shared-QA credential reconciliation remains an explicit internal-QA operation,
-not a production identity model; per-employee identity or the enterprise API is
-still required before product cutover.
-
-The user's subsequent source-scope correction authorizes read access across
-the server, not just selected folders. The candidate adds live drive discovery,
-directory browsing, bounded filename search and fresh document reads through
-the same company-file tools. It uses the connected Windows account's existing
-permissions and the already authorized company reader audience, with no source
-writes. It is independent of the small scheduled mirror. See
-[WINDOWS_SERVER_FILES.md](WINDOWS_SERVER_FILES.md) for the separate host broker,
-all-drive source configuration, supported formats, readback evidence and the
-remaining release/application acceptance gates.
-
-No row above is a claim that this documentation branch is published, deployed or accepted live.
-
-## Legacy workbook upload candidate
-
-The legacy XLS upload candidate is documented in
-[LEGACY_EXCEL_UPLOADS.md](LEGACY_EXCEL_UPLOADS.md). A closed BIFF8 subset uses
-isolated native conversion to preserve supported formulas and formatting.
-Other readable BIFF8 files use an isolated values-only reader, with passive
-provenance, unverified caches and explicit omissions. Original bytes remain in
-a server-only vault outside worker/browser mounts. Bounded BIFF5/BIFF8 storage
-admission is separate from processing: unsupported or unavailable processing
-preserves the original and attaches an explicit unread-data receipt. Only the
-validated derivative or that receipt is available to attachments and preview.
-This is versioned implementation, not
-a claim of publication, deployment or authenticated live acceptance.
-
-## Evidence language
-
-- `implemented`: code or content exists at the named SHA.
-- `validated locally`: the exact SHA passed the named local test or contract.
-- `CI passed`: Backend CI passed for the exact SHA; it says nothing about image publication or deployment.
-- `published`: GHCR returned the two immutable digests for that SHA.
-- `deployed`: the client release state, runtime and OCI labels correlate to that SHA and those digests.
-- `validated live`: authenticated product behavior was read back on the deployed installation.
-
-Never collapse these states. Health/readiness is operational evidence, not user-level acceptance.
-
-## Durable references
-
-- Model capacity admission recovery: [MODEL_CAPACITY_RECOVERY.md](MODEL_CAPACITY_RECOVERY.md).
-  Confirmed empty provider rejections have two bounded, durable retries on the
-  supported models, with a fresh compatible catalog match before switching.
-  The selected retry model is durable. A filesystem queue admits two logical
-  turns per installation across app and automation processes; uncertain remote
-  work retains its admission until the same turn reconciles. Partial work and
-  uncertain effects never authorize replay. The operator explicitly retained
-  the existing connection on 2026-10-05; authentication and consumption policy
-  are unchanged. Deployment and provider availability require their own gates.
-
-- Installation token quotas: [WEEKLY_TOKEN_BUDGET.md](WEEKLY_TOKEN_BUDGET.md).
-  Arnall activated 7.5 million total tokens per Madrid week and 25/50/75% notices
-  on 2026-09-24 at 12:23:14 Madrid time, excluding prior consumption. Offline
-  initialization retained 276 thread cursors and charged zero historical tokens.
-  Authenticated chat and settings showed only 100% remaining and the reset time.
-  The installation policy and host guard protect the shared allowance; employees
-  never receive the token totals or numerical limit.
-  The worker hides operator configuration and transport journals; quota-mode
-  native tool profiles protect runtime metadata without expanding project
-  writes or allowing employee approvals to bypass the private counters.
-  Reported-token admission
-  and interruption can overshoot while work is in flight; this is not a provider
-  subscription partition. Production activation and acceptance remain separate.
-  Arnall's versioned policy includes a temporary unlimited introductory period
-  through 2026-10-31T23:00:00.000Z (2026-11-01 00:00 Europe/Madrid). During
-  that period the allowance view stays at 100%, quota exhaustion does not stop
-  inference, and promotional usage advances cursors without entering the weekly
-  charged totals. The 15 million weekly policy resumes automatically afterward.
-
-- Shared information architecture and reviewed content migration: [COMPANY_CONTEXT_STANDARD.md](COMPANY_CONTEXT_STANDARD.md). All installations receive the same structure; company data, private versions and permissions remain isolated. Details are retrieved from `knowledge/`, not injected wholesale into each turn.
-
-- Product success: [PRODUCT_NORTH_STAR.md](PRODUCT_NORTH_STAR.md)
-- Priorities: [PRIORITIZED_BACKLOG.md](PRIORITIZED_BACKLOG.md)
-- Release procedure: [RELEASE_AND_ACCEPTANCE_RUNBOOK.md](RELEASE_AND_ACCEPTANCE_RUNBOOK.md)
-- Release mechanics and rollback: [RELEASES.md](RELEASES.md)
-- User and context provisioning: [USER_PROVISIONING.md](USER_PROVISIONING.md)
-- Trust boundaries: [ARCHITECTURE_AND_TRUST_BOUNDARIES.md](ARCHITECTURE_AND_TRUST_BOUNDARIES.md)
-- Generated PNG delivery and image-to-PDF: [GENERATED_IMAGE_ARTIFACTS.md](GENERATED_IMAGE_ARTIFACTS.md)
-- Generated document persistence, ACL and paged previews: [GENERATED_DOCUMENT_ARTIFACTS.md](GENERATED_DOCUMENT_ARTIFACTS.md)
-- Company knowledge implementation and reusable runbooks:
-  [COMPANY_KNOWLEDGE_SYSTEM.md](COMPANY_KNOWLEDGE_SYSTEM.md). The private host
-  catalogue is distinct from employee-visible knowledge; source ingestion,
-  scope publication, entities, memory and application acceptance have separate
-  evidence and unfinished phases.
-- Bounded semantic generation candidate: [KNOWLEDGE_GENERATION_OPERATIONS.md](KNOWLEDGE_GENERATION_OPERATIONS.md).
-  Hierarchical synthesis, bounded scheduling and a pinned Codex adapter are
-  implemented. The user selected the existing Codex connection on 2026-09-12;
-  protocol probes observe no model tools. Linux process isolation, host service
-  activation and real-document semantic acceptance remain unfinished gates.
-
-## horarIA integration candidate — 2026-09-13
-
-A chat-only scheduling automation is implemented in `src/horaria` with the imported engine in `modules/horaria/backend`. Previews use existing private document artifacts; there is no separate horarIA UI. The product image packages a separately supervised private service, with opt-in installation configuration. The deployment gateway promotes and verifies it through `horaria-release.sh` only for configured installations. Its PostgreSQL database and private service state require their own installation provisioning and backup coverage. AI, WhatsApp delivery and the internal weekly scheduler remain disabled until explicitly activated. See [HORARIA.md](HORARIA.md) for source provenance, local migration evidence, permissions, recovery limitations and the separate remote release gates.
-
-horarIA uses the user's connected Codex worker for inference through an internal signed, replay-protected callback; Anthropic credentials are not required. The computation thread disables tools/apps/environments and returns structured output to the imported business validators. Meta Business delivery remains separately configurable and disabled until the operator connects it.
-
-## Company mailbox candidate — 2026-10-06
-
-The native `company-mail` candidate is documented in [COMPANY_MAIL.md](COMPANY_MAIL.md).
-It connects through administrator-pinned IMAPS/993, keeps encrypted per-user
-credentials server-only, and imports invoice originals/journal/tracking Excel
-into the private Hetzner data volume. Windows remains read-only and is not a
-destination. A narrow server-channel egress allowlist and 120-minute interval
-schedules are opt-in; the generic installation is unchanged. Imported and
-assistant-reviewed invoices are separate states. Real mailbox login, invoice
-reference/OCR acceptance, backup/restore, next scheduled occurrences and the
-same-commit CI/GHCR/deploy gates remain mandatory before live acceptance. No
-customer credential or automation has been activated by this implementation.
+The prior local audit identified independent core issues: password recovery session revocation, the task-center origin guard, runtime privacy coupled to quotas, native-tool permission enforcement and root-package advisories. Removing a business integration does not close those findings. They require separate fixes and negative acceptance before real customer onboarding.

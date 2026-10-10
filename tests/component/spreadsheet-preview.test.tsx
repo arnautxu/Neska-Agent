@@ -6,8 +6,8 @@ import { AuthenticatedSpreadsheetPreview, SpreadsheetTable } from "@/components/
 import type { SpreadsheetPreview } from "@/documents/spreadsheet-preview";
 
 const preview: SpreadsheetPreview = { schemaVersion: 1, kind: "spreadsheet", truncated: false, sheets: [
-  { name: "S’Agaró", hidden: false, cells: [{ address: "A1", value: "<script>unsafe()</script>" }, { address: "C3", value: "09:00" }] },
-  { name: "Torre", hidden: true, cells: [{ address: "B9", value: "17:00" }] },
+  { name: "Àrea d’exemple", hidden: false, cells: [{ address: "A1", value: "<script>unsafe()</script>" }, { address: "C3", value: "09:00" }] },
+  { name: "Arxiu", hidden: true, cells: [{ address: "B9", value: "17:00" }] },
 ] };
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 

@@ -21,13 +21,11 @@ Los recursos OAuth personales se enlazan por usuario. Una credencial compartida 
 
 El punto de integración para el task Runtime es `runWorkerCodexTurn` en `src/runtime/worker-codex-turn.ts`, inmediatamente antes de añadir una skill a `turn/start`. Allí el worker vuelve a resolver el principal autenticado y rechaza una skill que no tenga lectura explícita en el catálogo. No sustituye ni relaja los flujos existentes: `auto_review` sigue determinando el revisor de las aprobaciones y una política `DENY` continúa rechazando la ejecución genérica antes de crear una aprobación. Para apps, conectores y MCP, el límite equivalente es el `CatalogEnforcedTransport`: filtra los inventarios antes de devolverlos al adaptador y rechaza instalaciones, OAuth desde la sesión y herramientas MCP no declaradas.
 
-## Correo inicial y alta de Arnall reutilizable
 
 Gmail y Outlook son recursos GraphikAI gestionados pero se añaden al catálogo durable únicamente cuando su bloque de instalación tiene `enabled=true`. Deshabilitar un proveedor retira su recurso y sus reglas gestionadas; no basta con ocultarlo en la UI. Las reglas de usuario/grupo/rol pueden restringir después ese baseline de instalación. Ajustes distingue un recurso autorizado pendiente de configuración administrativa de otro listo para el OAuth personal; la ausencia de tarjeta significa que la instalación o la política efectiva no lo autoriza. El selector `@` solo ofrece recursos permitidos y conectados; el menú `+` puede mostrar los recursos permitidos todavía pendientes, deshabilitados y con su estado honesto.
 
 Cada proveedor usa un callback, secreto de aplicación, clave de cifrado y directorio por conector. Cada empleado tiene un binding y token cifrado bajo su UUID; no existe fallback compartido. Consulta [GMAIL_OAUTH.md](GMAIL_OAUTH.md) y [OUTLOOK_OAUTH.md](OUTLOOK_OAUTH.md) para la configuración externa exacta.
 
-`config/installations/arnall.qa.example.json` incluye una skill base de GraphikAI. Para habilitar un recurso adicional, un administrador debe crear primero el recurso y después reglas `allow` explícitas. Para una acción MCP sensible, declara el servidor, la lista de lectura y `sensitiveWriteTools`; configura el adaptador gestionado con aprobación durable y readback correlacionado antes de conceder `write`.
 
 No uses este fixture como credencial ni lo completes con secretos. La evidencia de una acción real sigue exigiendo OAuth, binding personal/compartido correcto, aprobación, una única ejecución, readback del provider y auditoría correlacionada.
 
@@ -87,12 +85,6 @@ manifiesto, callbacks, scopes, comparación con Melso y aceptación pendiente.
 
 ## Flujo especializado de presentaciones
 
-`presentation-craft` se incorpora al mismo baseline efectivo y privado para
-presentaciones PPTX y PDF de diapositivas. Traslada del bundle Codex Presentations
-26.905.11957 las guías editoriales, visuales, de portada y financieras. La
-adaptación sustituye APIs exclusivas de escritorio por el autor PptxGenJS y las
-herramientas privadas `render`/`deliver` que Arnall ya ofrece. No afirma paridad
-de herramientas, importación fiel de PPTX o un finalizador automático inexistente.
 
 El flujo exige storyboard, fuentes y cálculos coherentes, evidencia editable,
 revisión de todas las imágenes finales y corrección antes de entregar. El copy

@@ -2,14 +2,6 @@
 
 ## Incident evidence, 2026-10-01
 
-The Arnall employee conversation failed twice while resuming its existing
-runtime thread. Authentication succeeded, `thread/resume` timed out after
-60 seconds, and the fallback `thread/read` closed the worker transport.
-An isolated snapshot reproduced a full-history `thread/read` response of
-9,727,340 bytes. The gateway's stdout and WebSocket response limits are
-8 MiB. A metadata-only read returned 1,102 bytes. No customer history was
-edited during diagnosis; database backups and the rollout copy were confined
-to a temporary directory removed after the isolated process exited.
 
 ## Recovery contract
 

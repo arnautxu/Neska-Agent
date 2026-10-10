@@ -4,16 +4,11 @@ import { resolveProjectSourceDocuments } from "@/documents/project-sources";
 import { requestPagedThreadRecovery } from "@/runtime/paged-thread-recovery";
 import { DurableTurnSubmission, TurnSubmissionRecoveryRequired, turnSubmissionBinding } from "@/runtime/turn-submission-store";
 import { FileModelTurnQueue, type ModelTurnAdmission } from "@/runtime/model-turn-queue";
-import { HORARIA_NAMESPACE, HORARIA_TOOLS, handleHorariaToolCall, horariaInstructions } from "@/horaria/chat-tools";
-import { requiresFictionalScheduleArtifact } from "@/horaria/fictional-schedule-delivery";
-import { arnallScheduleForPreview } from "@/horaria/schedule-template";
-import { loadHorariaConfig, registerHorariaReviewSource } from "@/horaria/client";
 import { documentServicesForUser } from "@/documents/server-service";
 import { prepareWorkspaceDocumentPreview } from "@/documents/workspace-preview";
 import { serverReferenceInputs } from "@/documents/server-reference-inputs";
 import { COMPOSIO_DYNAMIC_TOOLS, COMPOSIO_NAMESPACE, handleComposioTool } from "@/runtime/composio-dynamic-tools";
 import { designSkillDeveloperInstructions } from "@/catalog/design-skill-policy";
-import { prepareDesignBrandAssets } from "@/runtime/design-brand-assets";
 import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
@@ -304,7 +299,6 @@ function localDocumentDeveloperInstructions() {
   return [
     "## Generación documental local",
     "Para informes de texto sencillos, Word/DOCX y tablas Excel/XLSX, usa `aibrain_documents.create`; es un renderizador básico de contenido final, no otro modelo. Redacta primero el contenido final completo. Nunca envíes como `content` la petición del usuario, un prompt, instrucciones de diseño o una promesa de trabajo.",
-    "Si el usuario pide un horario de Arnall con tienda y personas explícitamente ficticias, debes llamar a `aibrain_documents.create_arnall_schedule` antes de responder para rellenar la plantilla HORARI SAGARO incorporada en el servidor. No necesita adjuntar ni subir la plantilla. Incluye los siete días de cada persona, con F para días libres y horarios reales en las dos líneas de cada turno. No consultes ni des de alta personas o tiendas reales para esta simulación. La herramienta entrega el Excel privado y devuelve las horas y la cobertura calculadas de la graella final: compáralas con todas las condiciones solicitadas y no declares verificado lo que no se haya comprobado. Si falla la herramienta, explica el error concreto y no entregues una tabla como sustituto. Para tiendas y personal reales usa `aibrain_horaria.run` con `schedules.draft`.",
     "Para presentaciones, tanto PDF como PowerPoint, usa autoría local con shell y PptxGenJS, no el renderizador básico `aibrain_documents.create`. Lee primero la guía local `/usr/local/share/aibrain/presentations.md` y las skills autorizadas presentation-craft, local-documents e impeccable cuando estén disponibles y cumple la política de diseño de esta instalación. PptxGenJS está empaquetado en `/usr/local/share/aibrain/pptxgenjs.cjs`: cárgalo desde Node con require y comprueba su disponibilidad; no instales paquetes ni uses servicios externos. Si falta una herramienta o skill obligatoria, explica la limitación concreta; no sustituyas silenciosamente la presentación por diapositivas de texto básico.",
     "Antes de crear la presentación, redacta un guion con una idea por diapositiva y diseña composiciones, jerarquía tipográfica y elementos visuales relevantes al tema. Respeta idioma, contenido y número solicitado; no repitas títulos ni cortes frases entre páginas para encajar texto. Usa formas, diagramas, gráficos e imágenes locales autorizadas cuando aporten información; no inventes fuentes ni afirmes haber usado imágenes que no existen.",
     "Trabaja en borradores privados dentro de `.aibrain-drafts/` en el workspace. No anuncies ni publiques sus rutas como entregas. Genera el PPTX en shell y llama a `aibrain_documents.render` con su ruta relativa y cada número de página para obtener el PDF y las imágenes; no ejecutes conversores desde shell, porque su sandbox anidado bloquea el renderizado; inspecciona visualmente todas las diapositivas, comprueba recortes, solapamientos, legibilidad y número de páginas, y corrige antes de entregar. Solo después copia los archivos finales verificados a `documents/` y llama a `aibrain_documents.deliver` con la ruta relativa de cada archivo solicitado para adjuntarlo. Consultar o imprimir rutas no entrega documentos. No escribas versiones provisionales en la ruta final; no presentes un borrador no inspeccionado como terminado.",
@@ -526,9 +520,6 @@ async function runWorkerCodexTurnAttempt(
     return;
   }
   const activities = new Map<string, ActivityItem>();
-  let fictionalScheduleArtifactRequired = false;
-  const fictionalScheduleArtifactIds = new Set<string>();
-  let fictionalScheduleDeliveryFailed = false;
   const agentMessagePhases = new Map<string, "commentary" | "final_answer" | null>();
   const commentaryText = new Map<string, string>();
   const projectedDocumentArtifactIds = new Set<string>();
@@ -612,7 +603,6 @@ async function runWorkerCodexTurnAttempt(
   ) => {
     const rawValue = `${finalAnswerText.get(itemId) ?? ""}${value}`.slice(0, 128_000);
     finalAnswerText.set(itemId, rawValue);
-    if (fictionalScheduleArtifactRequired && fictionalScheduleArtifactIds.size === 0) return;
     if (agentMessagePhases.get(itemId) !== "final_answer" &&
         [...agentMessagePhases.values()].includes("final_answer")) return;
     const completePrefix = completePublicTextPrefix(
@@ -639,7 +629,6 @@ async function runWorkerCodexTurnAttempt(
     projection?: WorkerTurnProjection,
   ) => {
     finalAnswerText.set(itemId, value.slice(0, 128_000));
-    if (fictionalScheduleArtifactRequired && fictionalScheduleArtifactIds.size === 0) return;
     if (agentMessagePhases.get(itemId) !== "final_answer" &&
         [...agentMessagePhases.values()].includes("final_answer")) return;
     const publicValue = publicAssistantText(
@@ -673,7 +662,6 @@ async function runWorkerCodexTurnAttempt(
     })),
     telemetry.measure("worker", () => workerAppServerForUser(authenticatedUserId, maintenanceActivity)),
   ]);
-  fictionalScheduleArtifactRequired = requiresFictionalScheduleArtifact(runtime.config.companySlug, chatRequest.message);
   let automaticMemoryScheduled = false;
   const scheduleCompletedConversationMemory = async () => {
     if (automaticMemoryScheduled || typeof runtime.config.paths?.dataRoot !== "string" ||
@@ -822,7 +810,6 @@ async function runWorkerCodexTurnAttempt(
     // Continue through fresh thread/resume below. It confirms current remote
     // state and projects the bound identity using a real response envelope.
   }
-  const designBrandInstructions = await prepareDesignBrandAssets(runtime.config, projectWorkspace);
   // A new conversation used to wait for the optional model/skills/usage
   // catalog before it even opened its App Server thread.  The status route
   // prewarms that catalog, but a direct first turn must not depend on it.
@@ -937,13 +924,11 @@ async function runWorkerCodexTurnAttempt(
   const developerInstructions = [
     buildCodexDeveloperInstructions(chatRequest, permissions, assistantName, internalAgentContext),
     localDocumentDeveloperInstructions(),
-    ...(runtimeIdentitySession || automationSession ? [horariaInstructions] : []),
     readableFilesDeveloperInstructions(enterpriseDocumentRoots),
     projectDeveloperInstructions(projectGuidance),
     preparedMemory.developerInstructions,
     synchronizedSkills.developerInstructions,
     designSkillDeveloperInstructions(runtime.config, synchronizedSkills.result),
-    designBrandInstructions,
     connectorMentionDeveloperInstructions(selectedConnectorMentions),
     ...(automationSession ? [await automationChatDeveloperInstructions(automationSession, {
       projectId: chatRequest.projectId,
@@ -995,11 +980,7 @@ async function runWorkerCodexTurnAttempt(
     }
     await emitRuntimeTurn(recoveredTurnState.id);
     const text = recoveredAgentText(recoveredTurnState);
-    if (fictionalScheduleArtifactRequired && fictionalScheduleArtifactIds.size === 0 && recoveredTurnState.status === "completed") {
-      fictionalScheduleDeliveryFailed = true;
-      await emit({ type: "error", message: "No se ha podido confirmar el Excel obligatorio de esta simulación. No se entregará una tabla como sustituto." },
-        { envelope, key: `${keyPrefix}:missing-schedule-template:${recoveredTurnState.id}` });
-    } else if (text !== null) {
+    if (text !== null) {
       await emit(
         {
           type: "content",
@@ -1131,7 +1112,6 @@ async function runWorkerCodexTurnAttempt(
               ...OUTLOOK_DYNAMIC_TOOLS,
               ...(runtime.config.connectors?.composio?.toolkits.length ? COMPOSIO_DYNAMIC_TOOLS : []),
               ...(automationSession ? AUTOMATION_DYNAMIC_TOOLS : []),
-      ...(runtimeIdentitySession || automationSession ? HORARIA_TOOLS : []),
             ],
             ephemeral: false,
             serviceName: "aibrain_workbench",
@@ -1824,16 +1804,11 @@ async function runWorkerCodexTurnAttempt(
               // selection without ever publishing rejected fallback candidates.
               const finalEntry = [...finalAnswerText].filter(([id]) => agentMessagePhases.get(id) === "final_answer").at(-1)
                 ?? [...finalAnswerText].at(-1);
-              if (fictionalScheduleArtifactRequired && fictionalScheduleArtifactIds.size === 0) {
-                fictionalScheduleDeliveryFailed = true;
-                await emit({ type: "error", message: "No se ha generado el Excel con la plantilla HORARI SAGARO. No se entregará una tabla como sustituto." },
-                  { envelope, key: "turn:missing-schedule-template" });
-                errorEmitted = true;
-              } else if (finalEntry) {
+              if (finalEntry) {
                 const [itemId, rawText] = finalEntry;
                 await reconcileFinalText(itemId, rawText, { envelope, key: `content:turn-completed:${itemId}` });
               }
-              if (!finalEntry && projectedDocumentArtifactIds.size === 0 && !fictionalScheduleDeliveryFailed) {
+              if (!finalEntry && projectedDocumentArtifactIds.size === 0) {
                 // Complete outside the notification handler: awaiting an RPC
                 // here can block delivery of that same RPC's response.
                 terminalNeedsHydration = true;
@@ -1870,52 +1845,6 @@ async function runWorkerCodexTurnAttempt(
         try {
         if (request.method === "item/tool/call") {
           if (!runtimeTurnId) throw new Error("Dynamic tool call arrived before the turn was bound.");
-          const horariaSession = runtimeIdentitySession ?? automationSession;
-          if (horariaSession && isRecord(request.params) && request.params.namespace === HORARIA_NAMESPACE) {
-            const horariaTurnId = runtimeTurnId;
-            const runHoraria = () => handleHorariaToolCall(request.params as never, {
-              session: horariaSession, installation: runtime.config, permissions, projectId: chatRequest.projectId,
-              sourceThreadId: chatRequest.threadId, sourceTurnId: chatRequest.assistantMessageId,
-              sourceMessage: chatRequest.message, runtimeThreadId: threadId, runtimeTurnId: horariaTurnId,
-              projectWorkspace, background: Boolean(backgroundExecution),
-              preview: async (data) => {
-                if (isRecord(data) && data.artifactPurpose === "reviewed-excel") return; // The attached original is the preview; never regenerate it.
-                if (!isRecord(data) || !Array.isArray(data.rows) || typeof data.title !== "string" || typeof data.previewHash !== "string") throw new Error("Previsualització d’horaris invàlida.");
-                const collection = data.artifactPurpose === "collection";
-                const arnallSchedule = collection ? undefined : arnallScheduleForPreview(runtime.config, data);
-                const result = await handleLocalDocumentDynamicToolCall({
-                  ...(request.params as never as import("../../contracts/codex/0.153.4/types/v2/DynamicToolCallParams").DynamicToolCallParams),
-                  namespace: AIBRAIN_DOCUMENT_TOOL_NAMESPACE, tool: "create",
-                  arguments: { format: "xlsx", fileName: `${collection ? "disponibilidad" : "horario"}-${String(data.semana)}-${String(data.establecimientoId)}-${data.previewHash.slice(0, 12)}.xlsx`, title: data.title, content: `${data.status === "publicat" ? "Publicado" : "Borrador"}. ${String(data.note)}`, rows: data.rows } as JsonValue,
-                }, {
-                  installation: runtime.config, installationId, userId: authenticatedUserId,
-                  ...(collection ? {} : { spreadsheetLayout: "schedule" as const }),
-                  arnallSchedule,
-                  projectId: chatRequest.projectId, projectWorkspace,
-                  receiptRoot: path.join(path.dirname(runtime.handle.roots.workspace), "state", "document-generation-calls"),
-                  runtimeThreadId: threadId, runtimeTurnId: runtimeTurnId!, sourceThreadId: chatRequest.threadId,
-                  sourceTurnId: chatRequest.assistantMessageId, permissions,
-                });
-                if (!result.response.success) throw new Error("No s’ha pogut crear la previsualització de l’horari.");
-                if (arnallSchedule) {
-                  const item = result.response.contentItems.find(item => item.type === "inputText");
-                  const document = item && "text" in item ? JSON.parse(String(item.text)) as { fileName: string; sha256: string } : null;
-                  if (!document) throw new Error("Falta el rebut de l’Excel original.");
-                  const source = await registerHorariaReviewSource(await loadHorariaConfig(runtime.config), horariaSession, {
-                    establecimientoId: arnallSchedule.establishmentId, semana: arnallSchedule.week, fileName: document.fileName, sha256: document.sha256,
-                  }, projectWorkspace);
-                  data.reviewSourceId = source.sourceId;
-                  data.reviewSourceSha256 = source.sha256;
-                }
-                for (const artifact of result.artifacts) {
-                  if (projectedDocumentArtifactIds.has(artifact.id)) continue;
-                  await emit({ type: "artifact", item: artifact }, { envelope, key: `artifact:horaria:${artifact.id}` });
-                  projectedDocumentArtifactIds.add(artifact.id);
-                }
-              },
-            });
-            return await (terminalWatchdog ? terminalWatchdog.duringToolCall(runHoraria) : runHoraria()) as JsonValue;
-          }
           if (automationSession && isRecord(request.params) && request.params.namespace === AIBRAIN_AUTOMATION_TOOL_NAMESPACE) {
             return await handleAutomationToolCall(request.params as never, {
               session: automationSession,
@@ -1994,11 +1923,6 @@ async function runWorkerCodexTurnAttempt(
                 projectedDocumentArtifactIds.add(artifact.id);
               } finally {
                 projectingDocumentArtifactIds.delete(artifact.id);
-              }
-            }
-            if (request.params.tool === "create_arnall_schedule" && result.response.success && result.artifacts.length > 0) {
-              for (const artifact of result.artifacts) {
-                if (projectedDocumentArtifactIds.has(artifact.id)) fictionalScheduleArtifactIds.add(artifact.id);
               }
             }
             if (request.params.tool !== "render") armDocumentToolRecovery();
@@ -2549,10 +2473,6 @@ async function runWorkerCodexTurnAttempt(
     if (completed.status === "interrupted" || turnSignal.aborted) {
       if (!stoppedEmitted) await emit({ type: "stopped" });
       telemetry.finish("stopped");
-      return;
-    }
-    if (fictionalScheduleDeliveryFailed) {
-      telemetry.finish("error");
       return;
     }
     if (terminalNeedsHydration) {

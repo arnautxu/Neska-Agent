@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "installationId": "company-qa",
+  "installationId": "example-company",
   "companyName": "Company QA",
-  "companySlug": "company-qa",
+  "companySlug": "example-company",
   "publicUrl": "https://brain.company.example",
   "branding": {
     "productName": "Company Brain",
-    "logoPath": "/branding/company-qa/logo.svg",
-    "faviconPath": "/branding/company-qa/favicon.svg",
+    "logoPath": "/branding/example-company/logo.svg",
+    "faviconPath": "/branding/example-company/favicon.svg",
     "accentColor": "#315ee7"
   },
   "paths": {

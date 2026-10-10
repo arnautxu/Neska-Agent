@@ -42,7 +42,7 @@ async function fixture(options: { ciSha?: string; includeCi?: boolean } = {}) {
       headSha,
       backendCi: { workflow: "Backend CI", conclusion: "success", headSha, runId: "33165012869" },
       publish: { workflow: "Publish GHCR images", conclusion: "success", headSha, runId: "33165012870" },
-      deploy: { workflow: "Deploy Arnall", headSha, runId: "33165012871" },
+      deploy: { workflow: "Deploy Neska", headSha, runId: "33165012871" },
       images: { appDigest: appImage.split("@")[1], gatewayDigest: gatewayImage.split("@")[1] },
     })}\n`, { mode: 0o600 });
   }

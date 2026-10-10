@@ -24,11 +24,11 @@ async function fixture() {
     root,
     config: parseInstallationConfig({
       schemaVersion: 1,
-      installationId: "arnall-test",
-      companyName: "Arnall Test",
-      companySlug: "arnall-test",
-      publicUrl: "https://arnall.test",
-      branding: { productName: "Arnall AI", logoPath: "/logo.svg", faviconPath: "/favicon.svg", accentColor: "#123456" },
+      installationId: "example-company-test",
+      companyName: "Example Company Test",
+      companySlug: "example-company-test",
+      publicUrl: "https://example-company.test",
+      branding: { productName: "Example Company AI", logoPath: "/logo.svg", faviconPath: "/favicon.svg", accentColor: "#123456" },
       paths: {
         dataRoot,
         companyContextRoot: path.join(dataRoot, "context"),
@@ -44,7 +44,7 @@ async function fixture() {
 function permissions(userId: string, rules: Array<{ ruleId: string; action: "consult" | "execute"; effect: "allow" | "deny" }>): ResolvedPermissions {
   return {
     schemaVersion: 1,
-    installationId: "arnall-test",
+    installationId: "example-company-test",
     userId,
     roleId: null,
     projectId: PROJECT,
@@ -62,12 +62,12 @@ describe("EnterpriseDocumentNetwork", () => {
     const { config } = await fixture();
     const first = new EnterpriseDocumentNetwork(config);
     await first.provision({ userId: USER_A, projectId: PROJECT, departmentIds: [DEPARTMENT] });
-    await writeFile(path.join(first.projectRoot(PROJECT), "brief.md"), "Precio y stock de Arnall", "utf8");
+    await writeFile(path.join(first.projectRoot(PROJECT), "brief.md"), "Precio y stock de Example Company", "utf8");
 
     const restarted = new EnterpriseDocumentNetwork(config);
-    expect(await readFile(path.join(restarted.projectRoot(PROJECT), "brief.md"), "utf8")).toContain("Arnall");
+    expect(await readFile(path.join(restarted.projectRoot(PROJECT), "brief.md"), "utf8")).toContain("Example Company");
     expect(JSON.parse(await readFile(path.join(restarted.companyRoot(), ".aibrain-document-scope.json"), "utf8")))
-      .toMatchObject({ scope: "company", installationId: "arnall-test" });
+      .toMatchObject({ scope: "company", installationId: "example-company-test" });
   });
 
   it("gives each authorized worker only its shared scopes and its own private root", async () => {
@@ -93,9 +93,9 @@ describe("EnterpriseDocumentNetwork", () => {
     const network = new EnterpriseDocumentNetwork(config);
     const access = permissions(USER_A, [{ ruleId: "documents.read", action: "consult", effect: "allow" }]);
     const documentRoots = await network.rootsForTurn({ userId: USER_A, projectId: PROJECT, permissions: access });
-    await writeFile(path.join(network.companyRoot(), "catalogo.md"), "Catálogo de muebles Arnall", "utf8");
+    await writeFile(path.join(network.companyRoot(), "catalogo.md"), "Catálogo de muebles Example Company", "utf8");
     await expect(network.search({ roots: documentRoots, query: "muebles" })).resolves.toEqual([
-      expect.objectContaining({ scope: "company", path: "catalogo.md", provenance: { installationId: "arnall-test", departmentId: null, projectId: null, userId: null } }),
+      expect.objectContaining({ scope: "company", path: "catalogo.md", provenance: { installationId: "example-company-test", departmentId: null, projectId: null, userId: null } }),
     ]);
 
     const outside = path.join(root, "outside");

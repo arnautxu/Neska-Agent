@@ -594,7 +594,7 @@ describe("immutable release manager", { timeout: 20_000 }, () => {
     const files = await fixture();
     const previous = await readFile(files.activeConfigFile, "utf8");
     const candidate = JSON.parse(installationConfigInput("Mailbox"));
-    candidate.connectors.companyMail = { enabled: true, host: "hc65.infoselfcloud.com", emailDomain: "arnall.cat" };
+    candidate.connectors.companyMail = { enabled: true, host: "mail.example.invalid", emailDomain: "example.invalid" };
     const contents = `${JSON.stringify(candidate, null, 2)}\n`;
     await writeFile(files.installationConfig, contents);
     await execFileAsync(process.execPath, commandArgs(files, "promote"), { env: environment(files) });
@@ -605,15 +605,15 @@ describe("immutable release manager", { timeout: 20_000 }, () => {
 
   it.each([
     null,
-    { enabled: "true", host: "hc65.infoselfcloud.com", emailDomain: "arnall.cat" },
-    { enabled: true, host: "127.0.0.1", emailDomain: "arnall.cat" },
-    { enabled: true, host: "mail.internal", emailDomain: "arnall.cat" },
-    { enabled: true, host: "mail.localhost", emailDomain: "arnall.cat" },
-    { enabled: true, host: "mail.local", emailDomain: "arnall.cat" },
-    { enabled: true, host: "HC65.infoselfcloud.com", emailDomain: "arnall.cat" },
-    { enabled: true, host: "hc65.infoselfcloud.com:993", emailDomain: "arnall.cat" },
-    { enabled: true, host: "hc65.infoselfcloud.com", emailDomain: "@arnall.cat" },
-    { enabled: true, host: "hc65.infoselfcloud.com", emailDomain: "arnall.cat", password: "never-versioned" },
+    { enabled: "true", host: "mail.example.invalid", emailDomain: "example.invalid" },
+    { enabled: true, host: "127.0.0.1", emailDomain: "example.invalid" },
+    { enabled: true, host: "mail.internal", emailDomain: "example.invalid" },
+    { enabled: true, host: "mail.localhost", emailDomain: "example.invalid" },
+    { enabled: true, host: "mail.local", emailDomain: "example.invalid" },
+    { enabled: true, host: "MAIL.example.invalid", emailDomain: "example.invalid" },
+    { enabled: true, host: "mail.example.invalid:993", emailDomain: "example.invalid" },
+    { enabled: true, host: "mail.example.invalid", emailDomain: "@example.invalid" },
+    { enabled: true, host: "mail.example.invalid", emailDomain: "example.invalid", password: "never-versioned" },
   ])("rejects invalid company mailbox inputs before container mutation: %j", async (companyMail) => {
     const files = await fixture();
     const candidate = JSON.parse(installationConfigInput("Mailbox"));
@@ -648,9 +648,9 @@ describe("immutable release manager", { timeout: 20_000 }, () => {
     expect(calls.some(args => args.includes("up"))).toBe(false);
   });
 
-  it("rejects Compose that connects an external BGreenly resource", async () => {
+  it("rejects Compose that connects an external foreign installation resource", async () => {
     const files = await fixture();
-    await writeFile(files.composeFile, `${composeInput("B")}\nvolumes:\n  bgreenly-data:\n    external: true\n`);
+    await writeFile(files.composeFile, `${composeInput("B")}\nvolumes:\n  foreign-company-data:\n    external: true\n`);
     await expect(execFileAsync(process.execPath, commandArgs(files, "promote"), { env: environment(files) }))
       .rejects.toMatchObject({ stderr: expect.stringContaining("RELEASE_COMPOSE_UNSAFE") });
     const dockerCalls = (await readFile(files.logFile, "utf8")).trim().split("\n").map((line) => JSON.parse(line));

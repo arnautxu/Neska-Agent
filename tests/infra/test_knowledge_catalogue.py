@@ -32,7 +32,7 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual(self.store.next_directory(scan,['Y:\\'])['source'],'Y:\\')
         self.assertEqual(self.store.next_directory(scan,['Y:\\'],spread_pages=True)['source'],'C:\\')
         self.store.close()
-        self.store = catalogue.Catalogue(self.root,'arnall','operator')
+        self.store = catalogue.Catalogue(self.root,'example-company','operator')
         self.assertEqual(self.store.next_directory(scan,['Y:\\'],spread_pages=True)['source'],'C:\\')
 
     def test_rescan_waits_for_finished_scan_and_interval(self):
@@ -56,7 +56,7 @@ class CatalogueTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name).resolve() / "catalogue"
-        self.store = catalogue.Catalogue(self.root,"arnall","operator")
+        self.store = catalogue.Catalogue(self.root,"example-company","operator")
 
     def tearDown(self):
         self.store.close()
@@ -75,7 +75,7 @@ class CatalogueTests(unittest.TestCase):
         first = [entry("Y:\\folder",True),entry("Y:\\a.txt")]
         self.store.record_page(scan,"Y:\\",0,first,2)
         self.store.close()
-        self.store = catalogue.Catalogue(self.root,"arnall","operator")
+        self.store = catalogue.Catalogue(self.root,"example-company","operator")
         self.assertEqual(self.store.next_directory(scan)["offset"],2)
         with self.assertRaisesRegex(ValueError,"STALE_DIRECTORY_PAGE"):
             self.store.record_page(scan,"Y:\\",0,first,2)
@@ -95,21 +95,21 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual(self.store.next_directory(scan)["offset"],0)
 
     def test_scope_identity_and_private_paths(self):
-        for installation,audience in [("other","operator"),("arnall","company")]:
+        for installation,audience in [("other","operator"),("example-company","company")]:
             with self.assertRaisesRegex(ValueError,"PARTITION_IDENTITY"):
                 catalogue.Catalogue(self.root,installation,audience)
         link = self.root.parent / "symlink"
         link.symlink_to(self.root, target_is_directory=True)
         with self.assertRaisesRegex(ValueError,"UNSAFE_STORE_PATH"):
-            catalogue.Catalogue(link / "child","arnall","operator")
+            catalogue.Catalogue(link / "child","example-company","operator")
         os.chmod(self.root,0o755)
         with self.assertRaisesRegex(ValueError,"PRIVATE_STORE_REQUIRED"):
-            catalogue.Catalogue(self.root,"arnall","operator")
+            catalogue.Catalogue(self.root,"example-company","operator")
         os.chmod(self.root,0o700)
 
     def test_readonly_store_cannot_mutate_and_read_is_version_bound(self):
         self.add_document()
-        reader = catalogue.Catalogue(self.root,"arnall","operator",readonly=True)
+        reader = catalogue.Catalogue(self.root,"example-company","operator",readonly=True)
         try:
             self.assertIn("mantenimiento",reader.read_document("Y:\\report.txt","a"*64)["content"])
             with self.assertRaisesRegex(ValueError,"INDEXED_VERSION_UNAVAILABLE"):

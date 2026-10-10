@@ -93,7 +93,7 @@ describe("FileWorkbenchStore", () => {
     const thread = await store.createThread(USER_A, project.id, "Selected source");
     const user = message("user", "complete");
     user.connectorMentions = ["composio-gmail"];
-    user.serverReferences = [{ path: "server-arnall/Y/QA.txt", name: "QA.txt", kind: "file", size: 1, modifiedAt: null }];
+    user.serverReferences = [{ path: "server-example-company/Y/QA.txt", name: "QA.txt", kind: "file", size: 1, modifiedAt: null }];
     const assistant = message("assistant", "streaming");
     await store.beginThreadTurn(USER_A, thread.id, user, assistant);
     const restarted = new FileWorkbenchStore({ installationId: INSTALLATION_ID, usersRoot });

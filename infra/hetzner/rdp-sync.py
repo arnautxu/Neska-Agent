@@ -281,7 +281,7 @@ def snapshot_files(manifest, files, skipped, directories, checked_at):
     names = [ntpath.basename(item["source"]) for item in files.values()]
     folders = [ntpath.basename(directory.rstrip("\\")) for directory in directories]
     unavailable = len(skipped) + sum(not i["extracted"] for i in files.values())
-    output["ESTAT_SINCRONITZACIO.txt"] = (f"Sincronitzacio Windows Arnall\nUltima comprovacio completa: {checked_at}\n"
+    output["ESTAT_SINCRONITZACIO.txt"] = (f"Sincronitzacio Windows\nUltima comprovacio completa: {checked_at}\n"
                                            f"Documents: {len(files)}\nDocuments no llegibles o exclosos: {unavailable}\n"
                                            "Carpetes: " + ", ".join(folders) + "\nFitxers: " + ", ".join(names) + "\n"
                                            "Les copies estan verificades i els originals es conserven al Windows.\n"
@@ -421,7 +421,7 @@ def sync(manifest, call=rdp_call, extract=extract_sandboxed):
         try:
             reason = ("Windows bloqueja la transferencia de fitxers; cal que el gestor corregeixi la redireccio d'unitats.\n"
                       if status["error"] == "RDP_DRIVE_REDIRECTION_DISABLED" else "")
-            refresh_public_status(manifest, "Sincronitzacio Windows Arnall: actualitzacio fallida.\n"
+            refresh_public_status(manifest, "Sincronitzacio Windows: actualitzacio fallida.\n"
                                   "La sincronitzacio completa no esta confirmada.\n" + reason +
                                   "Es conserven les copies verificades disponibles; les dades poden estar desactualitzades.\n"
                                   f"Ultima sincronitzacio correcta: {previous_status.get('lastSuccess', 'cap')}\n")

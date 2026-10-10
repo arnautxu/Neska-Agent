@@ -9,9 +9,9 @@ import { connectCompanyMail } from "@/connectors/company-mail-server-service";
 import { POST } from "./route";
 import type { AuthSession } from "@/auth/types";
 const session = { provider: "local", tenant: { id: "company-qa" }, user: { id: "00000000-0000-4000-8000-000000000001" } } as AuthSession;
-const credential = { email: "factures@arnall.cat", password: "hidden-password", folder: "INBOX", since: "2026-10-01" };
+const credential = { email: "factures@example.invalid", password: "hidden-password", folder: "INBOX", since: "2026-10-01" };
 afterEach(() => vi.resetAllMocks());
-function request(body = JSON.stringify(credential)) { return new Request("https://arnall.graphikai.com/api/connectors/company-mail/connect", { method: "POST", headers: { origin: "https://arnall.graphikai.com", "Content-Type": "application/json" }, body }); }
+function request(body = JSON.stringify(credential)) { return new Request("https://brain.example.invalid/api/connectors/company-mail/connect", { method: "POST", headers: { origin: "https://brain.example.invalid", "Content-Type": "application/json" }, body }); }
 
 describe("company mailbox settings API", () => {
   it("requires same origin and an authenticated session before accepting secrets", async () => {

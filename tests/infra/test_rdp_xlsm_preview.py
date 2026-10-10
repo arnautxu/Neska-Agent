@@ -22,7 +22,7 @@ def workbook(source, cells=None, external=False, date1904=False):
     if cells is None:
         cells = '<c r="A1" t="inlineStr"><is><t>Nom</t></is></c><c r="C3" s="1"><v>0.375</v></c><c r="D3"><f>UNKNOWN()</f></c><c r="E3"><f>1+1</f><v>2</v></c>'
     with zipfile.ZipFile(source, "w") as archive:
-        archive.writestr("xl/workbook.xml", f'<workbook xmlns="{NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><workbookPr date1904="{int(date1904)}"/><sheets><sheet name="S’Agaró" sheetId="1" r:id="r1"/><sheet name="Torre" sheetId="2" r:id="r2" state="hidden"/></sheets></workbook>')
+        archive.writestr("xl/workbook.xml", f'<workbook xmlns="{NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><workbookPr date1904="{int(date1904)}"/><sheets><sheet name="Àrea d’exemple" sheetId="1" r:id="r1"/><sheet name="Arxiu" sheetId="2" r:id="r2" state="hidden"/></sheets></workbook>')
         target = 'TargetMode="External" Target="https://invalid.test/private.xml"' if external else 'Target="worksheets/sheet1.xml"'
         archive.writestr("xl/_rels/workbook.xml.rels", f'<Relationships><Relationship Id="r1" {target}/><Relationship Id="r2" Target="worksheets/sheet2.xml"/></Relationships>')
         archive.writestr("xl/styles.xml", f'<styleSheet xmlns="{NS}"><cellXfs><xf numFmtId="0"/><xf numFmtId="20"/><xf numFmtId="14"/></cellXfs></styleSheet>')
@@ -47,7 +47,7 @@ class PreviewTests(unittest.TestCase):
             self.assertIn("C3: 09:00", text)
             self.assertIn("Fórmula sin valor guardado", text)
             self.assertIn("E3: 2", text)
-            self.assertEqual(preview["sheets"][0]["name"], "S’Agaró")
+            self.assertEqual(preview["sheets"][0]["name"], "Àrea d’exemple")
             self.assertTrue(preview["sheets"][1]["hidden"])
             self.assertFalse(preview["truncated"])
             self.assertNotIn("PAYLOAD", text)
@@ -98,14 +98,14 @@ class PreviewTests(unittest.TestCase):
     def test_server_first_part_carries_preview_and_verified_provenance(self):
         workbook(self.source)
         digest = hashlib.sha256(self.source.read_bytes()).hexdigest()
-        manifest = {"connectionId": "arnall", "sourceRoots": ["Y:\\"], "importsRoot": self.root, "maxFileBytes": 16000000}
+        manifest = {"connectionId": "example-company", "sourceRoots": ["Y:\\"], "importsRoot": self.root, "maxFileBytes": 16000000}
         receipt = {"destination": str(self.source), "sha256": digest, "verifiedSha256": digest,
                    "bytes": self.source.stat().st_size, "recordedAt": "2026-09-03T12:00:00Z", "modifiedUtc": "2026-09-03T10:00:00Z"}
         def read(source, suffix):
             preview = {}
             text = extract.extract(source, suffix, preview)
             return {"ok": True, "text": text, "preview": preview}
-        result = server.read(manifest, "server-arnall/Y/horaris.xlsm", lambda *a, **kw: receipt, read)
+        result = server.read(manifest, "server-example-company/Y/horaris.xlsm", lambda *a, **kw: receipt, read)
         self.assertEqual(result["sha256"], digest)
         self.assertEqual(result["preview"]["sheets"][0]["cells"][1], {"address": "C3", "value": "09:00"})
 

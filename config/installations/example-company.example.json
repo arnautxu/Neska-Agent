@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "installationId": "example-company",
+  "companyName": "Example Company",
+  "companySlug": "example-company",
+  "publicUrl": "https://brain.example.invalid",
+  "branding": {
+    "productName": "Neska",
+    "logoPath": "/branding/aibrain/logo.svg",
+    "faviconPath": "/branding/aibrain/favicon.svg",
+    "accentColor": "#0f766e"
+  },
+  "paths": {
+    "dataRoot": "/srv/aibrain-northwind-qa/data",
+    "companyContextRoot": "/srv/aibrain-northwind-qa/data/company-context",
+    "usersRoot": "/srv/aibrain-northwind-qa/data/employees",
+    "sourceReadRoot": "/mnt/aibrain-northwind-qa/source-ro",
+    "publishWriteRoot": "/mnt/aibrain-northwind-qa/publish-rw",
+    "backupsRoot": "/srv/aibrain-northwind-qa/data/backup-snapshots"
+  },
+  "connectors": {
+    "gmail": {
+      "enabled": true
+    },
+    "outlook": {
+      "enabled": true
+    }
+  }
+}

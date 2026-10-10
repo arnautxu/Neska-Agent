@@ -7,12 +7,12 @@ Inventory base: `d381ccf836516f91464f20225403996e7e8158d1`.
 | Area | Existing evidence | Classification before this harness | Next live gate |
 |---|---|---|---|
 | HTTP/contracts | Versioned route/schema and CI workflow contract tests | Local/CI prefilter | Candidate checkout, CI, deploy state, runtime and separate app/gateway OCI inspections must correlate to one SHA; readiness evidence covers both health routes |
-| Functional desktop/mobile | Playwright flows, responsive states and 14 E2E specs | Local demo prefilter; Playwright starts `127.0.0.1` with demo auth/runtime | Run against Arnall with real auth and no route interception |
+| Functional desktop/mobile | Playwright flows, responsive states and 14 E2E specs | Local demo prefilter; Playwright starts `127.0.0.1` with demo auth/runtime | Run against Example Company with real auth and no route interception |
 | Accessibility/visual | 5 accessibility specs, 4 visual suites and one visual matrix | Local demo prefilter | Coordinated serial live/browser slot after functional gates |
 | Performance/concurrency | Synthetic high-frequency stream and intercepted concurrent conversations | Local synthetic prefilter | Measure navigation, input, TTFT, stream gaps, total turn, reconnect and tool readback against declared p95 budgets |
 | Restart/reconnect | Worker, journal, HTTP restart, replay and crash recovery tests | Strong local integration prefilter | Coordinated real restart/reconnect with duplicate and persistence assertions |
-| Two users | Multi-user acceptance covers four turns and isolation | Local fake App Server; not two real Arnall identities | David/Arnau positive flows plus negative cross-user reads/mutations |
-| Real turn | Opt-in real App Server smoke/resume/cancel spec | Local opt-in; not bound to the Arnall release | Authenticated David+Arnau turn, stream, runtime readback and logs on the same SHA |
+| Two users | Multi-user acceptance covers four turns and isolation | Local fake App Server; not two real Example Company identities | Example Employee/Example Member positive flows plus negative cross-user reads/mutations |
+| Real turn | Opt-in real App Server smoke/resume/cancel spec | Local opt-in; not bound to the Example Company release | Authenticated Example Employee+Example Member turn, stream, runtime readback and logs on the same SHA |
 | Files/search/library/memory | Unit and route integration slices | Local synthetic fixtures | Both users upload/use/search/library/memory with typed evidence for each route |
 | Connector/action/readback | Durable approval and browser tool unit/integration coverage | Local synthetic execution; no real provider action | One OAuth-authorized live provider operation with tenant/actor/release correlation, exactly-once execution and provider readback; health/capability/audit/connected states do not qualify |
 | Logs/backup/rollback | Logging, backup orchestration and release manager tests | Local/simulated operational prefilter | Live log correlation plus typed backup, restore and rollback evidence |

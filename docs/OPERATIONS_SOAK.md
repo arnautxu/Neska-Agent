@@ -39,7 +39,7 @@ El harness crea siempre un subdirectorio `run-<uuid>` y nunca elimina un `--work
 npm run --silent test:soak:qa > /var/tmp/aibrain-soak-report.json
 ```
 
-El perfil QA dura ocho horas, usa veinte workers, toma muestras cada treinta segundos y fuerza restart/replay cada cien ciclos. Ejecutarlo dentro de la instalación QA aislada, nunca dentro del Compose o de los volúmenes de BGreenly. Registrar commit, host, CPU/RAM, timestamps, exit code y SHA-256 del informe. No declarar el gate completo usando solo el ensayo corto local.
+El perfil QA dura ocho horas, usa veinte workers, toma muestras cada treinta segundos y fuerza restart/replay cada cien ciclos. Ejecutarlo dentro de la instalación QA aislada, nunca dentro del Compose o de los volúmenes de otra instalación. Registrar commit, host, CPU/RAM, timestamps, exit code y SHA-256 del informe. No declarar el gate completo usando solo el ensayo corto local.
 
 ## Criterios por defecto
 

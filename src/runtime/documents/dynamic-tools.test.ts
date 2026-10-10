@@ -4,7 +4,6 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } f
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PDFDict, PDFDocument, PDFName } from "pdf-lib";
-import JSZip from "jszip";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ResolvedPermissions } from "@/permissions";
 import { persistGeneratedImageArtifact } from "@/runtime/generated-image-artifacts";
@@ -14,7 +13,6 @@ import {
   type LocalDocumentDynamicToolContext,
 } from "@/runtime/documents/dynamic-tools";
 import { generatedPngFixture } from "../../../tests/helpers/png-fixture";
-import template from "./templates/arnall-schedule.json";
 
 vi.mock("server-only", () => ({}));
 
@@ -135,49 +133,15 @@ function batchRequest(callId = "hello-world-batch") {
 }
 
 describe("local document dynamic tool", () => {
-  it("attaches a fictional Arnall schedule in the original template without business records", async () => {
-    const base = await context(USER_A);
-    const ctx = { ...base, installation: { ...base.installation, companySlug: "arnall" } };
-    const params = {
-      threadId: "runtime-thread", turnId: "runtime-turn", callId: "fictional-schedule",
-      namespace: AIBRAIN_DOCUMENT_TOOL_NAMESPACE, tool: "create_arnall_schedule",
-      arguments: { fileName: "horari-demo.xlsx", establishmentName: "Botiga Demo", week: "2026-W40", people: [
-        { name: "Aina", section: "DEPENDIENTA", codeHours: { M: 5, T: 4, D: 9 }, days: [
-          { code: "M", firstLine: "09:00–14:00", secondLine: "" },
-          { code: "M", firstLine: "09:00–14:00", secondLine: "" },
-          { code: "F", firstLine: "", secondLine: "" },
-          { code: "M", firstLine: "09:00–14:00", secondLine: "" },
-          { code: "M", firstLine: "09:00–14:00", secondLine: "" },
-          { code: "F", firstLine: "", secondLine: "" },
-          { code: "F", firstLine: "", secondLine: "" },
-        ] },
-      ] },
-    };
-    const denied = await handleLocalDocumentDynamicToolCall(params, base);
-    expect(denied.response.success).toBe(false);
-    expect(denied.artifacts).toHaveLength(0);
-    const result = await handleLocalDocumentDynamicToolCall(params, ctx);
-    expect(result.response.success).toBe(true);
-    expect(result.artifacts).toHaveLength(1);
-    const payload = JSON.parse((result.response.contentItems[0] as { text: string }).text);
-    expect(payload.review).toMatchObject({ totalHours: 20, people: [{ name: "Aina", workDays: 4, hours: 20 }] });
-    const wrongHours = await handleLocalDocumentDynamicToolCall({ ...params, callId: "fictional-wrong-hours", arguments: {
-      ...params.arguments, people: [{ ...params.arguments.people[0], codeHours: { M: 4, T: 4, D: 9 } }],
-    } }, ctx);
-    expect(wrongHours.response.success).toBe(false);
-    expect(wrongHours.artifacts).toHaveLength(0);
-    const zip = await JSZip.loadAsync(await readFile(path.join(ctx.projectWorkspace, "documents/horari-demo.xlsx")));
-    const sheet = await zip.file("xl/worksheets/sheet1.xml")!.async("text");
-    expect(sheet).toContain("Botiga Demo");
-    expect(sheet).toContain("Aina");
-    expect(sheet).toContain("09:00–14:00");
-    expect(sheet.match(/<f\b/gu)).toHaveLength(2499);
-    expect((await zip.file("xl/workbook.xml")!.async("text")).match(/<sheet\b/gu)).toHaveLength(4);
-    for (const node of ["mergeCells", "pageMargins", "pageSetup"]) {
-      const re = new RegExp(`<${node}\\b[^>]*(?:/>|>[\\s\\S]*?</${node}>)`, "u");
-      expect(sheet.match(re)?.[0]).toBe(template["xl/worksheets/sheet1.xml"].match(re)?.[0]);
-    }
-    expect(await handleLocalDocumentDynamicToolCall(params, ctx)).toEqual(result);
+  it("rejects the removed customer schedule tool without producing an artifact", async () => {
+    const ctx = await context(USER_A);
+    const result = await handleLocalDocumentDynamicToolCall({
+      threadId: "runtime-thread", turnId: "runtime-turn", callId: "removed-schedule",
+      namespace: AIBRAIN_DOCUMENT_TOOL_NAMESPACE, tool: "create_example-company_schedule", arguments: {},
+    }, ctx);
+    expect(result.response.success).toBe(false);
+    expect(result.artifacts).toEqual([]);
+    expect(JSON.stringify(result.response)).toContain("LOCAL_DOCUMENT_TOOL_REJECTED");
   });
   it("persists matching structured PDF and PPTX presentations and binds slide content to replay", async () => {
     const ctx = await context(USER_A);
@@ -496,12 +460,12 @@ describe("local document dynamic tool", () => {
       throw new Error("local document generation must not access a provider");
     });
     vi.stubGlobal("fetch", externalFetch);
-    vi.stubEnv("GOOGLE_DRIVE_OAUTH_TOKEN", "arnau-token-must-remain-unused");
+    vi.stubEnv("GOOGLE_DRIVE_OAUTH_TOKEN", "member-token-must-remain-unused");
 
     const privateRequest = {
-      ...request("arnau-private-call", "docx"),
+      ...request("member-private-call", "docx"),
       arguments: {
-        ...request("arnau-private-call", "docx").arguments,
+        ...request("member-private-call", "docx").arguments,
         title: "Hello world",
         content: "Hello world",
       },

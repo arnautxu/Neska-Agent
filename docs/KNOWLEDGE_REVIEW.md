@@ -59,29 +59,6 @@ private backup. The `knowledge-migrate.py` helper checks unchanged existing sche
 and row counts, rejects unexpected preexisting tables and supports repeated runs.
 It does not coordinate running writers itself. Rehearse on database copies first.
 
-1. Complete source-schema migration for the preceding summary candidate and the
-   additive `knowledge_corrections` table in every operator/partition catalogue.
-   The table links replacement to original record/revision, reviewer and reason;
-   verified SQLite backups preserve both statements and their dependency history.
-   Retain previous host code. Pause the knowledge inventory timer and observe its
-   actual service invocation until terminal; quiesce the review service if installed.
-   Do not restart an inventory invocation on a polling timeout.
-2. Create the installation's `locks/knowledge-review` directory under the existing
-   app data volume: root owner, configured app GID, mode 0750. Its parent ownership
-   and unrelated Docker directories must not be relaxed. The service's declared
-   write path must exist before systemd starts it.
-3. Install the reviewed Python modules and
-   `aibrain-arnall-knowledge-review.service`. This fixed unit is for company-qa;
-   other installations need their own bound unit/paths. Root-generated descriptor
-   mode is 0440; socket is root:app-GID 0660. Catalogue roots remain private.
-4. Migrate existing partitions before enabling any reader that expects new tables.
-   Start only the new review daemon; resume the inventory timer. Existing app,
-   RDP mirror and Windows configuration do not need to restart or change.
-5. Perform readback with the actual app UID plus a wrong-peer negative check.
-   Validate real review records and actions only within their authorized scope.
-6. Deploy the app through separate Backend CI, GHCR publication, deployment and
-   authenticated live acceptance gates. Verify two users, denied scopes, revoked
-   roles, source changes and stale revision handling on the actual served SHA.
 
 Rollback stops/disables only the new review service and restores the prior app
 release if it was deployed. Keep its durable knowledge/event history and schema;

@@ -10,7 +10,7 @@ desde el target propio `egress-gateway` del `Dockerfile`, sobre el mismo digest
 Node fijado, y se ejecuta sin root, capabilities ni filesystem escribible.
 
 Cada instalación debe usar nombres distintos para ambas redes. Ninguna puede
-ser externa ni coincidir con BGreenly. El preflight verifica nombres, labels de
+ser externa ni coincidir con otra instalación. El preflight verifica nombres, labels de
 propiedad, ficheros y digests antes de levantar servicios.
 
 ## Política y autenticación
@@ -155,9 +155,6 @@ exactos normalizados al canal **server**, únicamente en el puerto 993. No abre
 resolución conserva los controles contra IP privadas, metadata y DNS mixto.
 El cliente IMAP mantiene TLS/SNI con validación estricta del certificado.
 
-Arnall: el hostname verificado sin credenciales el 06/10/2026 es
-`hc65.infoselfcloud.com:993`. `arnall.cat:993` no tiene un certificado válido
-para ese nombre y no debe usarse ni desactivar la validación TLS.
 
 App y automation-worker ya reciben `egress.env`; Codex conserva su allowlist
 independiente y no recibe el token server ni el secreto del buzón. Preparar

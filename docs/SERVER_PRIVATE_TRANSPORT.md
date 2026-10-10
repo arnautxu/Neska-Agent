@@ -1,9 +1,5 @@
 # Optional private Server transport
 
-Status (2026-09-07): implemented offline, **disabled and not accepted live**.
-This is shared AiBrain infrastructure, not an Arnall product fork. No service,
-Windows account/ACL, firewall, customer document or installation configuration
-was changed by this commit. Existing deployments keep the existing transport.
 
 ## Opt-in and evidence boundary
 
@@ -38,10 +34,6 @@ ACLs for the approved roots. **Filling in booleans is not that evidence. A usern
 is not evidence either.** The helper independently checks its Windows SID against
 the assessed SID and rejects an administrator token before serving requests.
 
-Arnall does not yet have that verified assessment. Do not create the opt-in files
-or enable its persistent channel until it does. MODTIME and other installations
-have independent manifests and cannot inherit an Arnall transport or credential.
-An opt-in configuration for a foreign installation is rejected before connection.
 
 ## Bounds and freshness
 
@@ -106,26 +98,6 @@ exists, the administrator must establish the state of the dedicated session.
 Application main/push does not install these host Python/PowerShell files.
 Before enabling this on any installation, its exclusive release owner must:
 
-1. Verify actual dedicated identity/session and read-only ACL evidence, approved
-   roots, RDPDR availability, and an isolated QA fixture. No employee impersonation.
-2. Install matching `rdp-read-channel.py`, `.ps1`, `rdp-channel-lease.py`, broker and
-   guarded `rdp-access.py` together. Inventory **all** existing RDP module copies
-   and update their guard plus sibling lease helper before enabling the channel;
-   otherwise a legacy sync could bypass crash quarantine. For the previously
-   inspected Arnall host these included top-level, knowledge and server-files
-   copies. Verify checksums and preserve reversible backups.
-3. Do not restart an active broker operation, sync, inventory or employee session.
-   Configure only this installation's broker; do not change global firewall,
-   Windows accounts/groups/ACLs, RDP settings or customer data.
-4. Run the Windows-specific tests on the dedicated account: SID/token rejection,
-   read copy/hash, changed source, pagination, invalid paths/reparse, timeout,
-   disconnect, confirmed stop and quarantine/recovery. These gates remain pending.
-5. Verify 2 then 4 real authorized QA identities through the app, including
-   negative cross-user/cross-tenant access and original preservation. A unit test
-   with four threads is not live multiuser acceptance.
-6. Measure actual cold/warm end-to-end p50/p95, resource usage, reopen/recovery and
-   background sync fairness. The short lease can still make legacy sync busy;
-   do not accept it until those measurements satisfy the user's requirements.
 
 Rollback: remove the explicit opt-in argument after a confirmed stop, preserve
 all copies/receipts, verify no quarantine and resume the previous broker path.

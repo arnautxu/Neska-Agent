@@ -38,7 +38,7 @@ for (const width of [320, 390, 1440]) for (const theme of ["light", "dark"] as c
     for (const r of controls) { expect(r.left).toBeGreaterThanOrEqual(0); expect(r.right).toBeLessThanOrEqual(width); expect(r.height).toBeGreaterThanOrEqual(44); }
     await input.fill("Borrador que se reemplaza.");
     await expect(page.getByRole("button", { name: "Tareas recurrentes", exact: true })).toHaveCount(0);
-    const schedules = page.getByRole("button", { name: /Trabajemos en los horarios/ });
+    const schedules = page.getByRole("button", { name: /Trabajemos con la información/ });
     await schedules.click();
     const menu = page.getByRole("menu", { name: "Horarios del equipo", exact: true });
     await expect(menu).toBeVisible();
@@ -47,7 +47,7 @@ for (const width of [320, 390, 1440]) for (const theme of ["light", "dark"] as c
     expect(r!.x).toBeGreaterThanOrEqual(11); expect(r!.x + r!.width).toBeLessThanOrEqual(width - 11);
     if (width < 640) expect(Math.abs(r!.x + r!.width / 2 - width / 2)).toBeLessThan(2);
     await page.screenshot({ path: `.impeccable/review/connector-tasks-${width}-${theme}.png` });
-    await expect(menu.getByRole("menuitem", { name: "Enviar los WhatsApps a los trabajadores", exact: true })).toBeFocused();
+    await expect(menu.getByRole("menuitem", { name: "Preparar un resumen", exact: true })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
     await expect(schedules).toBeFocused();
@@ -55,7 +55,7 @@ for (const width of [320, 390, 1440]) for (const theme of ["light", "dark"] as c
     await expect(menu).toBeVisible();
     const child = await popup.boundingBox();
     expect(child!.x).toBeGreaterThanOrEqual(11); expect(child!.x + child!.width).toBeLessThanOrEqual(width - 11);
-    await page.getByRole("menuitem", { name: "Revisar cambios de horarios", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Comparar documentos", exact: true }).click();
     await expect(input).toHaveValue(/^Revisemos los cambios de horarios/);
     await expect(input).toBeFocused();
     await page.reload();

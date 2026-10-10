@@ -12,8 +12,8 @@ vi.mock("server-only", () => ({}));
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
-const preview = { schemaVersion: 1, kind: "spreadsheet", truncated: false, sheets: [{ name: "Torre", hidden: false, cells: [{ address: "C3", value: "09:00" }] }] };
-const result = { available: true, scope: "company", path: "server-arnall/Y/Horaris.xlsm", part: 1,
+const preview = { schemaVersion: 1, kind: "spreadsheet", truncated: false, sheets: [{ name: "Arxiu", hidden: false, cells: [{ address: "C3", value: "09:00" }] }] };
+const result = { available: true, scope: "company", path: "server-example-company/Y/Horaris.xlsm", part: 1,
   sha256: "a".repeat(64), checkedAt: "2026-09-03T12:00:00Z", content: "C3: 09:00", preview };
 async function context() {
   const root = await mkdtemp(path.join(tmpdir(), "aibrain-grid-")); roots.push(root);

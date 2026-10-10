@@ -33,7 +33,7 @@ export async function initializeWeeklyTokenBudget(
     ...(options.reconcileUnlimited ? { snapshotCapturedAt: history.seed.capturedAt, measuredCursors: history.seed.cursors.length,
       activationAndChargesPreserved: true } : { countingStartsAt: history.seed.capturedAt }) };
   if (!options.apply) return { ...summary, mode: "preview" };
-  // Legacy ephemeral horarIA/knowledge calls may not have session logs. A
+  // Legacy ephemeral knowledge calls may not have session logs. A
   // measured lower bound is sufficient only when it already exhausts this
   // week; otherwise importing it could silently grant unearned allowance.
   if (!options.startNow && !options.reconcileUnlimited && summary.recordedTokens < summary.weeklyTokens) {

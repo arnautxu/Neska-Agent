@@ -35,8 +35,8 @@ async function fixture(allow = true, reply?: (request: Record<string, unknown>) 
   const roots = await network.rootsForTurn({ userId: USER, projectId: PROJECT, permissions });
   const directory = path.join(dataRoot, "locks", "document-sync");
   await mkdir(directory, { recursive: true, mode: 0o750 });
-  const descriptor = path.join(directory, "arnall.json");
-  await writeFile(descriptor, JSON.stringify({ schemaVersion: 1, installationId: config.installationId, connectionId: "arnall",
+  const descriptor = path.join(directory, "example-company.json");
+  await writeFile(descriptor, JSON.stringify({ schemaVersion: 1, installationId: config.installationId, connectionId: "example-company",
     publications: [{ scope: "company", scopeId: null }] }), { mode: 0o440 });
   let requests = 0;
   const server = createServer((socket) => {
@@ -51,8 +51,8 @@ async function fixture(allow = true, reply?: (request: Record<string, unknown>) 
     });
   });
   servers.push(server);
-  await new Promise<void>((resolve) => server.listen(path.join(directory, "arnall.sock"), resolve));
-  await chmod(path.join(directory, "arnall.sock"), 0o660);
+  await new Promise<void>((resolve) => server.listen(path.join(directory, "example-company.sock"), resolve));
+  await chmod(path.join(directory, "example-company.sock"), 0o660);
   const sync = new OnDemandDocumentSync(network, { ownerUid: process.getuid?.() ?? 0, timeoutMs: 100 });
   const context = { network, roots, sync, runtimeThreadId: "thread", runtimeTurnId: "turn" };
   const tool = (name: string, args: object) => handleCompanyFilesDynamicToolCall({ namespace: "aibrain_company_files", tool: name,
@@ -82,11 +82,11 @@ describe("on-demand company document synchronization", () => {
       await writeFile(destination, "New verified source text");
       return { state: "current", checkedAt: new Date().toISOString(), documents: 1 };
     });
-    destination = path.join(f.network.companyRoot(), "windows-arnall/new.txt");
+    destination = path.join(f.network.companyRoot(), "windows-example-company/new.txt");
     const found = await f.tool("search", { query: "new.txt" });
     expect(found.success).toBe(true);
-    expect(JSON.stringify(found)).toContain("windows-arnall/new.txt");
-    const read = await f.tool("read", { scope: "company", path: "windows-arnall/new.txt" });
+    expect(JSON.stringify(found)).toContain("windows-example-company/new.txt");
+    const read = await f.tool("read", { scope: "company", path: "windows-example-company/new.txt" });
     expect(JSON.stringify(read)).toContain("New verified source text");
     expect(f.requests()).toBe(1);
   });
@@ -97,17 +97,17 @@ describe("on-demand company document synchronization", () => {
       await writeFile(destination, "Updated value");
       return { state: "current", checkedAt: new Date().toISOString() };
     });
-    destination = path.join(f.network.companyRoot(), "windows-arnall/existing.txt");
+    destination = path.join(f.network.companyRoot(), "windows-example-company/existing.txt");
     await mkdir(path.dirname(destination));
     await writeFile(destination, "Old value");
-    const response = await f.tool("read", { scope: "company", path: "windows-arnall/existing.txt" });
+    const response = await f.tool("read", { scope: "company", path: "windows-example-company/existing.txt" });
     expect(JSON.stringify(response)).toContain("Updated value");
   });
 
   it("does not contact the broker for denied scopes, forged roots, traversal or malformed queries", async () => {
     const f = await fixture(false);
     await f.tool("search", { query: "document" });
-    expect((await f.tool("read", { scope: "company", path: "windows-arnall/a.txt" })).success).toBe(false);
+    expect((await f.tool("read", { scope: "company", path: "windows-example-company/a.txt" })).success).toBe(false);
     await expect(f.sync.refresh([{ scope: "company", scopeId: null, path: f.network.companyRoot(), readOnly: true }]))
       .rejects.toMatchObject({ code: "DOCUMENT_NETWORK_ROOT_NOT_AUTHORIZED" });
     expect(f.requests()).toBe(0);
@@ -119,9 +119,9 @@ describe("on-demand company document synchronization", () => {
 
   it("preserves a usable copy and marks it stale when refresh fails", async () => {
     const f = await fixture(true, async () => ({ state: "failed", checkedAt: "2000-01-01T00:00:00Z" }));
-    const file = path.join(f.network.companyRoot(), "windows-arnall/old.txt");
+    const file = path.join(f.network.companyRoot(), "windows-example-company/old.txt");
     await mkdir(path.dirname(file)); await writeFile(file, "Last verified copy");
-    const response = await f.tool("read", { scope: "company", path: "windows-arnall/old.txt" });
+    const response = await f.tool("read", { scope: "company", path: "windows-example-company/old.txt" });
     expect(response.success).toBe(true);
     expect(JSON.stringify(response)).toContain("Last verified copy");
     expect(JSON.stringify(response)).toContain("desactualizada");

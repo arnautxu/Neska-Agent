@@ -16,7 +16,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         await page.getByRole("button", { name: /Alex/ }).click();
         const transition = page.getByTestId("login-transition");
         await expect(transition).toBeVisible();
-        await expect(transition).toContainText("Carregant Arnall AI");
+        await expect(transition).toContainText("Carregant Example AI");
         await expect(transition).toHaveCSS("background-color", "rgb(255, 255, 255)");
         await expect(transition.locator('span[aria-hidden="true"]')).toHaveCSS("color", "rgb(24, 24, 22)");
         await expect(page.getByRole("button", { name: /Alex/ })).toHaveCount(0);

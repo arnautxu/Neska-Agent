@@ -58,9 +58,9 @@ class KnowledgeExtractionTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_csv_preserves_quoted_cells_and_row_provenance(self):
-        self.source.write_text('Cliente,Importe,Nota\nArnall,120.50,"Uno, dos"\n',encoding="utf-8")
+        self.source.write_text('Cliente,Importe,Nota\nExample Company,120.50,"Uno, dos"\n',encoding="utf-8")
         result = extractor.extract(self.source,".csv")
-        self.assertEqual(result["tables"][0]["rows"][1],["Arnall","120.50","Uno, dos"])
+        self.assertEqual(result["tables"][0]["rows"][1],["Example Company","120.50","Uno, dos"])
         self.assertEqual(result["segments"][1]["locator"],"row:2")
 
     def test_docx_preserves_paragraph_and_table_structure(self):

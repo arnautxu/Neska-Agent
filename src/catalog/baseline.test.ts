@@ -13,10 +13,10 @@ afterEach(async () => {
 });
 
 describe("installation catalog baseline", () => {
-  it("publishes Arnall Gmail and Outlook only through effective catalog grants", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "arnall-catalog-"));
+  it("publishes Example Company Gmail and Outlook only through effective catalog grants", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "example-company-catalog-"));
     roots.push(root);
-    const fixture = JSON.parse(await readFile(path.join(process.cwd(), "config/installations/arnall.qa.example.json"), "utf8")) as Record<string, unknown>;
+    const fixture = JSON.parse(await readFile(path.join(process.cwd(), "config/installations/example-company.example.json"), "utf8")) as Record<string, unknown>;
     fixture.paths = {
       dataRoot: path.join(root, "data"),
       companyContextRoot: path.join(root, "data/company-context"),
@@ -25,7 +25,7 @@ describe("installation catalog baseline", () => {
       publishWriteRoot: path.join(root, "publish-rw"),
       backupsRoot: path.join(root, "data/backups"),
     };
-    fixture.connectors = { ...(fixture.connectors as object), companyMail: { enabled: true, host: "hc65.infoselfcloud.com", emailDomain: "arnall.cat" } };
+    fixture.connectors = { ...(fixture.connectors as object), companyMail: { enabled: true, host: "mail.example.invalid", emailDomain: "example.invalid" } };
     const installation = parseInstallationConfig(fixture);
     const state = await ensureInstallationCatalog(
       new FileCatalogStore(installation.installationId, installation.paths.dataRoot),

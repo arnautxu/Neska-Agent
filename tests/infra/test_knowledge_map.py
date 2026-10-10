@@ -225,13 +225,6 @@ class MapTests(unittest.TestCase):
         with patch.object(demand.inventory.time, 'time', return_value=time.time()+16):
             self.assertFalse(demand.inventory.demand_pending(operator))
 
-    def test_schedule_has_only_metadata_source_operations(self):
-        unit = (INFRA / 'aibrain-arnall-knowledge-inventory.service').read_text()
-        self.assertIn('knowledge-inventory.py', unit)
-        self.assertIn('knowledge-map.py', unit)
-        for forbidden in ('knowledge-ingest.py', 'knowledge-reconcile.py', 'knowledge-publish.py'):
-            self.assertNotIn(forbidden, unit)
-
 
 if __name__ == '__main__':
     unittest.main()
