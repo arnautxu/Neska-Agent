@@ -82,9 +82,13 @@ spacing:
 ## Neska (octubre 2026, fases 0 i 1 del pla de UX/UI)
 
 La instal·lació Neska aplica una capa visual pròpia a `src/styles/neska.css`,
-carregada després de `globals.css`. Substitueix «Mineral Quiet» en tema clar;
-el mode fosc es redissenyarà a la fase 3 i fins llavors conserva els tokens
-antics.
+carregada després de `globals.css`. Només s'activa quan la configuració de la
+instal·lació té `branding.visualTheme: "neska"` (atribut `data-visual-theme`
+a `<html>`) i el tema és clar; la resta d'instal·lacions i el mode fosc
+conserven «Mineral Quiet». El mode fosc de Neska es redissenyarà a la fase 3.
+Els components de tasca compartits (pla, aprovació, xip i panell d'estat) fan
+servir tokens `--neska-*` que, fora d'aquesta capa, segueixen el tema actiu i
+el color d'accent de la instal·lació.
 
 - Color: blanc `#ffffff`, tinta `#161616`, secundari `#5c5c5c`, línies
   `rgba(22,22,22,.22)` i marró `#6B3A1E` només com a accent (acció principal,

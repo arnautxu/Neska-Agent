@@ -54,13 +54,15 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const locale = await installationUiLocale();
-  const branding = publicInstallationBranding(await loadInstallationConfig());
+  const installation = await loadInstallationConfig();
+  const branding = publicInstallationBranding(installation);
   const installationStyle = { "--installation-accent": branding.accentColor } as CSSProperties;
 
   return (
     <html
       lang={locale}
       data-installation={branding.installationId}
+      data-visual-theme={installation.branding.visualTheme}
       data-theme="light"
       className={`${rubik.variable} ${GeistPixelSquare.variable}`}
       suppressHydrationWarning

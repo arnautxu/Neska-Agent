@@ -215,6 +215,7 @@ type InstallationConfig = {
     logoPath: string;
     faviconPath: string;
     accentColor: string; // #RRGGBB
+    visualTheme?: "neska"; // capa visual opcional; ver DESIGN.md
   };
   paths: {
     dataRoot: string;
@@ -243,6 +244,8 @@ type PublicInstallationBranding = {
 ```
 
 ### 4.2 Límite público actual
+
+`branding.visualTheme` no forma parte de esa proyección: el layout raíz lo emite como `data-visual-theme` en `<html>` y solo activa estilos (`src/styles/neska.css`). Sin ese campo la instalación conserva el tema base.
 
 **No hay endpoint JSON de branding.** Next.js carga esta proyección server-side y la pasa como props a login y recovery. El workbench recibe un `BrainManifest` renderizado en servidor cuyo `identity.productName` y color de accent se sobrescriben con el branding exacto de instalación. Metadata, favicon y título también se generan server-side.
 

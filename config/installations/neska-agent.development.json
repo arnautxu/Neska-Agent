@@ -8,7 +8,8 @@
     "productName": "Neska",
     "logoPath": "/branding/neska/logo.svg",
     "faviconPath": "/branding/neska/favicon.svg",
-    "accentColor": "#6B3A1E"
+    "accentColor": "#6B3A1E",
+    "visualTheme": "neska"
   },
   "paths": {
     "dataRoot": "/tmp/neska-agent-dev/data",

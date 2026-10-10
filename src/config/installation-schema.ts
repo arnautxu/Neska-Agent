@@ -8,7 +8,12 @@ export type InstallationBranding = {
   logoPath: string;
   faviconPath: string;
   accentColor: string;
+  /** Optional visual layer on top of the base theme (see DESIGN.md). */
+  visualTheme?: InstallationVisualTheme;
 };
+
+export const INSTALLATION_VISUAL_THEMES = ["neska"] as const;
+export type InstallationVisualTheme = (typeof INSTALLATION_VISUAL_THEMES)[number];
 
 export type InstallationPaths = {
   dataRoot: string;
@@ -105,7 +110,7 @@ const ROOT_KEYS = [
   "usageLimits",
 ] as const;
 
-const BRANDING_KEYS = ["productName", "logoPath", "faviconPath", "accentColor"] as const;
+const BRANDING_KEYS = ["productName", "logoPath", "faviconPath", "accentColor", "visualTheme"] as const;
 
 const PATH_KEYS = [
   "dataRoot",
@@ -276,7 +281,15 @@ function parseBranding(
   if (!HEX_COLOR_PATTERN.test(accentColor)) {
     issues.push({ path: "$.branding.accentColor", message: "debe usar el formato hexadecimal #RRGGBB" });
   }
-  return { productName, logoPath, faviconPath, accentColor: accentColor.toLowerCase() };
+  let visualTheme: InstallationVisualTheme | undefined;
+  if (value.visualTheme !== undefined) {
+    if (INSTALLATION_VISUAL_THEMES.includes(value.visualTheme as InstallationVisualTheme)) {
+      visualTheme = value.visualTheme as InstallationVisualTheme;
+    } else {
+      issues.push({ path: "$.branding.visualTheme", message: `debe ser uno de: ${INSTALLATION_VISUAL_THEMES.join(", ")}` });
+    }
+  }
+  return { productName, logoPath, faviconPath, accentColor: accentColor.toLowerCase(), ...(visualTheme ? { visualTheme } : {}) };
 }
 
 function parsePaths(value: unknown, issues: InstallationConfigIssue[]): InstallationPaths {

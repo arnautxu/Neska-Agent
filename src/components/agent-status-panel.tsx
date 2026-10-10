@@ -3,7 +3,7 @@ import { useUiText } from "@/i18n/provider";
 
 import { FileText, X } from "@phosphor-icons/react";
 import type { ChatMessage } from "@/lib/chat-contract";
-import { isRelevantProcessActivity } from "@/components/turn-activity";
+import { activityPresentation, isRelevantProcessActivity } from "@/components/turn-activity";
 import { publicActivityText } from "@/ui/public-activity";
 import type { TaskProgress, TaskState } from "@/ui/task-progress";
 
@@ -50,10 +50,7 @@ export function AgentStatusPanel({
   const activity = message.activity
     .filter((item) => item.status !== "pending" && isRelevantProcessActivity(item))
     .slice(-5)
-    .flatMap((item) => {
-      const label = publicActivityText(item.label, 120);
-      return label ? [{ id: item.id, label, failed: item.status === "failed" }] : [];
-    });
+    .map((item) => ({ id: item.id, label: activityPresentation(item, t).title, failed: item.status === "failed" }));
   const pendingApproval = message.approvals.find((approval) => approval.status === "pending");
   const stepLabel = progress.current >= 0
     ? t("Paso {current}/{total}", { current: progress.current + 1, total: progress.total })

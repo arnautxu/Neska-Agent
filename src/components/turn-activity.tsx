@@ -154,7 +154,7 @@ function ActivityIcon({ item, recoveryPaused = false }: { item: ActivityItem; re
   return <Check {...props} weight="bold" />;
 }
 
-function activityPresentation(item: ActivityItem, t: UiText = spanishUiText) {
+export function activityPresentation(item: ActivityItem, t: UiText = spanishUiText) {
   const detail = publicActivityText(item.detail) ?? undefined;
   const active = item.status === "running" || item.status === "waiting";
   const safeLabel = publicActivityText(item.label, 240) ?? t("Actividad completada");
