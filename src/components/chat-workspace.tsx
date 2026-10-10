@@ -904,7 +904,7 @@ export function ChatWorkspace({
   };
 
   return (
-    <main {...dropProps} aria-busy={!hydrated} data-section="chat" data-read-only={readOnly ? "true" : "false"} className="workbench-main relative flex min-w-0 flex-1 flex-col bg-[var(--surface)]">
+    <main {...dropProps} aria-busy={!hydrated} data-section="chat" data-read-only={readOnly ? "true" : "false"} className={`workbench-main relative flex min-w-0 flex-1 flex-col bg-[var(--surface)]${agentPanelOpen ? " xl:pr-[300px]" : ""}`}>
       <header data-testid="mobile-app-header" className="mobile-app-header workbench-navigation shrink-0 items-center px-2 md:px-3">
         <div className="workbench-navigation-context flex min-w-0 items-center gap-2">
           <button aria-label={t("Mostrar u ocultar la barra lateral")} aria-expanded={sidebarOpen} className="touch-target rounded-lg p-2 text-[var(--text-subtle)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)] md:hidden" onClick={(event) => onToggleSidebar(event.currentTarget)}>
@@ -922,8 +922,6 @@ export function ChatWorkspace({
           </div>
         ) : <div aria-hidden="true" className="workbench-navigation-balance" />}
       </header>
-      <div className="flex min-h-0 flex-1">
-      <div className="relative flex min-w-0 flex-1 flex-col">
 
 
       <div
@@ -1188,7 +1186,7 @@ export function ChatWorkspace({
                   onNotice={onComposerNotice}
                 />
                 <RadialGlowButton
-                  active={false}
+                  active={!thread && !sending && !readOnly}
                   aria-label={queueingMessage ? t("Añadir mensaje a la cola") : sending ? (stopping ? t("Deteniendo respuesta") : t("Detener respuesta")) : t("Enviar mensaje")}
                   aria-busy={(!queueingMessage && stopping) || undefined}
                   className="composer-submit grid size-11 place-items-center rounded-xl bg-[var(--send-button)] text-[var(--send-button-text)] transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 sm:rounded-full"
@@ -1236,11 +1234,9 @@ export function ChatWorkspace({
           </div> : null}
         </div>
       </div>}
-      </div>
       {agentPanelOpen && thread && latestAssistant && latestProgress ? (
         <AgentStatusPanel progress={latestProgress} message={latestAssistant} request={latestRequest} onClose={() => setAgentPanelChoice({ threadId: thread.id, open: false })} />
       ) : null}
-      </div>
     </main>
   );
 }

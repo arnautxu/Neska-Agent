@@ -60,7 +60,7 @@ export function AgentStatusPanel({
     <aside
       data-testid="agent-status-panel"
       aria-label={t("Estado del agente")}
-      className="scrollbar-thin hidden w-[300px] shrink-0 overflow-y-auto border-l-2 border-[var(--neska-ink)] bg-[var(--surface)] px-5 py-5 xl:block"
+      className="agent-status-panel scrollbar-thin inset-y-0 right-0 hidden w-[300px] overflow-y-auto border-l-2 border-[var(--neska-ink)] bg-[var(--surface)] px-5 py-5 xl:block"
     >
       <div className="flex items-center justify-between">
         <h2 className="neska-px text-[11px] text-[var(--text)]">{t("Estado del agente")}</h2>

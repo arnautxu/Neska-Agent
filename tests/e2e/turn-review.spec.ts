@@ -69,7 +69,7 @@ test("plan, command, diff and approval decisions consume the typed turn contract
   await activityToggle.click();
   await expect(assistantTurn.getByText("Inspeccionar el proyecto", { exact: true })).toBeVisible();
   await expect(assistantTurn.getByText("Identifying access issue", { exact: false })).toBeVisible();
-  await expect(page.getByText("Consultando archivos del proyecto")).toBeVisible();
+  await expect(assistantTurn.getByText("Consultando archivos del proyecto")).toBeVisible();
   await expect(assistantTurn).not.toContainText("/var/lib");
   await expect(assistantTurn).not.toContainText("company-qa");
   await expect(assistantTurn).not.toContainText(uuid);

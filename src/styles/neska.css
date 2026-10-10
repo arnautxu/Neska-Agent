@@ -32,6 +32,15 @@
   font-weight: 500;
 }
 
+/* ---------- agent status panel ---------- */
+
+/* Overlays the right edge of the chat (which reserves the space) so the
+   conversation keeps its own scroll container as a direct child of main. */
+.workbench-main > .agent-status-panel {
+  position: absolute;
+  z-index: 2;
+}
+
 /* ---------- task status chip ---------- */
 
 .neska-status-chip {
@@ -175,6 +184,18 @@
   & .composer-submit:disabled {
     opacity: 0.35;
     box-shadow: none;
+  }
+
+  /* The landing send button keeps its RadialGlowButton markup; Neska shows it
+     as the same flat brown square. */
+  & .rg-button.composer-submit {
+    text-shadow: none;
+  }
+
+  & .rg-button.composer-submit::before,
+  & .rg-button.composer-submit .rg-bg,
+  & .rg-button.composer-submit .rg-shine {
+    display: none;
   }
 
   & .landing-band {
