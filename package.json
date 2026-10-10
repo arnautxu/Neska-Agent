@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "AIBRAIN_INSTALLATION_CONFIG=\"$PWD/config/installations/neska-agent.development.json\" next dev --hostname 127.0.0.1 --port 3102",
+    "dev": "AIBRAIN_INSTALLATION_CONFIG=\"${AIBRAIN_INSTALLATION_CONFIG:-$PWD/config/installations/neska-agent.development.json}\" next dev --hostname 127.0.0.1 --port 3102",
     "build": "next build",
     "build:automation-worker": "node scripts/build-automation-worker.mjs",
     "build:weekly-token-budget": "node scripts/build-weekly-token-budget.mjs",

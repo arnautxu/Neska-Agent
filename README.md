@@ -15,7 +15,9 @@ npm run dev
 ```
 
 Open http://localhost:3102. The development command selects
-`config/installations/neska-agent.development.json`; its files live under
+`config/installations/neska-agent.development.json` unless
+`AIBRAIN_INSTALLATION_CONFIG` is already set (Playwright sets it to its
+synthetic `playwright.example.json`); its files live under
 `/tmp/neska-agent-dev`, separate from AiBrain. This temporary root is suitable
 for local tests, not durable production data. The visual assets are inherited
 placeholders until Neska receives its own design.

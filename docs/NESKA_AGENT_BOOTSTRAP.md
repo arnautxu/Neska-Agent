@@ -15,7 +15,7 @@ Created: 2026-10-09 (Europe/Madrid).
 ## Changes from source
 
 - Package identity and local product name: Neska Agent / `neska-agent`.
-- Dedicated development installation: `neska-agent-dev`, port 3102, `/tmp/neska-agent-dev`.
+- Dedicated development installation: `neska-agent-dev`, port 3102, `/tmp/neska-agent-dev`. `npm run dev` only selects it when `AIBRAIN_INSTALLATION_CONFIG` is unset, so the Playwright web servers keep their synthetic installation and origin.
 - Existing product implementation and tests retained.
 - GHCR publication and Arnall deployment jobs disabled with a literal false condition.
 - Documentation distinguishes inherited AiBrain evidence from Neska status.
