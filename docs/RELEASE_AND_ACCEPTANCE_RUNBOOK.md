@@ -18,3 +18,11 @@ npm run acceptance:verify -- --manifest /private/acceptance.json --evidence-root
 The placeholder origin must be replaced with the explicitly provisioned installation origin. The manifest cannot select its own authoritative acceptance target. Local and CI evidence remain prefilters, never live acceptance.
 
 The readback pipeline contract names its future deployment workflow `Deploy Neska`; that workflow is not installed or enabled here. CI, publication and deployment run IDs must be distinct and refer to the same SHA. Credentials, raw customer content and user cookies must not enter the public acceptance packet.
+
+## Linux CI validation without deployment
+
+Backend CI runs on Ubuntu 24.04 with Node 24.18.1. Its quality build now runs the standalone security HTTP probe after compilation: synthetic local users, pre/post-recovery cookies, cross-user boundaries and task-center origin enforcement. The container job separately executes native Codex privacy canaries through the production AppArmor/seccomp/bubblewrap configuration, followed by document conversion and passive XLS acceptance. These jobs create only disposable runner resources and do not publish images or deploy an installation.
+
+Run the candidate through a pull request branch and record the head SHA, PR merge SHA/tree and final Backend CI run URL. If the default branch is an ancestor of the candidate, verify that the tested merge tree equals the candidate tree. A green subset of jobs is not a green workflow. Keep GHCR publication disabled and do not install a deployment workflow as part of validation.
+
+A domain purchase is not required to validate or test Neska. A future isolated staging server can use a subdomain of an existing operator-owned domain, or an IP-based temporary hostname such as sslip.io with an independently configured HTTPS certificate. Set installation `publicUrl` to the final HTTPS origin before testing browser authentication. A hostname is not hosting: the current backend needs a persistent Linux runtime and its own durable storage. No hostname, server or certificate is provisioned by this CI procedure.

@@ -62,6 +62,8 @@ jobs:
         run: npm run build:automation-worker
       - name: Production build
         run: npm run build
+      - name: Standalone HTTP security regressions
+        run: node --import ./scripts/register-server-only-stub.mjs --import tsx scripts/verify-security-http.ts "$RUNNER_TEMP/security-http.json"
       - name: Validate infrastructure contracts
         run: |
           npm run infra:validate
