@@ -56,10 +56,10 @@ for (const width of [320, 390, 1440]) for (const theme of ["light", "dark"] as c
     const child = await popup.boundingBox();
     expect(child!.x).toBeGreaterThanOrEqual(11); expect(child!.x + child!.width).toBeLessThanOrEqual(width - 11);
     await page.getByRole("menuitem", { name: "Comparar documentos", exact: true }).click();
-    await expect(input).toHaveValue(/^Revisemos los cambios de horarios/);
+    await expect(input).toHaveValue("Compara estos documentos de Example Laboratory y explica las diferencias…");
     await expect(input).toBeFocused();
     await page.reload();
-    await expect(input).toHaveValue(/^Revisemos los cambios de horarios/);
+    await expect(input).toHaveValue("Compara estos documentos de Example Laboratory y explica las diferencias…");
     expect(await page.locator("body").evaluate(el => el.scrollWidth)).toBeLessThanOrEqual(width);
   });
 }

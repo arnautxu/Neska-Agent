@@ -25,7 +25,7 @@ for (const [name, width, height] of [["desktop", 1440, 900], ["mobile", 390, 844
     await expect(page.getByRole("button", { name: "Añadir al mensaje", exact: true })).toBeFocused();
     await page.getByRole("button", { name: /Trabajemos con la información/ }).click();
     await page.getByRole("menuitem", { name: "Comparar documentos", exact: true }).click();
-    await expect(composer).toHaveValue(/^Revisemos los cambios de horarios/);
+    await expect(composer).toHaveValue("Compara estos documentos de Example Laboratory y explica las diferencias…");
     await expect(composer).toBeFocused();
     await expect(menu).toHaveCount(0);
     await expect(page.getByRole("menu", { name: "Horarios del equipo", exact: true })).toHaveCount(0);
