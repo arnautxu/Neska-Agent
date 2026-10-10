@@ -10,11 +10,12 @@ import type {
   WorkerTurnMemoryDependencies,
 } from "@/runtime/memory-turn";
 import { AppServerRequestTimeoutError } from "@/runtime/transport/app-server-rpc-router";
-import { createQuotaToolPermissions } from "@/runtime/quota-tool-permissions";
+import { attestQuotaToolPermissions, createQuotaToolPermissions } from "@/runtime/quota-tool-permissions";
 import { FileModelTurnQueue, type ModelTurnAdmission } from "@/runtime/model-turn-queue";
 
 const mocked = vi.hoisted(() => ({
   runtime: null as unknown,
+  workerRequests: 0,
   maintenanceReleases: 0,
   maintenanceLease: null as unknown,
   cancelTurn: null as ((remoteInterruptConfirmed: boolean) => void) | null,
@@ -55,9 +56,8 @@ vi.mock("@/runtime/worker-runtime-service", () => ({
   },
   workerAppServerForUser: async (_userId: string, lease: unknown) => {
     if (lease !== mocked.maintenanceLease) throw new Error("Worker activity lease was not forwarded.");
-    const fixture = mocked.runtime as { handle?: { roots: { userRoot?: string; workspace: string } } } | null;
-    if (fixture?.handle) fixture.handle.roots.userRoot ??= fixture.handle.roots.workspace;
-    return mocked.runtime;
+    mocked.workerRequests += 1;
+    return prepareAuthorizedEngineFixture(mocked.runtime);
   },
   registerWorkerTurnCancellation: (
     _userId: string,
@@ -138,6 +138,58 @@ function chatRequest(): ChatRequest {
   };
 }
 
+// Ordinary turn fixtures model an engine that echoes its selected profile.
+// Profile mismatch/rejection itself is tested independently in quota-tool-permissions.test.ts.
+// Warm fixtures represent threads attested during an earlier successful request.
+const preparedEngines = new WeakSet<object>();
+function prepareAuthorizedEngineFixture(value: unknown) {
+  const fixture = value as {
+    handle: { roots: { userRoot?: string; workspace: string; codexHome?: string; transportAudit?: string } };
+    client: { request: (...args: unknown[]) => Promise<unknown>; canReuseLoadedThread?: (...args: unknown[]) => boolean };
+  } | null;
+  if (!fixture) return fixture;
+  const roots = fixture.handle.roots;
+  roots.userRoot ??= roots.workspace;
+  roots.codexHome ??= path.join(roots.userRoot, "runtime", "codex-home");
+  roots.transportAudit ??= path.join(roots.userRoot, "audit", "transport");
+  const client = fixture.client;
+  if (preparedEngines.has(client)) return fixture;
+  preparedEngines.add(client);
+  const request = client.request.bind(client);
+  client.request = async (...args) => {
+    const [method, params] = args as [string, { cwd?: string; permissions?: string }];
+    if (method !== "thread/start" && method !== "thread/resume") return request(...args);
+    const attestResponse = (result: unknown) => {
+      if (!result || typeof result !== "object" || !("thread" in result)) return result;
+      return { cwd: params.cwd, approvalPolicy: "never", activePermissionProfile: { id: params.permissions }, ...result };
+    };
+    const callback = args[4] as ((result: unknown, event: unknown) => unknown) | undefined;
+    if (callback) args[4] = (result: unknown, event: unknown) => callback(attestResponse(result), event);
+    try { return attestResponse(await request(...args)); }
+    catch (error) {
+      if (error instanceof AppServerRequestTimeoutError && error.lateResponse) {
+        throw new AppServerRequestTimeoutError(error.method, error.requestId, error.timeoutMs,
+          error.lateResponse.then((result) => attestResponse(result) as typeof result));
+      }
+      throw error;
+    }
+  };
+  const reuse = client.canReuseLoadedThread?.bind(client);
+  client.canReuseLoadedThread = (...args) => {
+    const reusable = reuse?.(...args) ?? false;
+    if (reusable) {
+      const policy = createQuotaToolPermissions({
+        workspace: path.join(roots.workspace, "projects", projectId),
+        codexHome: roots.codexHome!, transportAudit: roots.transportAudit!,
+      });
+      attestQuotaToolPermissions(client, { thread: { id: args[0] }, cwd: policy.workspace,
+        approvalPolicy: "never", activePermissionProfile: { id: policy.readOnlyId } }, policy);
+    }
+    return reusable;
+  };
+  return fixture;
+}
+
 function permissions(rules: ResolvedPermissions["rules"] = []): ResolvedPermissions {
   return {
     schemaVersion: 1,
@@ -149,7 +201,13 @@ function permissions(rules: ResolvedPermissions["rules"] = []): ResolvedPermissi
     resolvedAt: new Date().toISOString(),
     fingerprint,
     sources: [],
-    rules,
+    rules: [
+      ...([{ ruleId: "documents.read", action: "consult" }, { ruleId: "tools.execute", action: "execute" }] as const)
+        .filter((rule) => !rules.some((override) => override.ruleId === rule.ruleId))
+        .map((rule) => ({ ...rule, effect: "allow" as const, instruction: "Authorized fixture capability.",
+          sourceScope: "installation" as const, sourcePolicyVersion: 1, precedence: 100 })),
+      ...rules,
+    ],
     developerInstructions: `Policy fingerprint: ${fingerprint}`,
   };
 }
@@ -576,6 +634,7 @@ describe("worker Codex turn", () => {
 
   beforeEach(() => {
     mocked.runtime = null;
+    mocked.workerRequests = 0;
     mocked.maintenanceLease = null;
     mocked.maintenanceReleases = 0;
     mocked.cancelTurn = null;
@@ -1316,8 +1375,6 @@ describe("worker Codex turn", () => {
       clientUserMessageId: userMessageId,
       runtimeWorkspaceRoots: [
         path.join(workspace, "projects", projectId),
-        workspace,
-        path.join(userRoot, "artifacts"),
       ],
       model: "gpt-5.6-terra",
       effort: "low",
@@ -1342,9 +1399,10 @@ describe("worker Codex turn", () => {
     expect(JSON.stringify(turnStart?.params)).not.toContain(path.join(staging, "tmp"));
     expect(JSON.stringify(turnStart?.params)).not.toContain("legacy-must-not-be-used");
     expect(JSON.stringify(turnStart?.params)).not.toContain('"/"');
-    expect((turnStart?.params as { sandboxPolicy?: unknown }).sandboxPolicy).toMatchObject({
-      type: "workspaceWrite",
-      writableRoots: [path.join(workspace, "projects", projectId)],
+    expect(turnStart?.params).not.toHaveProperty("sandboxPolicy");
+    expect(turnStart?.params).toMatchObject({
+      permissions: expect.stringMatching(/^aibrain-quota-write-/),
+      runtimeWorkspaceRoots: [path.join(workspace, "projects", projectId)],
     });
     expect(turnStart?.params).toMatchObject({ approvalsReviewer: "auto_review" });
     const threadStart = calls.find((call) => call.method === "thread/start");
@@ -2389,161 +2447,25 @@ describe("worker Codex turn", () => {
     expect(events).not.toContainEqual({ type: "done" });
   });
 
-  it("declines generic App Server execution requests server-side when tools.execute is denied", async () => {
-    const userRoot = await mkdtemp(path.join(tmpdir(), "aibrain-worker-deny-"));
-    const workspace = path.join(userRoot, "workspace");
-    const staging = path.join(userRoot, "staging");
-    await import("node:fs/promises").then(async ({ mkdir }) => {
-      await mkdir(workspace, { mode: 0o700 });
-      await mkdir(path.join(staging, "threads"), { recursive: true, mode: 0o700 });
+  it.each(["missing-tools", "missing-documents", "execute", "consult", "respond"])(
+    "rejects unsupported native access before reading context or contacting a worker (%s)", async (restriction) => {
+      const policy = permissions();
+      if (restriction.startsWith("missing")) {
+        policy.rules = policy.rules.filter((rule) => rule.ruleId !==
+          (restriction === "missing-tools" ? "tools.execute" : "documents.read"));
+      } else {
+        policy.rules = [...policy.rules, { ruleId: "restricted.resource", action: restriction as "execute" | "consult" | "respond",
+          effect: "deny", instruction: "Restricted capability.", sourceScope: "user", sourcePolicyVersion: 1, precedence: 400 }];
+      }
+      const snapshot = vi.fn();
+      await expect(runWorkerCodexTurn(chatRequest(), installationId, userId, null, {
+        tenantId: installationId, mode: "codex", codexBinary: "codex", codexHome: null,
+        workspace: "/unused", model: null, approvalPolicy: "never", sandbox: "workspace-write",
+      }, policy, {} as never, memoryDependencies({ buildPromptSnapshot: snapshot }), [],
+      new AbortController().signal, async () => undefined)).rejects.toMatchObject({ code: "PERMISSION_POLICY_DENIED" });
+      expect(snapshot).not.toHaveBeenCalled();
+      expect(mocked.workerRequests).toBe(0);
     });
-    let handlers: {
-      onServerRequest(request: unknown, envelope: unknown): Promise<unknown>;
-      onNotification(value: unknown): Promise<void> | void;
-    } | null = null;
-    const responses: unknown[] = [];
-    const client = {
-      router: {
-        registerTurn(_threadId: string, _localTurnId: string, value: typeof handlers) {
-          handlers = value;
-          return {
-            threadId: "runtime-thread-deny",
-            localTurnId: assistantMessageId,
-            bindRuntimeTurn() {},
-            dispose() {},
-          };
-        },
-      },
-      async connectionSummary() {
-        return {
-          connected: true,
-          authMode: "chatgpt",
-          planType: "team",
-          models: [],
-          skills: [],
-          webSearch: false,
-          imageGeneration: false,
-          processWarm: true,
-          rateLimit: null,
-          usage: null,
-        };
-      },
-      async resolvedSkills() { return []; },
-      async request(
-        method: string,
-        _params: unknown,
-        purpose: string,
-        _timeout?: number,
-        beforeResolve?: (value: never, event: never) => Promise<void> | void,
-      ) {
-        if (method === "thread/start") {
-          const result = { thread: { id: "runtime-thread-deny" } };
-          await beforeResolve?.(result as never, {
-            eventId: "deny-thread-response",
-            sequence: 1,
-            occurredAt: new Date().toISOString(),
-            message: { kind: "rpc-response", rpc: { id: purpose, result } },
-          } as never);
-          return result;
-        }
-        if (method === "turn/start") {
-          const result = { turn: { id: "runtime-turn-deny" } };
-          await beforeResolve?.(result as never, {
-            eventId: "deny-turn-response",
-            sequence: 2,
-            occurredAt: new Date().toISOString(),
-            message: { kind: "rpc-response", rpc: { id: purpose, result } },
-          } as never);
-          queueMicrotask(() => {
-            void (async () => {
-              for (const [index, requestMethod] of [
-                "item/commandExecution/requestApproval",
-                "item/fileChange/requestApproval",
-                "item/permissions/requestApproval",
-              ].entries()) {
-                const request = {
-                  id: index + 1,
-                  method: requestMethod,
-                  params: {
-                    threadId: "runtime-thread-deny",
-                    turnId: "runtime-turn-deny",
-                    itemId: `denied-${index}`,
-                    command: "touch forbidden",
-                    permissions: { fileSystem: { write: ["/forbidden"] } },
-                  },
-                };
-                responses.push(await handlers!.onServerRequest(request, {
-                  eventId: `deny-request-${index}`,
-                  sequence: index + 3,
-                  occurredAt: new Date().toISOString(),
-                  message: { kind: "server-request", rpc: request },
-                }));
-              }
-              await handlers!.onNotification({
-                method: "turn/completed",
-                params: {
-                  threadId: "runtime-thread-deny",
-                  turn: { id: "runtime-turn-deny", status: "completed", items: [{ type: "agentMessage", id: "fixture-final", phase: "final_answer", text: "Fixture completed answer." }], error: null },
-                },
-              });
-            })();
-          });
-          return result;
-        }
-        return {};
-      },
-    };
-    mocked.runtime = {
-      config: { installationId, paths: installationPaths },
-      handle: { roots: { workspace, staging, artifacts: path.join(userRoot, "artifacts") } },
-      client,
-    };
-    const approvalStore = {
-      createPending: vi.fn(() => { throw new Error("A policy denial must not create a pending approval."); }),
-    };
-    const events: Array<Record<string, unknown>> = [];
-    await runWorkerCodexTurn(
-      chatRequest(),
-      installationId,
-      userId,
-      null,
-      {
-        tenantId: installationId,
-        mode: "codex",
-        codexBinary: "codex",
-        codexHome: null,
-        workspace: "/unused",
-        model: null,
-        approvalPolicy: "on-request",
-        sandbox: "workspace-write",
-      },
-      permissions([{
-        ruleId: "tools.execute",
-        action: "execute",
-        effect: "deny",
-        instruction: "Do not execute generic tools.",
-        sourceScope: "user",
-        sourcePolicyVersion: 1,
-        precedence: 400,
-      }]),
-      approvalStore as never,
-      memoryDependencies(),
-      [],
-      new AbortController().signal,
-      async (event) => { events.push(event); },
-    );
-
-    expect(approvalStore.createPending).not.toHaveBeenCalled();
-    expect(responses).toEqual([
-      { decision: "decline" },
-      { decision: "decline" },
-      { permissions: {}, scope: "turn" },
-    ]);
-    expect(events.filter((event) => event.type === "approval")).toHaveLength(3);
-    expect(events.filter((event) => event.type === "approval"))
-      .toEqual(events.filter((event) => event.type === "approval").map((event) =>
-        expect.objectContaining({ item: expect.objectContaining({ status: "declined" }) })));
-  });
 
   it("fails closed before contacting a worker when the memory store is unavailable", async () => {
     let audited = false;

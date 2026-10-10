@@ -11,7 +11,7 @@ vi.mock("server-only", () => ({}));
 it.each([false, true])("fences delayed journal startup after stop (managed=%s)", async (managed) => {
   const root = await mkdtemp("/tmp/aibrain-a1-race-");
   const context = { installationId: "a1-test", userId: "00000000-0000-4000-8000-000000000001",
-    workerId: "worker-test", environment: {}, workspace: root, transportAudit: root } as WorkerLaunchContext;
+    workerId: "worker-test", environment: { CODEX_HOME: `${root}/codex-home` }, workspace: root, transportAudit: root } as WorkerLaunchContext;
   const processFactory = vi.fn(() => spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: ["pipe", "pipe", "pipe"], env: { NODE_ENV: "test" } }));
   let release!: () => void;
   const blocked = new Promise<void>((resolve) => { release = resolve; });
@@ -44,7 +44,7 @@ it.each([false, true])("fences delayed journal startup after stop (managed=%s)",
 it("joins concurrent starts and stops, and rejects pending transport readiness on stop", async () => {
   const root = await mkdtemp("/tmp/aibrain-a1-deferred-");
   const context = { installationId: "a1-test", userId: "00000000-0000-4000-8000-000000000001",
-    workerId: "worker-test", environment: {}, workspace: root, transportAudit: root } as WorkerLaunchContext;
+    workerId: "worker-test", environment: { CODEX_HOME: `${root}/codex-home` }, workspace: root, transportAudit: root } as WorkerLaunchContext;
   const processFactory = vi.fn(() => spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: ["pipe", "pipe", "pipe"], env: { NODE_ENV: "test" } }));
   const runtime = new LocalGatewayWorkerRuntimeFactory({ processFactory }).create(context);
   try {
@@ -65,7 +65,7 @@ it("joins concurrent starts and stops, and rejects pending transport readiness o
 it("drains a delayed listen before releasing the child and leaves another user alive", async () => {
   const root = await mkdtemp("/tmp/aibrain-a1-listen-");
   const context = { installationId: "a1-test", userId: "00000000-0000-4000-8000-000000000001",
-    workerId: "worker-test", environment: {}, workspace: root, transportAudit: root } as WorkerLaunchContext;
+    workerId: "worker-test", environment: { CODEX_HOME: `${root}/codex-home` }, workspace: root, transportAudit: root } as WorkerLaunchContext;
   const processFactory = vi.fn(() => spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: ["pipe", "pipe", "pipe"], env: { NODE_ENV: "test" } }));
   const other = new PrivateWorkerGateway({ context: { ...context, userId: "00000000-0000-4000-8000-000000000002", transportAudit: `${root}/other` }, processFactory });
   await other.start();

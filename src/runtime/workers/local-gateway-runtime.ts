@@ -1060,6 +1060,7 @@ class DeferredAppServerTransport implements AppServerTransport {
 export type LocalGatewayWorkerRuntimeFactoryOptions = {
   sharedAuth?: SharedAuthProvider;
   processFactory?: PrivateWorkerGatewayOptions["processFactory"];
+  /** @deprecated Privacy is mandatory; this option cannot disable it. */
   quotaToolPrivacy?: boolean;
   now?: () => number;
   maxRetainedCompletedRequests?: number;
@@ -1089,12 +1090,10 @@ class LocalGatewayManagedRuntime implements ManagedWorkerRuntime {
     if (this.gateway) return;
     // Profile identity uses the employee's base roots, shared by every service
     // role. App Server must retain these definitions across settings updates.
-    const configOverrides = this.options.quotaToolPrivacy
-      ? quotaToolPermissionConfigOverrides({
-        codexHome: this.context.environment.CODEX_HOME,
-        transportAudit: this.context.transportAudit,
-      })
-      : undefined;
+    const configOverrides = quotaToolPermissionConfigOverrides({
+      codexHome: this.context.environment.CODEX_HOME,
+      transportAudit: this.context.transportAudit,
+    });
     // The web app and the detached automation worker deliberately run
     // independent Codex App Server processes.  Their replay/ledger journals
     // must therefore be durable per service role, never shared: otherwise one

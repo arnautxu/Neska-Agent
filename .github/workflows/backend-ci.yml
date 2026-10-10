@@ -40,6 +40,8 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
         run: npm ci
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Verify generated Codex contracts
         run: npm run contracts:verify
       - name: Typecheck

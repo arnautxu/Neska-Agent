@@ -18,6 +18,8 @@ The document sync broker now requires operator-provided `--installation-id`, `--
 
 This is local work on the fetched source revision in an isolated worktree. Validation results are recorded in the base architecture before completion. No publication, deployment, migration or authenticated production acceptance is performed by this cleanup. The customer deployment workflow and customer systemd units are removed; generic infrastructure templates and transactional release/backup tools remain.
 
-## Open security work
+## Security remediation (2026-10-10)
 
-The prior local audit identified independent core issues: password recovery session revocation, the task-center origin guard, runtime privacy coupled to quotas, native-tool permission enforcement and root-package advisories. Removing a business integration does not close those findings. They require separate fixes and negative acceptance before real customer onboarding.
+The five core findings now have local remediations: password recovery revokes existing local sessions under a per-identity cross-process lock; task-center mutations require the configured same origin; private native filesystem profiles apply regardless of usage quotas; unsupported restricted native turns are rejected before context/model dispatch; production sharp/source-map-js dependencies are updated.
+
+See [SECURITY_REMEDIATION.md](SECURITY_REMEDIATION.md) for behavior, evidence and release requirements. The development-only braces advisory has no upstream patched version at this date and remains tracked. Local validation does not establish Backend CI, GHCR publication, Linux container acceptance, deployment or authenticated live acceptance. No real customer connection has been configured.

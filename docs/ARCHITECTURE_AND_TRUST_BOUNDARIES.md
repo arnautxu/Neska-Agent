@@ -8,6 +8,10 @@ El bootstrap de propietarios es un acto de host separado de las sesiones de empl
 
 ## Runtime, approvals y secretos
 
+El perfil nativo privado es obligatorio con y sin cuotas. Niega credenciales, sesiones, logs, SQLite internos y auditoría de transporte; solo el proyecto del turno es raíz de escritura. El servidor verifica el perfil devuelto por el motor antes del turno y deniega escaladas nativas. Las restricciones que ese sandbox no puede representar impiden arrancar el turno; no se delegan al prompt. Véase [SECURITY_REMEDIATION.md](SECURITY_REMEDIATION.md).
+
+Login y recuperación comparten un lock durable por instalación/email: una recuperación confirmada revoca las sesiones locales previas antes de emitir la nueva. Los challenges iniciales obsoletos no pueden volver a cambiar la contraseña. Esto no es una transacción distribuida con el proveedor: un fallo entre actualizar la contraseña remota y revocar localmente sigue requiriendo recuperación operacional.
+
 
 ## Threat model focal
 

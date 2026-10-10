@@ -42,7 +42,6 @@ import {
   planFromNotification,
   resolvedApproval,
   RuntimeNotReadyError,
-  sandboxPolicy,
   type CodexTurnEvent,
   type LegacyServerRequest,
 } from "@/runtime/codex-app-server";
@@ -72,6 +71,7 @@ import {
 } from "@/runtime/browser/server-service";
 import {
   assertCodexTurnPermissionBinding,
+  assertNativeTurnPermissions,
   buildCodexDeveloperInstructions,
   permissionAllowsGenericToolExecution,
 } from "@/runtime/permission-turn";
@@ -512,6 +512,7 @@ async function runWorkerCodexTurnAttempt(
     authenticatedUserId,
     permissions,
   );
+  assertNativeTurnPermissions(permissions);
   const productIdentityResponse = productIdentityResponseForQuestion(chatRequest.message, assistantName);
   if (productIdentityResponse) {
     await emit({ type: "content", value: productIdentityResponse });
@@ -742,7 +743,6 @@ async function runWorkerCodexTurnAttempt(
   // source-ro/.git and fail on the intentionally read-only mount.
   const runtimeWorkspaceRoots = uniqueAbsoluteRoots([
     projectWorkspace,
-    ...(runtime.config.usageLimits ? [] : [runtime.handle.roots.workspace, runtime.handle.roots.artifacts]),
   ]);
   await mkdir(projectWorkspace, { recursive: true, mode: 0o700 });
   submission = await DurableTurnSubmission.open({
@@ -940,27 +940,25 @@ async function runWorkerCodexTurnAttempt(
       "Este turno se ejecuta sin una sesión web abierta. Usa web, skills, archivos y conectores de lectura actualmente autorizados como en un chat normal. No solicites ni esperes aprobaciones interactivas. Si una acción sensible requiere aprobación y no existe una autorización durable previa vinculada a esta ejecución, no la intentes: explica el bloqueo en el resultado.",
     ] : []),
   ].filter(Boolean).join("\n\n");
-  const quotaToolPermissions = runtime.config.usageLimits ? createQuotaToolPermissions({
+  const quotaToolPermissions = createQuotaToolPermissions({
     workspace: projectWorkspace,
     codexHome: runtime.handle.roots.codexHome,
     transportAudit: runtime.handle.roots.transportAudit,
-  }) : null;
-  const quotaPermissionId = quotaToolPermissions
-    ? quotaToolPermissionId(quotaToolPermissions, effectiveSandbox(runtimeConfig, chatRequest))
-    : null;
+  });
+  const quotaPermissionId = quotaToolPermissionId(quotaToolPermissions, effectiveSandbox(runtimeConfig, chatRequest));
   const commonThreadParams = {
     ...(selectedModel ? { model: selectedModel } : {}),
     cwd: projectWorkspace,
     runtimeWorkspaceRoots,
-    approvalPolicy: quotaToolPermissions ? "never" as const : runtimeConfig.approvalPolicy,
+    approvalPolicy: "never" as const,
     approvalsReviewer: SERVER_APPROVALS_REVIEWER,
-    ...(quotaPermissionId ? { permissions: quotaPermissionId } : { sandbox: effectiveSandbox(runtimeConfig, chatRequest) }),
+    permissions: quotaPermissionId,
     config: { web_search: "live", ...connectorAppConfig },
     developerInstructions,
   };
   const reuseLoadedThread = runtimeThreadId !== null &&
     runtime.client.canReuseLoadedThread(runtimeThreadId, true) &&
-    (!quotaToolPermissions || hasAttestedQuotaToolPermissions(runtime.client, runtimeThreadId, quotaToolPermissions));
+    hasAttestedQuotaToolPermissions(runtime.client, runtimeThreadId, quotaToolPermissions);
   let recovered: RecoveredTurn | null = null;
   let terminalPublication: Promise<void> | null = null;
   const publishTerminal = async (publish: () => Promise<void>) => {
@@ -1053,7 +1051,7 @@ async function runWorkerCodexTurnAttempt(
     await projectRecoveredTurn(recovered, envelope);
   };
   const persistConfiguredThreadIdentity = async (result: JsonValue, envelope: AppServerEvent) => {
-    if (quotaToolPermissions) attestQuotaToolPermissions(runtime.client, result, quotaToolPermissions);
+    attestQuotaToolPermissions(runtime.client, result, quotaToolPermissions);
     await persistThreadIdentity(result, envelope);
   };
   // Each observation must read current remote state, not a cached response to
@@ -1230,7 +1228,7 @@ async function runWorkerCodexTurnAttempt(
           conversionGate: services.conversionGate } } : {}),
       });
     });
-  if (quotaToolPermissions && !hasAttestedQuotaToolPermissions(runtime.client, threadId, quotaToolPermissions)) {
+  if (!hasAttestedQuotaToolPermissions(runtime.client, threadId, quotaToolPermissions)) {
     throw new Error("No se han podido verificar los permisos privados de la conversación. Vuelve a conectar el asistente.");
   }
 
@@ -2221,13 +2219,9 @@ async function runWorkerCodexTurnAttempt(
       ],
       cwd: projectWorkspace,
       runtimeWorkspaceRoots,
-      approvalPolicy: quotaToolPermissions ? "never" as const : runtimeConfig.approvalPolicy,
+      approvalPolicy: "never" as const,
       approvalsReviewer: SERVER_APPROVALS_REVIEWER,
-      ...(quotaPermissionId ? { permissions: quotaPermissionId } : { sandboxPolicy: sandboxPolicy(
-        { ...runtimeConfig, workspace: projectWorkspace },
-        chatRequest,
-        [],
-      ) }),
+      permissions: quotaPermissionId,
       ...(selectedModel ? { model: selectedModel } : {}),
       ...(selectedEffort ? { effort: selectedEffort } : {}),
       // Keep simple turns concise while preserving the richer public activity
