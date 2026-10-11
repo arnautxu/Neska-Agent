@@ -194,6 +194,15 @@ describe("InstallationConfig", () => {
     })).toThrow("AIBRAIN_INSTALLATION_CONFIG debe ser una ruta absoluta.");
   });
 
+  it("uses the bundled Neska preview config on Vercel preview deployments", async () => {
+    expect(resolveInstallationConfigPath({ cwd: "/var/task", env: { NODE_ENV: "production", VERCEL_ENV: "preview" } }))
+      .toBe("/var/task/config/installations/neska-agent.vercel-preview.json");
+    expect(() => resolveInstallationConfigPath({ env: { NODE_ENV: "production", VERCEL_ENV: "production" } }))
+      .toThrow("AIBRAIN_INSTALLATION_CONFIG es obligatorio en producción.");
+    const loaded = await loadInstallationConfig({ cwd: repositoryRoot, env: { NODE_ENV: "production", VERCEL_ENV: "preview" } });
+    expect(loaded.branding.visualTheme).toBe("neska");
+  });
+
   it("uses the synthetic development fixture only outside production", async () => {
     const loaded = await loadInstallationConfig({
       cwd: repositoryRoot,
