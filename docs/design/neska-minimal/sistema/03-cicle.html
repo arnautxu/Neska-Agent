@@ -1,0 +1,131 @@
+<!doctype html><html lang="ca"><head><meta charset="utf-8"><title>Neska · Cicle d'una tasca</title>
+<link rel="stylesheet" href="ds.css">
+<style>
+.flow { display: flex; align-items: center; gap: 0; margin: 40px 0 8px; }
+.flow .n { display: flex; gap: 10px; align-items: center; font-size: 14px; padding: 8px 14px; border: 1px solid var(--line-2); border-radius: var(--r); }
+.flow .a { flex: 1; height: 1px; background: var(--line-2); position: relative; min-width: 40px; }
+.flow .a::after { content: ""; position: absolute; right: 0; top: -3px; border: 3.5px solid transparent; border-left-color: var(--line-2); border-right: 0; }
+.flow .a .t { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.flow-cap { font-size: 13px; color: var(--ink-2); margin-bottom: 40px; }
+.frames { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.fr { border: 1px solid var(--line); border-radius: var(--r); padding: 28px 28px 24px; display: flex; flex-direction: column; min-height: 560px; }
+.fr .hd { display: flex; align-items: center; gap: 8px; }
+.fr .hd .lbl { color: var(--ink-2); }
+.fr h2 { margin-top: 10px; font-size: 22px; font-weight: 500; letter-spacing: -.01em; line-height: 1.25; }
+.fr .lead { margin-top: 8px; font-size: 14px; color: var(--ink-2); }
+.fr .steps, .fr .perm, .fr .file, .fr .note { width: 100%; }
+.fr .steps { margin-top: 20px; }
+.fr .step { font-size: 14px; padding: 10px 0; grid-template-columns: 30px 1fr auto; }
+.fr .perm { margin-top: 18px; padding: 14px 16px; }
+.fr .perm h3 { font-size: 15px; }
+.fr .perm p { font-size: 13.5px; }
+.fr .perm .ctas { flex-wrap: wrap; }
+.fr .ctas { margin-top: auto; padding-top: 20px; display: flex; gap: 8px; align-items: center; }
+.fr .meta { margin-top: 16px; font-size: 13px; color: var(--ink-3); }
+.fr .when { margin-top: 20px; font-size: 13px; color: var(--ink-3); }
+.cap2 { margin-top: 14px; font-size: 13px; color: var(--ink-2); }
+.cap2 b { font-weight: 500; color: var(--ink); }
+.big { font-size: 15px; margin-top: 18px; line-height: 1.55; }
+.big b { font-weight: 500; }
+.coll { margin-top: 12px; font-size: 13px; color: var(--ink-3); display: flex; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.coll .m { margin-left: auto; }
+.runs { margin-top: 18px; border-top: 1px solid var(--line); }
+.runs .r { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.runs .r .d { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+</style></head><body>
+<div class="sheet">
+  <div class="sheet-h"><h1>Cicle d'una tasca</h1><span class="lbl">Neska · sistema minimal · v0.1</span></div>
+
+  <div class="flow">
+    <span class="n"><span class="st plan"></span>Pla proposat</span><span class="a"><span class="t">Comença</span></span>
+    <span class="n"><span class="st live"></span>En curs</span><span class="a"><span class="t">Acció sensible</span></span>
+    <span class="n"><span class="st wait"></span>T'espera</span><span class="a"><span class="t">Permet</span></span>
+    <span class="n"><span class="st live"></span>En curs</span><span class="a"><span class="t">Últim pas</span></span>
+    <span class="n"><span class="st done"></span>Feta</span><span class="a"><span class="t">Repeteix</span></span>
+    <span class="n"><span class="st queued"></span>Programada</span>
+  </div>
+  <div class="flow-cap">Una tasca és la mateixa pantalla de principi a fi. Només canvia el que té el focus: el pla, el pas viu, el teu permís o el resultat.</div>
+
+  <div class="frames">
+    <!-- 1 plan -->
+    <div><div class="fr">
+      <div class="hd"><span class="st plan"></span><span class="lbl">Pla proposat</span></div>
+      <h2>Conciliació factures octubre</h2>
+      <div class="lead">Ho faria en cinc passos. Pots canviar-los abans que comenci.</div>
+      <div class="steps">
+        <div class="step edit"><span class="n">01</span><span class="t">Llegir les 38 factures</span><span class="r">Drive</span></div>
+        <div class="step edit"><span class="n">02</span><span class="t">Normalitzar l'extracte bancari</span><span class="r">Banc</span></div>
+        <div class="step edit"><span class="n">03</span><span class="t">Creuar imports, dates i NIF</span><span class="r"></span></div>
+        <div class="step edit"><span class="n">04</span><span class="t">Generar l'informe de diferències</span><span class="r"></span></div>
+        <div class="step edit"><span class="n">05</span><span class="t">Enviar correus als proveïdors</span><span class="tag">Amb permís</span></div>
+      </div>
+      <div class="meta">Uns 4 minuts · no enviaré res sense preguntar-te</div>
+      <div class="ctas"><span class="btn pri">Comença <kbd>⏎</kbd></span><span class="btn ghost">Afegeix un pas</span></div>
+    </div><div class="cap2"><b>Focus: el pla.</b> Només surt quan la tasca és llarga o toca eines externes. Les tasques curtes comencen directament.</div></div>
+
+    <!-- 2 running -->
+    <div><div class="fr">
+      <div class="hd"><span class="st live"></span><span class="lbl">En curs · pas 3 de 5 · <span class="mono">02:41</span></span></div>
+      <h2>Conciliació factures octubre</h2>
+      <div class="steps">
+        <div class="step done"><span class="n">01</span><span class="t">Llegir les 38 factures</span><span class="r">0:41</span></div>
+        <div class="step done"><span class="n">02</span><span class="t">Normalitzar l'extracte</span><span class="r">0:12</span></div>
+        <div class="step run"><span class="n">03</span><span class="t">Creuar imports, dates i NIF</span><span class="r">29/38</span><div class="sub">Llegint F-2026-0932.pdf<span class="caret"></span></div><div class="bar"><i style="width:76%"></i></div></div>
+        <div class="step todo"><span class="n">04</span><span class="t">Generar l'informe</span><span class="r"></span></div>
+        <div class="step todo"><span class="n">05</span><span class="t">Enviar correus</span><span class="tag">Amb permís</span></div>
+      </div>
+      <div class="file" style="margin-top:12px"><span class="ic gen"></span><div><div class="nm">conciliacio-octubre.xlsx</div><div class="mt">Generant · 29 de 38</div></div></div>
+      <div class="ctas"><span class="btn ghost">Atura</span><span class="btn ghost" style="margin-left:auto">Activitat</span></div>
+    </div><div class="cap2"><b>Focus: el pas viu.</b> És l'únic que creix i l'únic en marró. Pots tancar la pantalla: la tasca continua.</div></div>
+
+    <!-- 3 waiting -->
+    <div><div class="fr">
+      <div class="hd"><span class="st wait"></span><span class="lbl">T'espera · pas 5 de 5</span></div>
+      <h2>Conciliació factures octubre</h2>
+      <div class="perm"><div class="lbl">Necessito el teu permís</div><h3>Enviar un correu a Ferreteria Puig</h3><p>La factura és de 1.240,00 € i el banc en mostra 1.204,00 €. Els reclamo els 36,00 €.</p>
+        <div class="ctas" style="margin-top:14px;padding-top:0"><span class="btn pri">Permet <kbd>⏎</kbd></span><span class="btn">Revisa</span><span class="btn ghost">Ara no</span></div></div>
+      <div class="steps" style="margin-top:20px">
+        <div class="step done"><span class="n">··</span><span class="t">Passos 1 a 4 fets</span><span class="r">3:58</span></div>
+      </div>
+      <div class="when">També t'ho he deixat a la Safata. Si no hi ets, et notifico al mòbil.</div>
+    </div><div class="cap2"><b>Focus: el teu permís.</b> Puja a dalt de tot. La resta del pla es replega en una línia.</div></div>
+
+    <!-- 4 failed step -->
+    <div><div class="fr">
+      <div class="hd"><span class="st live"></span><span class="lbl">En curs · 1 incidència</span></div>
+      <h2>Conciliació factures octubre</h2>
+      <div class="steps">
+        <div class="step done"><span class="n">01</span><span class="t">Llegir les factures</span><span class="r">37/38</span></div>
+        <div class="step fail"><span class="n">↳</span><span class="t">No he pogut llegir F-2026-0940.pdf</span><span class="r">✕</span><div class="sub txt">Està protegit amb contrasenya. He seguit amb la resta.</div><div class="acts"><span class="btn sm">Puja'l de nou</span><span class="btn sm ghost">Salta-la</span></div></div>
+        <div class="step run"><span class="n">02</span><span class="t">Normalitzar l'extracte</span><span class="r">12/41</span><div class="bar"><i style="width:30%"></i></div></div>
+        <div class="step todo"><span class="n">03</span><span class="t">Creuar imports, dates i NIF</span><span class="r"></span></div>
+      </div>
+      <div class="when">Un error no atura la tasca. Neska diu què ha passat, què ha fet i què pots fer tu.</div>
+    </div><div class="cap2"><b>Focus: la incidència, dins del pas.</b> Sense vermell ni alarmes: una creu, una frase i dues sortides.</div></div>
+
+    <!-- 5 done -->
+    <div><div class="fr">
+      <div class="hd"><span class="st done"></span><span class="lbl">Feta · <span class="mono">4:12</span></span></div>
+      <h2>Conciliació factures octubre</h2>
+      <div class="big">37 factures quadren. <b>Ferreteria Puig</b> tenia una diferència de <b>36,00 €</b> i ja els he escrit.</div>
+      <div class="file" style="margin-top:14px"><span class="ic"></span><div><div class="nm">conciliacio-octubre.xlsx</div><div class="mt">38 files · 1 diferència</div></div><span class="open">Obre ↗</span></div>
+      <div class="coll"><span class="st done"></span>5 passos · 142 accions<span class="m">Mostra ▾</span></div>
+      <div class="ctas"><span class="btn">Fes-ho cada mes</span><span class="btn ghost">Nova tasca</span></div>
+    </div><div class="cap2"><b>Focus: el resultat.</b> Primer què ha passat, després el fitxer. El procés queda plegat. Neska proposa repetir-ho.</div></div>
+
+    <!-- 6 scheduled -->
+    <div><div class="fr">
+      <div class="hd"><span class="st queued"></span><span class="lbl">Programada · cada dia 1 · 09:00</span></div>
+      <h2>Conciliació mensual</h2>
+      <div class="lead">Propera execució: <span class="mono">dl 1 nov · 09:00</span>. Et pregunto abans d'enviar correus.</div>
+      <div class="runs">
+        <div class="r"><span class="st done"></span><span>Octubre · 1 diferència reclamada</span><span class="d">4:12</span></div>
+        <div class="r"><span class="st done"></span><span>Setembre · tot quadra</span><span class="d">3:40</span></div>
+        <div class="r"><span class="st fail"></span><span>Agost · el banc no responia</span><span class="d">0:20</span></div>
+      </div>
+      <div class="ctas"><span class="btn">Executa ara</span><span class="btn ghost">Pausa</span><span class="btn ghost" style="margin-left:auto">Edita</span></div>
+    </div><div class="cap2"><b>Focus: la propera vegada.</b> Una automatització és una tasca que recorda com es fa. L'historial és una llista, no un dashboard.</div></div>
+  </div>
+</div>
+<script src="about:blank"></script>
+</body></html>

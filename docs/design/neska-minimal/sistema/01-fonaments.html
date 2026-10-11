@@ -1,0 +1,122 @@
+<!doctype html><html lang="ca"><head><meta charset="utf-8"><title>Neska · Fonaments</title>
+<link rel="stylesheet" href="ds.css">
+<style>
+.pr { display: grid; grid-template-columns: repeat(5, 1fr); gap: 24px; }
+.pr .p .k { font-family: var(--px); font-size: 11px; color: var(--acc); }
+.pr .p h3 { margin-top: 8px; font-size: 15px; font-weight: 500; }
+.pr .p p { margin-top: 4px; font-size: 13px; color: var(--ink-2); }
+.sw { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.sw .c .chip { height: 72px; border: 1px solid var(--line); }
+.sw .c .nm { margin-top: 10px; font-size: 14px; }
+.sw .c .cap { margin-top: 2px; display: block; }
+.ratio { margin-top: 24px; display: flex; height: 12px; }
+.ratio i { display: block; }
+.ty .r { display: grid; grid-template-columns: 230px 1fr; align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.ty .r:first-child { padding-top: 0; }
+.sp { display: flex; align-items: flex-end; gap: 28px; }
+.sp .b { background: var(--acc); }
+.sp .cell { align-items: center; }
+.lines .l { display: grid; grid-template-columns: 200px 1fr; align-items: center; padding: 10px 0; gap: 24px; }
+.mo { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.mo .demo { height: 72px; border: 1px solid var(--line); display: grid; place-items: center; }
+.mo h3 { margin-top: 10px; font-size: 14px; font-weight: 500; }
+.mo p { font-size: 13px; color: var(--ink-2); }
+.icons { display: flex; gap: 32px; }
+.icons .cell { align-items: center; }
+.icons canvas { width: 36px; height: 36px; }
+.mas { display: flex; gap: 48px; align-items: flex-end; }
+.mas .cell { align-items: center; }
+.mas canvas { width: 64px; height: 64px; }
+.dont { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.dont .x { font-size: 13px; color: var(--ink-2); padding: 12px 0; border-top: 1px solid var(--line); }
+.dont .x b { font-weight: 500; color: var(--ink); }
+</style></head><body>
+<div class="sheet">
+  <div class="sheet-h"><h1>Fonaments</h1><span class="lbl">Neska · sistema minimal · v0.1</span></div>
+
+  <div class="sec"><div class="about"><span class="lbl">00</span><h2>Principis</h2><p>Les cinc regles que decideixen qualsevol dubte.</p></div>
+    <div class="pr">
+      <div class="p"><span class="k">01</span><h3>Un sol focus</h3><p>Cada pantalla té una cosa principal. Si en surten dues, una baixa de to.</p></div>
+      <div class="p"><span class="k">02</span><h3>Espai, no caixes</h3><p>La jerarquia surt de la mida, el pes i l'aire. Una vora només marca el que et toca fer a tu.</p></div>
+      <div class="p"><span class="k">03</span><h3>El marró vol dir viu</h3><p>Només per a "Neska treballa ara" i per a l'acció principal. Mai decoració.</p></div>
+      <div class="p"><span class="k">04</span><h3>Tech als detalls</h3><p>Píxel a les etiquetes, mono als números, un cursor que parpelleja. Res més.</p></div>
+      <div class="p"><span class="k">05</span><h3>Primer el resultat</h3><p>L'agent mostra què ha fet i què necessita. El com, només si el demanes.</p></div>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">01</span><h2>Color</h2><p>Tres tintes, dues línies i un accent. Totes les tintes de text passen AA sobre blanc.</p></div>
+    <div>
+      <div class="sw">
+        <div class="c"><div class="chip" style="background:#161616"></div><div class="nm">Tinta</div><span class="cap">--ink · #161616 · 18,1:1</span></div>
+        <div class="c"><div class="chip" style="background:#555"></div><div class="nm">Tinta 2 · secundari</div><span class="cap">--ink-2 · #555555 · 7,5:1</span></div>
+        <div class="c"><div class="chip" style="background:#767676"></div><div class="nm">Tinta 3 · meta</div><span class="cap">--ink-3 · #767676 · 4,5:1</span></div>
+        <div class="c"><div class="chip" style="background:#6b3a1e"></div><div class="nm">Nogal · viu i acció</div><span class="cap">--acc · #6B3A1E · 10,4:1</span></div>
+        <div class="c"><div class="chip" style="background:#fff"></div><div class="nm">Fons</div><span class="cap">--bg · #FFFFFF</span></div>
+        <div class="c"><div class="chip" style="background:#f6f6f6"></div><div class="nm">Enfonsat · hover</div><span class="cap">--sunk · #F6F6F6</span></div>
+        <div class="c"><div class="chip" style="background:#ececec"></div><div class="nm">Línia</div><span class="cap">--line · #ECECEC</span></div>
+        <div class="c"><div class="chip" style="background:#d4d4d4"></div><div class="nm">Línia de control</div><span class="cap">--line-2 · #D4D4D4</span></div>
+      </div>
+      <div class="ratio"><i style="flex:88;background:#fff;border:1px solid var(--line)"></i><i style="flex:9;background:#161616"></i><i style="flex:2;background:#767676"></i><i style="flex:1;background:#6b3a1e"></i></div>
+      <span class="cap" style="display:block;margin-top:6px">Proporció en una pantalla típica · 88 fons · 9 tinta · 2 gris · 1 marró</span>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">02</span><h2>Tipografia</h2><p>Rubik per llegir. Geist Pixel només en etiquetes curtes en majúscules. Geist Mono per a números, hores i fitxers.</p></div>
+    <div class="ty">
+      <div class="r"><span class="cap">Títol · Rubik 500 · 30/36</span><span style="font-size:30px;font-weight:500;letter-spacing:-.015em;line-height:1.2">Conciliació factures octubre</span></div>
+      <div class="r"><span class="cap">Secció · Rubik 500 · 22/28</span><span style="font-size:22px;font-weight:500;letter-spacing:-.01em">Diferències detectades</span></div>
+      <div class="r"><span class="cap">Destacat · Rubik 500 · 17/24</span><span style="font-size:17px;font-weight:500">Enviar un correu a Ferreteria Puig</span></div>
+      <div class="r"><span class="cap">Cos · Rubik 400 · 15/22</span><span>He trobat 38 factures i 41 moviments. T'aviso abans d'enviar res.</span></div>
+      <div class="r"><span class="cap">Petit · Rubik 400 · 13/20</span><span style="font-size:13px;color:var(--ink-2)">Esborrany · s'actualitza mentre treballo</span></div>
+      <div class="r"><span class="cap">Etiqueta · Geist Pixel · 11</span><span class="lbl" style="color:var(--ink)">En curs · pas 3 de 5</span></div>
+      <div class="r"><span class="cap">Dada · Geist Mono · 13</span><span class="mono" style="font-size:13px">conciliacio-octubre.xlsx · 1.240,00 € · 02:41</span></div>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">03</span><h2>Espai</h2><p>Base de 4 px. Dins d'un component, 4 a 16. Entre blocs, 24 a 48. La columna de lectura fa 680 px.</p></div>
+    <div class="sp">
+      <div class="cell"><div class="b" style="width:4px;height:4px"></div><span class="cap">4</span></div>
+      <div class="cell"><div class="b" style="width:8px;height:8px"></div><span class="cap">8</span></div>
+      <div class="cell"><div class="b" style="width:12px;height:12px"></div><span class="cap">12</span></div>
+      <div class="cell"><div class="b" style="width:16px;height:16px"></div><span class="cap">16</span></div>
+      <div class="cell"><div class="b" style="width:24px;height:24px"></div><span class="cap">24</span></div>
+      <div class="cell"><div class="b" style="width:32px;height:32px"></div><span class="cap">32</span></div>
+      <div class="cell"><div class="b" style="width:48px;height:48px"></div><span class="cap">48</span></div>
+      <div class="cell"><div class="b" style="width:64px;height:64px"></div><span class="cap">64</span></div>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">04</span><h2>Línies i formes</h2><p>Sense ombres i sense gradients. Radi de 2 px, perquè les cantonades no tallin però no siguin rodones.</p></div>
+    <div class="lines">
+      <div class="l"><span class="cap">Divisor · 1 px #ECECEC</span><div style="border-top:1px solid var(--line)"></div></div>
+      <div class="l"><span class="cap">Control · 1 px #D4D4D4</span><div style="border-top:1px solid var(--line-2)"></div></div>
+      <div class="l"><span class="cap">Atenció · 1 px tinta</span><div style="border-top:1px solid var(--ink)"></div></div>
+      <div class="l"><span class="cap">Focus · 2 px nogal, +2</span><div><span class="btn is-focus">Element amb focus</span></div></div>
+      <div class="l"><span class="cap">Progrés · 2 px</span><div style="height:2px;background:var(--line);position:relative"><i style="position:absolute;inset:0 40% 0 0;background:var(--acc)"></i></div></div>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">05</span><h2>Moviment</h2><p>L'agent "respira" amb passos, no amb suavitat: és el gest retro. La interfície respon en 120–200 ms.</p></div>
+    <div class="mo">
+      <div><div class="demo"><span class="st live" style="width:10px;height:10px"></span></div><h3>Respira</h3><p>1,6 s · steps(4). Neska treballa.</p></div>
+      <div><div class="demo"><span class="mono" style="font-size:13px">F-0932.pdf<span class="caret"></span></span></div><h3>Cursor</h3><p>1,1 s · steps(1). Llegint o escrivint ara.</p></div>
+      <div><div class="demo"><span class="mono" style="font-size:13px">29 → 30 / 38</span></div><h3>Comptador</h3><p>Canvi sec, sense animar el número.</p></div>
+      <div><div class="demo"><span class="btn">Hover · 120 ms</span></div><h3>Resposta</h3><p>120 ms en hover, 200 ms en entrades. Corba (.2, 0, 0, 1).</p></div>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">06</span><h2>Neska</h2><p>La mascota de 16×16 apareix només en tres llocs: logo, salutació i quan parla en primera persona. Mai com a decoració.</p></div>
+    <div class="mas">
+      <div class="cell"><canvas class="neska"></canvas><span class="cap">Repòs</span></div>
+      <div class="cell"><canvas class="neska" data-blink></canvas><span class="cap">Parpelleja · cada 4 s</span></div>
+      <div class="cell"><canvas class="neska" style="width:20px;height:20px"></canvas><span class="cap">Logo · 20 px</span></div>
+      <div class="cell"><canvas class="neska" style="width:32px;height:32px"></canvas><span class="cap">Salutació · 32 px</span></div>
+    </div></div>
+
+  <div class="sec" style="border-bottom:0"><div class="about"><span class="lbl">07</span><h2>No fer</h2><p>El que va fer "molt lio" a la primera proposta.</p></div>
+    <div class="dont">
+      <div class="x"><b>Textures i escàners a la interfície.</b> Només a la marca i als estats buits de la landing.</div>
+      <div class="x"><b>Ombres dures a tot arreu.</b> Una vora d'1 px ja diu prou.</div>
+      <div class="x"><b>Mostrar la traça per defecte.</b> L'activitat es demana, no s'imposa.</div>
+      <div class="x"><b>Píxel en frases.</b> Si té més de quatre paraules, va en Rubik.</div>
+      <div class="x"><b>Marró per decorar.</b> Si no està viu ni és l'acció, no és marró.</div>
+      <div class="x"><b>Dues accions primàries.</b> Si n'hi ha dues, una no ho és.</div>
+    </div></div>
+</div>
+<script src="about:blank"></script>
+<script>addEventListener('load',()=>setTimeout(()=>{const c=document.querySelector('canvas[data-blink]');const x=c.getContext('2d');x.fillStyle='#161616';x.fillRect(4,7,1,1);x.fillRect(11,7,1,1)},50))</script>
+</body></html>

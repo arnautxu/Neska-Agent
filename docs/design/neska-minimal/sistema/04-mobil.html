@@ -1,0 +1,102 @@
+<!doctype html><html lang="ca"><head><meta charset="utf-8"><title>Neska · Mòbil</title>
+<link rel="stylesheet" href="ds.css">
+<style>
+.phones { display: flex; gap: 48px; margin-top: 48px; justify-content: center; }
+.ph { width: 390px; height: 844px; border: 1px solid var(--line-2); border-radius: 44px; overflow: hidden; position: relative; display: flex; flex-direction: column; background: var(--bg); }
+.sb { height: 50px; display: flex; justify-content: space-between; align-items: center; padding: 6px 32px 0; font-family: var(--mono); font-size: 14px; font-weight: 500; flex: none; }
+.nav { height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 20px; font-size: 14px; color: var(--ink-2); flex: none; }
+.nav .ham { width: 18px; height: 12px; border-top: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink); position: relative; }
+.nav .ham::after { content: ""; position: absolute; left: 0; right: 0; top: 4.5px; border-top: 1.5px solid var(--ink); }
+.nav canvas { width: 20px; height: 20px; }
+.nav .r { margin-left: auto; }
+.pc { flex: 1; padding: 12px 20px 0; overflow: hidden; display: flex; flex-direction: column; }
+.pc h1 { font-size: 26px; font-weight: 500; letter-spacing: -.015em; line-height: 1.2; }
+.pc .lead { margin-top: 6px; font-size: 14px; color: var(--ink-2); }
+.pc .steps { width: 100%; margin-top: 20px; }
+.pc .step { font-size: 14.5px; grid-template-columns: 30px 1fr auto; }
+.pc .file { width: 100%; }
+.dock { padding: 12px 16px 30px; flex: none; }
+.dock .composer { width: 100%; padding: 12px 10px 10px 14px; }
+.dock .composer .ft { margin-top: 8px; }
+.home-prompt { margin-top: 24px; border: 1px solid var(--ink); padding: 16px 14px 12px 16px; }
+.home-prompt .in { font-size: 16px; color: var(--ink-3); min-height: 48px; }
+.home-prompt .ft { display: flex; align-items: center; font-size: 13px; color: var(--ink-3); }
+.home-prompt .ft .iconbtn { margin-left: auto; }
+.list { margin-top: 24px; }
+.list .lbl { display: block; margin-bottom: 6px; }
+.list .r { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.list .r .m { margin-left: auto; font-size: 12.5px; color: var(--ink-3); }
+.list .r .m.acc { color: var(--acc); }
+.scrim { position: absolute; inset: 0; background: rgba(22,22,22,.32); }
+.sheet2 { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 16px 16px 0 0; padding: 10px 20px 34px; }
+.sheet2 .grab { width: 36px; height: 4px; background: var(--line-2); border-radius: 2px; margin: 0 auto 18px; }
+.sheet2 .lbl { color: var(--acc); }
+.sheet2 h3 { margin-top: 8px; font-size: 19px; font-weight: 500; }
+.sheet2 p { margin-top: 6px; font-size: 14.5px; color: var(--ink-2); }
+.sheet2 .mail { font-size: 13.5px; }
+.sheet2 .full { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+.sheet2 .full .btn { justify-content: center; padding: 12px; font-size: 15px; }
+.lbl.sl { display: block; margin-top: 24px; text-align: center; }
+.capt { width: 390px; margin-top: 14px; font-size: 13px; color: var(--ink-2); }
+.capt b { font-weight: 500; color: var(--ink); }
+</style></head><body>
+<div class="sheet">
+  <div class="sheet-h"><h1>Mòbil</h1><span class="lbl">Neska · sistema minimal · v0.1</span></div>
+  <div class="phones">
+
+    <div><div class="ph">
+      <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="nav"><span class="ham"></span><canvas class="neska"></canvas><span class="r">Safata · 1</span></div>
+      <div class="pc">
+        <h1 style="margin-top:28px">Bon vespre, Arnau</h1>
+        <div class="lead">Tinc una tasca en marxa i una que t'espera.</div>
+        <div class="home-prompt"><div class="in">Què vols que faci?<span class="caret"></span></div><div class="ft"><span>+ Fitxer</span><span class="iconbtn is-off">↑</span></div></div>
+        <div class="list">
+          <span class="lbl">Ara mateix</span>
+          <div class="r"><span class="st live"></span>Conciliació factures<span class="m mono">3/5 · 02:41</span></div>
+          <div class="r"><span class="st wait"></span>Resposta a Ferreteria<span class="m acc">T'espera</span></div>
+          <div class="r"><span class="st queued"></span>Informe vendes Q3<span class="m">dl 09:00</span></div>
+        </div>
+      </div>
+    </div><div class="capt"><b>Inici.</b> El prompt és el focus. Les tasques en curs, a sota, amb el mateix llenguatge d'estats.</div></div>
+
+    <div><div class="ph">
+      <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="nav"><span style="font-size:18px;color:var(--ink)">←</span><span>Comptabilitat 2026</span><span class="r">···</span></div>
+      <div class="pc">
+        <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><span class="st live"></span><span class="lbl" style="color:var(--ink-2)">En curs · 3 de 5 · <span class="mono">02:41</span></span></div>
+        <h1 style="margin-top:8px">Conciliació factures octubre</h1>
+        <div class="steps">
+          <div class="step done"><span class="n">01</span><span class="t">Llegir les 38 factures</span><span class="r">0:41</span></div>
+          <div class="step done"><span class="n">02</span><span class="t">Normalitzar l'extracte</span><span class="r">0:12</span></div>
+          <div class="step run"><span class="n">03</span><span class="t">Creuar imports i NIF</span><span class="r">29/38</span><div class="sub">F-2026-0932.pdf<span class="caret"></span></div><div class="bar"><i style="width:76%"></i></div></div>
+          <div class="step todo"><span class="n">04</span><span class="t">Generar l'informe</span><span class="r"></span></div>
+          <div class="step todo"><span class="n">05</span><span class="t">Enviar correus</span><span class="tag">Permís</span></div>
+        </div>
+        <div class="file" style="margin-top:8px"><span class="ic gen"></span><div><div class="nm" style="font-size:13px">conciliacio-octubre.xlsx</div><div class="mt">Generant · 29 de 38</div></div></div>
+      </div>
+      <div class="dock"><div class="composer"><div class="in">Afegeix context…</div><div class="ft"><span>+</span><span class="iconbtn">■</span></div></div></div>
+    </div><div class="capt"><b>Tasca.</b> Una sola columna, el mateix ordre que a l'escriptori. L'activitat s'obre des de "···".</div></div>
+
+    <div><div class="ph">
+      <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="nav"><span style="font-size:18px;color:var(--ink)">←</span><span>Comptabilitat 2026</span><span class="r">···</span></div>
+      <div class="pc">
+        <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><span class="st wait"></span><span class="lbl" style="color:var(--ink-2)">T'espera · 5 de 5</span></div>
+        <h1 style="margin-top:8px">Conciliació factures octubre</h1>
+      </div>
+      <div class="scrim"></div>
+      <div class="sheet2">
+        <div class="grab"></div>
+        <div class="lbl">Necessito el teu permís</div>
+        <h3>Enviar un correu a Ferreteria Puig</h3>
+        <p>La factura és de 1.240,00 € i el banc en mostra 1.204,00 €. Els reclamo els 36,00 €.</p>
+        <div class="mail"><div class="hd"><span>Per a</span><b>admin@ferreteriapuig.cat</b><span>Assumpte</span><b>F-2026-0931 · diferència</b></div></div>
+        <div class="full"><span class="btn pri">Permet</span><span class="btn">Revisa el correu</span><span class="btn ghost">Ara no</span></div>
+      </div>
+    </div><div class="capt"><b>Permís.</b> Arriba com a notificació i s'obre en un full inferior. Botons a l'abast del polze, el primari a dalt.</div></div>
+
+  </div>
+</div>
+<script src="about:blank"></script>
+</body></html>
