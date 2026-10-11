@@ -19,14 +19,19 @@ export function taskProgress(message: Pick<ChatMessage, "plan" | "approvals" | "
     const label = publicActivityText(step.step, 1_000);
     return label ? [{ ...step, step: label }] : [];
   });
-  const waiting = message.approvals.some((approval) => approval.status === "pending");
-  const state: TaskState = waiting
-    ? "waiting"
-    : message.status === "streaming"
-      ? "working"
-      : message.status === "complete"
-        ? "done"
-        : "stopped";
+  // A stopped or failed turn stays stopped even if an approval it raised was
+  // never resolved; only a live or completed turn can be waiting on one.
+  const terminal = message.status === "stopped" || message.status === "error";
+  const waiting = !terminal && message.approvals.some((approval) => approval.status === "pending");
+  const state: TaskState = terminal
+    ? "stopped"
+    : waiting
+      ? "waiting"
+      : message.status === "streaming"
+        ? "working"
+        : message.status === "complete"
+          ? "done"
+          : "stopped";
   const live = state === "working" || state === "waiting";
   const current = live ? steps.findIndex((step) => step.status === "in_progress") : -1;
   const done = steps.filter((step) => isStepDone(step, state)).length;

@@ -31,6 +31,8 @@ describe("taskProgress", () => {
   it("does not mark a step current or finished when the turn stopped", () => {
     expect(taskProgress(turn({ status: "stopped" }))).toMatchObject({ state: "stopped", done: 1, current: -1 });
     expect(taskProgress(turn({ status: "error" }))).toMatchObject({ state: "stopped" });
+    const approvals = [{ status: "pending" }] as ChatMessage["approvals"];
+    expect(taskProgress(turn({ status: "stopped", approvals }))).toMatchObject({ state: "stopped", current: -1 });
   });
 
   it("only treats plans with two or more steps as multi-step tasks", () => {

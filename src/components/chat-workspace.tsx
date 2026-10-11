@@ -593,15 +593,16 @@ export function ChatWorkspace({
   const latestRequest = latestAssistantIndex > 0 && thread?.messages[latestAssistantIndex - 1]?.role === "user" ? thread.messages[latestAssistantIndex - 1] : undefined;
   const latestProgress = latestAssistant ? taskProgress(latestAssistant) : null;
   const multiStepTask = latestProgress !== null && isMultiStepTask(latestProgress);
-  // The agent panel only opens for long work with steps, unless the employee asks for it.
-  const [agentPanelChoice, setAgentPanelChoice] = useState<{ threadId: string; open: boolean } | null>(null);
+  // The agent panel only opens for long work with steps, unless the employee
+  // asks for it. Their choice applies to the current task (assistant turn).
+  const [agentPanelChoice, setAgentPanelChoice] = useState<{ messageId: string; open: boolean } | null>(null);
   const agentPanelTriggerRef = useRef<HTMLButtonElement>(null);
   const agentPanelCloseRef = useRef<HTMLButtonElement>(null);
   // Opening or closing swaps the focused control out of the DOM, so focus
   // follows the employee into the panel and back to the trigger.
   const agentPanelFocusRef = useRef<"panel" | "trigger" | null>(null);
   const agentPanelOpen = Boolean(thread && latestAssistant && latestProgress && latestProgress.total > 0) &&
-    (agentPanelChoice && agentPanelChoice.threadId === thread?.id ? agentPanelChoice.open : multiStepTask);
+    (agentPanelChoice && agentPanelChoice.messageId === latestAssistant?.id ? agentPanelChoice.open : multiStepTask);
   useEffect(() => {
     const target = agentPanelFocusRef.current;
     if (!target) return;
@@ -930,10 +931,10 @@ export function ChatWorkspace({
             {thread ? <h1 className="max-w-[calc(100vw-5.5rem)] truncate text-[13px] font-semibold leading-4 text-[var(--text)] sm:max-w-72">{thread.title}</h1> : null}
           </div>
         </div>
-        {thread && latestProgress && latestProgress.total > 0 ? (
+        {thread && latestAssistant && latestProgress && latestProgress.total > 0 ? (
           <div className="workbench-navigation-balance col-start-3 flex items-center justify-end gap-2 pr-2">
             <TaskStatusChip progress={latestProgress} />
-            {!agentPanelOpen ? <button type="button" className="neska-px hidden min-h-9 border-2 border-[var(--neska-ink)] px-3 text-[11px] text-[var(--text)] hover:bg-[var(--surface-hover)] xl:inline-flex xl:items-center" ref={agentPanelTriggerRef} onClick={() => { agentPanelFocusRef.current = "panel"; setAgentPanelChoice({ threadId: thread.id, open: true }); }}>{t("Estado del agente")}</button> : null}
+            {!agentPanelOpen ? <button type="button" className="neska-px hidden min-h-9 border-2 border-[var(--neska-ink)] px-3 text-[11px] text-[var(--text)] hover:bg-[var(--surface-hover)] xl:inline-flex xl:items-center" ref={agentPanelTriggerRef} onClick={() => { agentPanelFocusRef.current = "panel"; setAgentPanelChoice({ messageId: latestAssistant.id, open: true }); }}>{t("Estado del agente")}</button> : null}
           </div>
         ) : <div aria-hidden="true" className="workbench-navigation-balance" />}
       </header>
@@ -1250,7 +1251,7 @@ export function ChatWorkspace({
         </div>
       </div>}
       {agentPanelOpen && thread && latestAssistant && latestProgress ? (
-        <AgentStatusPanel progress={latestProgress} message={latestAssistant} request={latestRequest} closeButtonRef={agentPanelCloseRef} onClose={() => { agentPanelFocusRef.current = "trigger"; setAgentPanelChoice({ threadId: thread.id, open: false }); }} />
+        <AgentStatusPanel progress={latestProgress} message={latestAssistant} request={latestRequest} closeButtonRef={agentPanelCloseRef} onClose={() => { agentPanelFocusRef.current = "trigger"; setAgentPanelChoice({ messageId: latestAssistant.id, open: false }); }} />
       ) : null}
     </main>
   );
