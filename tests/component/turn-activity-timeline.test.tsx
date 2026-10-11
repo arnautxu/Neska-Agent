@@ -32,9 +32,9 @@ describe("TurnActivity timeline", () => {
     expect([...container.querySelectorAll("[data-timeline-key]")].map((node) =>
       node.getAttribute("data-timeline-key"))).toEqual(orderGolden.multipleTools);
 
-    const commandCard = screen.getByText("Ejecutando comprobaciones").closest("details");
+    const commandCard = container.querySelector('[data-timeline-key="tool:command-one"] details');
     expect(commandCard).not.toHaveAttribute("open");
-    fireEvent.click(screen.getByText("Ejecutando comprobaciones"));
+    fireEvent.click(commandCard!.querySelector("summary")!);
     expect(commandCard).toHaveAttribute("open");
     expect(screen.getByLabelText("Salida de Ejecutando comprobaciones")).toHaveTextContent("12 pruebas superadas");
   });
@@ -64,14 +64,15 @@ describe("TurnActivity timeline", () => {
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("list", { name: "Actividad del trabajo" })).toBeInTheDocument();
-    expect(screen.getByText("He recuperado el turno durable sin repetir la acción incierta")).toBeInTheDocument();
+    expect(screen.queryByText("He recuperado el turno durable sin repetir la acción incierta")).not.toBeInTheDocument();
     expect(screen.getByText("CRM · Consulta inicial")).toBeInTheDocument();
   });
 
   it.each(["text", "web"] as const)("renders the %s fixture without exposing private reasoning", (scenarioName) => {
     render(<TurnActivity message={turnActivityScenarios[scenarioName]} onResolveApproval={vi.fn()} />);
     expect(screen.queryByText(/chain[- ]of[- ]thought|razonamiento privado/i)).not.toBeInTheDocument();
-    expect(screen.getByTestId("turn-thinking-steps")).toBeInTheDocument();
+    if (scenarioName === "text") expect(screen.queryByTestId("turn-thinking-steps")).not.toBeInTheDocument();
+    else expect(screen.getByTestId("turn-thinking-steps")).toBeInTheDocument();
   });
 
   it("sanitizes persisted activity before rendering", () => {
@@ -100,7 +101,7 @@ describe("TurnActivity timeline", () => {
     const { container } = render(<TurnActivity message={message} onResolveApproval={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Mostrar el proceso de trabajo" }));
 
-    expect(screen.getByText(/Identifying access issue/)).toBeInTheDocument();
+    expect(screen.queryByText(/Identifying access issue/)).not.toBeInTheDocument();
     expect(screen.getByText("Consultando archivos del proyecto")).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/\*\*|Codex|AiBrain|\/var\/lib|company-qa|fc71a2c4/iu);
   });

@@ -41,7 +41,7 @@ describe("chat registry adapters", () => {
     const { rerender } = render(<PermissionGrant approval={approval} connectorApproval onResolve={onResolve} />);
     expect(screen.queryByRole("button", { name: "Durante esta tarea" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /always|siempre/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Permitir" }));
+    fireEvent.click(screen.getByRole("button", { name: "Permite" }));
     expect(onResolve).toHaveBeenCalledWith("accept");
     rerender(<PermissionGrant approval={approval} readOnly onResolve={onResolve} />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();

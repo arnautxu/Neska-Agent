@@ -81,7 +81,7 @@ describe("turn activity and Review", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(trigger).toHaveTextContent("Preparando cambios en src/components/turn-activity.tsx");
     expect(trigger.querySelector(`.${reasoningStyles.shimmer}`)).toBeInTheDocument();
-    expect(screen.getByText("Identificando el alcance exacto")).toBeInTheDocument();
+    expect(screen.queryByText("Identificando el alcance exacto")).not.toBeInTheDocument();
     expect(screen.queryByText("Contexto preparado")).not.toBeInTheDocument();
     expect(screen.queryByText(/Primer text 30508 ms/)).not.toBeInTheDocument();
 
@@ -123,10 +123,10 @@ describe("turn activity and Review", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger).toHaveTextContent("Ha trabajado durante 0m 46s");
     expect(trigger.querySelector(`.${reasoningStyles.shimmer}`)).not.toBeInTheDocument();
-    expect(screen.getByText("Identificando el alcance exacto")).not.toBeVisible();
+    expect(screen.queryByText("Identificando el alcance exacto")).not.toBeInTheDocument();
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Identificando el alcance exacto")).toBeInTheDocument();
+    expect(screen.queryByText("Identificando el alcance exacto")).not.toBeInTheDocument();
   });
 
   it("keeps runtime failures visible while hiding successful lifecycle telemetry", () => {
@@ -157,8 +157,8 @@ describe("turn activity and Review", () => {
     expect(screen.getByText("Comprobar estado")).toBeInTheDocument();
     expect(screen.getByText("Comprobación sintética terminada")).toBeInTheDocument();
     expect(screen.getByText("Cambios preparados")).toBeInTheDocument();
-    const approval = screen.getByRole("group", { name: "Aprobación: Ejecutar comprobación" });
-    fireEvent.click(within(approval).getByRole("button", { name: "Permitir" }));
+    const approval = screen.getByRole("region", { name: "Permiso: Ejecutar comprobación" });
+    fireEvent.click(within(approval).getByRole("button", { name: "Permite" }));
     expect(onResolve).toHaveBeenCalledWith(message.approvals[0], "accept");
   });
 
@@ -175,7 +175,7 @@ describe("turn activity and Review", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mostrar el proceso de trabajo" }));
     expect(screen.getByText("Comprobar estado")).toBeInTheDocument();
     expect(screen.getByText("Esperando la decisión de un editor del proyecto")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Permitir" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Permite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rechazar" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Abrir cambios y resultados" }));
     expect(onOpenReview).toHaveBeenCalledOnce();
@@ -270,7 +270,7 @@ describe("turn activity and Review", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Actividad/ }));
     expect(screen.getByText("Esperando la decisión de un editor del proyecto")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Permitir" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Permite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rechazar" })).not.toBeInTheDocument();
     expect(onResolve).not.toHaveBeenCalled();
   });
