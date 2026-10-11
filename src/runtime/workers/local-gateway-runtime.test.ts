@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createConnection } from "node:net";
 import WebSocket from "ws";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -817,6 +818,28 @@ describe("private per-user worker gateway", () => {
     } finally {
       await firstClient.close();
       await worker.stop();
+    }
+  });
+
+  it("stops while a reconnect has an unfinished WebSocket handshake", async () => {
+    const worker = gateway();
+    await worker.start();
+    const endpoint = new URL(worker.endpoint!);
+    const socket = createConnection({ host: endpoint.hostname, port: Number(endpoint.port) });
+    let stopped: Promise<void> | undefined;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        socket.once("connect", resolve);
+        socket.once("error", reject);
+      });
+      // A reconnect may establish TCP before sending all upgrade headers.
+      socket.write("GET /app-server HTTP/1.1\r\nHost: localhost\r\nConnection: Upgrade\r\n");
+      stopped = worker.stop();
+      await vi.waitFor(async () => expect((await worker.health()).state).toBe("stopped"), { timeout: 2_000 });
+      await stopped;
+    } finally {
+      socket.destroy();
+      await (stopped ?? worker.stop());
     }
   });
 

@@ -156,3 +156,16 @@ A green deployment is still separate from authenticated acceptance and recovery.
 
 Nginx uses the HTTP/2 listen option supported by Ubuntu 24.04's Nginx 1.24.
 No application UI is changed by these deployment adjustments.
+
+## Recovery gate found on the first deployment candidate
+
+PR #5 passed all 22 jobs, but main CI `38131952085` for
+`53e06b369dbe469ae506110c423d3bb8b440ef0b` then exposed an intermittent ARM
+worker-shutdown hang. That candidate must not be deployed. Repetition on the
+actual CAX21 reproduced the wait in HTTP server shutdown: a reconnect could own
+a TCP connection before completing its WebSocket upgrade, outside the tracked
+WebSocket client set. Shutdown now stops accepting connections first, destroys
+all owned TCP connections, and rejects upgrades once the worker is retired.
+A wire-level partial-handshake regression fails on the preceding Linux ARM
+implementation. Full CI/publication/deployment gates must be rerun for the fix;
+no test timeout or acceptance requirement is relaxed.
