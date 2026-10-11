@@ -4,7 +4,6 @@ import { useUiText } from "@/i18n/provider";
 import NextImage from "next/image";
 import {
   Browser,
-  DownloadSimple,
   Eye,
   FileDoc,
   FilePdf,
@@ -16,6 +15,8 @@ import {
 } from "@phosphor-icons/react";
 import type { BrowserArtifact, DocumentArtifact, GeneratedArtifact } from "@/lib/chat-contract";
 import { ImageGeneration } from "@/components/assistant-ui/elements/image-generation";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { DownloadIcon } from "@/components/ui/download";
 
 const publicationCopy: Record<NonNullable<DocumentArtifact["publicationStatus"]>, string> = {
   awaiting_confirmation: "Pendiente de confirmación segura",
@@ -63,7 +64,7 @@ function DocumentCard({ artifact, onPreview }: {
           <p className="mt-0.5 text-caption-1-regular text-[var(--text-muted)]">{artifact.previewFormat === "spreadsheet" ? t("Excel · vista de datos") : artifact.kind.toUpperCase()} · {Math.ceil(artifact.size / 1024)} {" "}{t("KB")}{artifact.pages ? ` · ${artifact.pages} ${artifact.pages === 1 ? t("página") : t("páginas")}` : ""}</p>
         </div>
         {artifact.status === "ready" && artifact.previewUrl && onPreview ? <button type="button" className="touch-target grid size-8 shrink-0 place-items-center rounded-lg text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text)] active:scale-[0.98]" aria-label={`Previsualizar ${artifact.name}`} title={t("Vista previa")} onClick={() => onPreview(artifact)}><Eye size={15} /></button> : null}
-        {artifact.status === "ready" ? <a href={artifact.url} download={artifact.previewFormat === "spreadsheet" ? `${artifact.name}.preview.json` : artifact.name} className="touch-target grid size-8 shrink-0 place-items-center rounded-lg text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text)] active:scale-[0.98]" aria-label={artifact.previewFormat === "spreadsheet" ? t("Descargar datos de la vista previa") : `Descargar ${artifact.name}`} title={t("Descargar")}><DownloadSimple size={15} /></a> : null}
+        {artifact.status === "ready" ? <a href={artifact.url} download={artifact.previewFormat === "spreadsheet" ? `${artifact.name}.preview.json` : artifact.name} className="touch-target grid size-8 shrink-0 place-items-center rounded-lg text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text)] active:scale-[0.98]" aria-label={artifact.previewFormat === "spreadsheet" ? t("Descargar datos de la vista previa") : `Descargar ${artifact.name}`} title={t("Descargar")}><TriggerIcon icon={DownloadIcon} size={15} /></a> : null}
       </header>
       {artifact.status === "processing" ? (
         <div className="flex items-center gap-2 border-t border-[var(--border-subtle)] px-3 py-2 text-body-2-regular text-[var(--text-muted)]" role="status"><SpinnerGap size={14} className="motion-safe:animate-spin" />{t("Preparando una vista previa segura…")}</div>

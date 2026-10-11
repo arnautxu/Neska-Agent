@@ -2,13 +2,18 @@
 import { useUiText } from "@/i18n/provider";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowClockwise, ArrowsIn, ArrowsOut, CaretLeft, CaretRight, DownloadSimple, FileDoc, FilePdf, FilePpt, FileText, FileXls, Minus, Plus, WarningCircle, X } from "@phosphor-icons/react";
+import { ArrowsIn, CaretLeft, CaretRight, FileDoc, FilePdf, FilePpt, FileText, FileXls, Minus, WarningCircle, X } from "@phosphor-icons/react";
 import type { DocumentArtifact } from "@/lib/chat-contract";
 import { AuthenticatedPdfPreview } from "@/components/authenticated-pdf-preview";
 import { AuthenticatedTextPreview } from "@/components/authenticated-text-preview";
 import { AuthenticatedSpreadsheetPreview } from "@/components/authenticated-spreadsheet-preview";
 import { AuthenticatedDocumentPagePreview } from "@/components/authenticated-document-page-preview";
 import { useModalFocus } from "@/ui/use-modal-focus";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { DownloadIcon } from "@/components/ui/download";
+import { ExpandIcon } from "@/components/ui/expand";
+import { PlusIcon } from "@/components/ui/plus";
+import { RefreshCWIcon } from "@/components/ui/refresh-cw";
 
 function documentIcon(kind: DocumentArtifact["kind"]) {
   if (kind === "docx") return <FileDoc size={17} />;
@@ -110,10 +115,10 @@ function DocumentPreviewContent({ artifact, onClose }: {
           <button type="button" disabled={!pageCount || page >= pageCount} className="touch-target grid size-9 place-items-center rounded-lg hover:bg-[var(--surface-hover)] disabled:opacity-30" aria-label={t("Página siguiente")} onClick={() => setPage((current) => Math.min(pageCount ?? current, current + 1))}><CaretRight size={16} /></button>
           <button type="button" disabled={zoom <= 50} className="touch-target grid size-9 place-items-center rounded-lg hover:bg-[var(--surface-hover)] disabled:opacity-30" aria-label={t("Alejar")} onClick={() => setZoom((current) => Math.max(50, current - 25))}><Minus size={15} /></button>
           <span className="w-10 text-center text-[12px] tabular-nums text-[var(--text-muted)]">{zoom}%</span>
-          <button type="button" disabled={zoom >= 200} className="touch-target grid size-9 place-items-center rounded-lg hover:bg-[var(--surface-hover)] disabled:opacity-30" aria-label={t("Acercar")} onClick={() => setZoom((current) => Math.min(200, current + 25))}><Plus size={15} /></button>
+          <button type="button" disabled={zoom >= 200} className="touch-target grid size-9 place-items-center rounded-lg hover:bg-[var(--surface-hover)] disabled:opacity-30" aria-label={t("Acercar")} onClick={() => setZoom((current) => Math.min(200, current + 25))}><TriggerIcon icon={PlusIcon} size={15} /></button>
         </nav> : null}
-        <button type="button" className="touch-target grid size-9 place-items-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]" aria-label={fullscreen ? t("Salir de pantalla completa") : t("Pantalla completa")} onClick={() => setFullscreen((current) => !current)}>{fullscreen ? <ArrowsIn size={17} /> : <ArrowsOut size={17} />}</button>
-        <a href={artifact.url} download={artifact.previewFormat === "spreadsheet" ? `${artifact.name}.preview.json` : artifact.name} className="touch-target grid size-9 place-items-center rounded-lg text-[var(--text-secondary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)] active:scale-[0.98]" aria-label={artifact.previewFormat === "spreadsheet" ? t("Descargar datos de la vista previa") : t("Descargar {p0}", { p0: artifact.name })} title={t("Descargar")}><DownloadSimple size={17} /></a>
+        <button type="button" className="touch-target grid size-9 place-items-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]" aria-label={fullscreen ? t("Salir de pantalla completa") : t("Pantalla completa")} onClick={() => setFullscreen((current) => !current)}>{fullscreen ? <ArrowsIn size={17} /> : <TriggerIcon icon={ExpandIcon} size={17} />}</button>
+        <a href={artifact.url} download={artifact.previewFormat === "spreadsheet" ? `${artifact.name}.preview.json` : artifact.name} className="touch-target grid size-9 place-items-center rounded-lg text-[var(--text-secondary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)] active:scale-[0.98]" aria-label={artifact.previewFormat === "spreadsheet" ? t("Descargar datos de la vista previa") : t("Descargar {p0}", { p0: artifact.name })} title={t("Descargar")}><TriggerIcon icon={DownloadIcon} size={17} /></a>
         <button ref={closeButtonRef} type="button" className="touch-target grid size-9 place-items-center rounded-lg text-[var(--text-secondary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)] active:scale-[0.98]" aria-label={t("Cerrar vista previa")} onClick={onClose}><X size={17} /></button>
       </header>
 
@@ -128,7 +133,7 @@ function DocumentPreviewContent({ artifact, onClose }: {
         ) : null}
         {failed ? (
           <div className="grid h-full place-items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-8 text-center" role="alert">
-            <div className="max-w-64"><WarningCircle size={24} className="mx-auto text-[var(--danger)]" /><p className="mt-3 text-[13px] font-semibold text-[var(--text)]">{t("No se ha podido mostrar el")}{" "}{previewKind}</p><p className="mt-1.5 text-[12px] leading-5 text-[var(--text-muted)]">{failureReason ?? t("Puedes volver a intentarlo o descargar el archivo original.")}</p><button type="button" className="touch-target mt-4 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[12px] font-medium text-[var(--text)] hover:bg-[var(--surface-hover)] active:scale-[0.98]" onClick={retry}><ArrowClockwise size={14} />{t("Reintentar")}</button></div>
+            <div className="max-w-64"><WarningCircle size={24} className="mx-auto text-[var(--danger)]" /><p className="mt-3 text-[13px] font-semibold text-[var(--text)]">{t("No se ha podido mostrar el")}{" "}{previewKind}</p><p className="mt-1.5 text-[12px] leading-5 text-[var(--text-muted)]">{failureReason ?? t("Puedes volver a intentarlo o descargar el archivo original.")}</p><button type="button" className="touch-target mt-4 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[12px] font-medium text-[var(--text)] hover:bg-[var(--surface-hover)] active:scale-[0.98]" onClick={retry}><TriggerIcon icon={RefreshCWIcon} size={14} />{t("Reintentar")}</button></div>
           </div>
         ) : artifact.previewUrl && artifact.previewFormat === "spreadsheet" ? (
           <AuthenticatedSpreadsheetPreview key={`${artifact.id}:${reload}`} previewUrl={artifact.previewUrl} />
@@ -164,7 +169,7 @@ function DocumentPreviewContent({ artifact, onClose }: {
         <button type="button" disabled={!pageCount || page >= pageCount} className="touch-target grid size-10 place-items-center rounded-lg disabled:opacity-30" aria-label={t("Página siguiente")} onClick={() => setPage((current) => Math.min(pageCount ?? current, current + 1))}><CaretRight size={17} /></button>
         <button type="button" disabled={zoom <= 50} className="touch-target grid size-10 place-items-center rounded-lg disabled:opacity-30" aria-label={t("Alejar")} onClick={() => setZoom((current) => Math.max(50, current - 25))}><Minus size={16} /></button>
         <span className="w-10 text-center text-[12px] tabular-nums">{zoom}%</span>
-        <button type="button" disabled={zoom >= 200} className="touch-target grid size-10 place-items-center rounded-lg disabled:opacity-30" aria-label={t("Acercar")} onClick={() => setZoom((current) => Math.min(200, current + 25))}><Plus size={16} /></button>
+        <button type="button" disabled={zoom >= 200} className="touch-target grid size-10 place-items-center rounded-lg disabled:opacity-30" aria-label={t("Acercar")} onClick={() => setZoom((current) => Math.min(200, current + 25))}><TriggerIcon icon={PlusIcon} size={16} /></button>
       </nav> : null}
     </aside>
   );
