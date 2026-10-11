@@ -56,9 +56,9 @@ export function PermissionGrant({
           {" "}{t("Esperando la decisión de un editor del proyecto")}{" "}</div>
       ) : pending ? (
         <div className="flex flex-wrap items-center gap-2.5 border-t-2 border-[var(--neska-line)] px-4 py-3">
-          <button type="button" className={`${button} bg-[var(--neska-accent)] text-[var(--neska-accent-text)] shadow-[var(--neska-offset-sm)] hover:bg-[color-mix(in_srgb,var(--neska-accent)_88%,black)]`} onClick={() => onResolve("accept")}>{t("Permitir")}</button>
+          <button type="button" className={`${button} bg-[var(--neska-accent)] text-[var(--neska-accent-text)] shadow-[3px_3px_0_var(--neska-ink)] hover:bg-[color-mix(in_srgb,var(--neska-accent)_88%,black)]`} onClick={() => onResolve("accept")}>{t("Permitir")}</button>
           {approval.kind === "command" && !connectorApproval ? (
-            <button type="button" className={`${button} bg-[var(--surface)] text-[var(--text)] shadow-[var(--neska-offset-sm)] hover:bg-[var(--surface-hover)]`} onClick={() => onResolve("acceptForSession")}>{t("Durante esta tarea")}</button>
+            <button type="button" className={`${button} bg-[var(--surface)] text-[var(--text)] shadow-[3px_3px_0_var(--neska-ink)] hover:bg-[var(--surface-hover)]`} onClick={() => onResolve("acceptForSession")}>{t("Durante esta tarea")}</button>
           ) : null}
           <button type="button" className={`${button} sm:ml-auto border-transparent bg-transparent text-[var(--text)] hover:border-[var(--neska-ink)]`} onClick={() => onResolve("decline")}>{t("Rechazar")}</button>
         </div>

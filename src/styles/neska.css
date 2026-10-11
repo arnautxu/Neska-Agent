@@ -8,8 +8,7 @@
  * 2. The Neska look itself, applied only when the installation config sets
  *    `branding.visualTheme: "neska"` and the theme is light: white canvas,
  *    #161616 ink, brown #6B3A1E only as an accent, Rubik for reading, Geist
- *    Pixel for short uppercase labels, hard 2px borders and an unblurred
- *    offset shadow on what asks for action. Dark mode is redesigned in
+ *    Pixel for short uppercase labels, 1px lines without shadows. Dark mode is redesigned in
  *    phase 3; until then it keeps the base theme. */
 
 :root {
@@ -22,8 +21,6 @@
   --neska-accent-text: var(--send-button-text);
   --neska-line: var(--border);
   --neska-line-soft: var(--border-subtle);
-  --neska-offset: 4px 4px 0 var(--neska-ink);
-  --neska-offset-sm: 3px 3px 0 var(--neska-ink);
   --font-pixel: var(--font-geist-mono), ui-monospace, monospace;
 }
 
@@ -117,12 +114,34 @@
 
 :root[data-visual-theme="neska"]:not([data-theme="dark"]) {
   --neska-ink: #161616;
-  --neska-ink-2: #5c5c5c;
+  --neska-ink-2: #555555;
+  --neska-ink-3: #767676;
+  --neska-sunk: #f6f6f6;
+  --neska-accent-hover: #8a4d29;
+  --neska-accent-wash: #f7f2ee;
+  --neska-radius: 2px;
+  --neska-fast: 120ms;
+  --neska-base: 200ms;
+  --neska-ease: cubic-bezier(.2, 0, 0, 1);
+  --neska-t-12: 12px;
+  --neska-t-13: 13px;
+  --neska-t-15: 15px;
+  --neska-t-17: 17px;
+  --neska-t-22: 22px;
+  --neska-t-30: 30px;
+  --neska-s1: 4px;
+  --neska-s2: 8px;
+  --neska-s3: 12px;
+  --neska-s4: 16px;
+  --neska-s5: 24px;
+  --neska-s6: 32px;
+  --neska-s7: 48px;
+  --neska-s8: 64px;
   --neska-paper: #ffffff;
   --neska-accent: #6b3a1e;
   --neska-accent-text: #ffffff;
-  --neska-line: rgba(22, 22, 22, 0.22);
-  --neska-line-soft: rgba(22, 22, 22, 0.12);
+  --neska-line: #d4d4d4;
+  --neska-line-soft: #ececec;
   /* next/font sets --font-rubik and --font-geist-pixel-square on <html>. */
   --font-pixel: var(--font-geist-pixel-square), ui-monospace, monospace;
   --font-sans: var(--font-rubik), system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -132,11 +151,11 @@
 
   --mineral-black: var(--neska-ink);
   --mineral-secondary: var(--neska-ink-2);
-  --mineral-soft: #f7f6f4;
+  --mineral-soft: var(--neska-sunk);
   --text: var(--neska-ink);
   --text-secondary: var(--neska-ink-2);
-  --text-muted: var(--neska-ink-2);
-  --text-subtle: var(--neska-ink-2);
+  --text-muted: var(--neska-ink-3);
+  --text-subtle: var(--neska-ink-3);
   --sidebar: var(--neska-paper);
   --user-message: var(--neska-paper);
   --border: var(--neska-line);
@@ -144,8 +163,8 @@
   --border-strong: var(--neska-ink);
   --send-button: var(--neska-accent);
   --send-button-text: var(--neska-accent-text);
-  --notification-accent: var(--neska-accent);
-  --focus: var(--neska-accent);
+  --notification-accent: var(--neska-ink);
+  --focus: var(--neska-ink);
 
   & body {
     font-family: var(--font-sans);
@@ -167,32 +186,32 @@
 
   /* User request: a framed card, like the brief handed to Neska. */
   & .workbench-main .message-enter .rounded-\[22px\] {
-    border: 2px solid var(--neska-ink);
+    border: 0;
     border-radius: 0;
-    box-shadow: var(--neska-offset);
-    padding: 14px 18px;
+    box-shadow: none;
+    padding: 14px 0;
   }
 
   /* ---------- composer ---------- */
 
   & .composer-shadow,
   & .composer-shadow:focus-within {
-    border: 2px solid var(--neska-ink) !important;
-    border-radius: 0;
-    box-shadow: var(--neska-offset);
+    border: 1px solid var(--neska-line) !important;
+    border-radius: var(--neska-radius);
+    box-shadow: none;
   }
 
   & .composer-shadow:focus-within {
-    box-shadow: 4px 4px 0 var(--neska-accent);
+    box-shadow: none;
   }
 
   & .composer-submit,
   & .composer-submit:disabled {
-    border-radius: 0 !important;
-    border: 2px solid var(--neska-ink);
+    border-radius: var(--neska-radius) !important;
+    border: 1px solid var(--neska-ink);
     background: var(--neska-accent) !important;
     color: var(--neska-accent-text) !important;
-    box-shadow: var(--neska-offset-sm);
+    box-shadow: none;
   }
 
   & .composer-submit:disabled {
@@ -213,7 +232,7 @@
   }
 
   & .landing-band {
-    border-radius: 0 !important;
+    border-radius: var(--neska-radius) !important;
     background: transparent !important;
   }
 
@@ -228,16 +247,16 @@
   /* ---------- approvals ---------- */
 
   & [data-slot="permission-grant"] {
-    border: 2px solid var(--neska-ink) !important;
-    border-radius: 0 !important;
-    box-shadow: var(--neska-offset);
+    border: 1px solid var(--neska-ink) !important;
+    border-radius: var(--neska-radius) !important;
+    box-shadow: none;
     background: var(--neska-paper) !important;
   }
 
   /* ---------- task header ---------- */
 
   & .workbench-main[data-section="chat"] > .workbench-navigation {
-    border-bottom: 2px solid var(--neska-ink);
+    border-bottom: 1px solid var(--neska-ink);
   }
 
   & [data-testid="project-breadcrumb"] > span {
@@ -267,13 +286,13 @@
   }
 
   & .markdown-table-wrap {
-    border: 2px solid var(--neska-ink);
-    border-radius: 0;
+    border: 1px solid var(--neska-ink);
+    border-radius: var(--neska-radius);
   }
 
   & .markdown-body th {
     background: transparent;
-    border-bottom: 2px solid var(--neska-ink);
+    border-bottom: 1px solid var(--neska-ink);
     color: var(--text-secondary);
     font-family: var(--font-pixel);
     text-transform: uppercase;
@@ -289,8 +308,14 @@
   }
 
   & .markdown-body :not(pre) > code {
-    border-radius: 0;
+    border-radius: var(--neska-radius);
     background: transparent;
     border-color: var(--neska-line);
   }
+
+  & .neska-status-chip, & .neska-status-chip-bar { border: 0; }
+  & .neska-status-chip-bar > span[data-done="true"] { background: var(--neska-ink); }
+  & .neska-dots { background-image: none; }
+  & [data-slot="permission-grant"] button { box-shadow: none; }
+  & .neska-state-art { display: none; }
 }
