@@ -145,6 +145,39 @@ function rawProxyResponse(proxy: URL, requestText: string) {
 }
 
 describe("BrowserEgressProxy lifecycle", () => {
+  it("survives a client reset while CONNECT is awaiting DNS and admits a replacement request", async () => {
+    const upstreamPort = await listen(createHttpServer((_request, response) => response.end("replacement-ready")));
+    let releaseLookup!: () => void;
+    let lookupStarted!: () => void;
+    const started = new Promise<void>((resolve) => { lookupStarted = resolve; });
+    const gate = new Promise<void>((resolve) => { releaseLookup = resolve; });
+    let lookups = 0;
+    const lookup: BrowserDnsLookup = async () => {
+      if (++lookups === 1) { lookupStarted(); await gate; }
+      return [{ address: "93.184.216.34", family: 4 }];
+    };
+    const connect = vi.fn(localConnector());
+    const { proxy, url } = await startProxy({ networkPolicy: publicPolicy(lookup), connect, allowedPorts: [upstreamPort] });
+    const client = netConnect({ host: url.hostname, port: Number(url.port) });
+    client.on("error", () => client.destroy());
+    try {
+      await new Promise<void>((resolve) => client.once("connect", resolve));
+      client.write(`CONNECT public.example:${upstreamPort} HTTP/1.1\r\nHost: public.example:${upstreamPort}\r\nProxy-Authorization: ${clientAuthorization(url)}\r\n\r\n`);
+      await started;
+      client.resetAndDestroy();
+      await vi.waitFor(async () => expect((await proxy.health()).activeClientConnections).toBe(0));
+      releaseLookup();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(connect).not.toHaveBeenCalled();
+      await expect(proxyRequest(url, `http://public.example:${upstreamPort}/after-reset`))
+        .resolves.toMatchObject({ status: 200, body: "replacement-ready" });
+      await expect(proxy.health()).resolves.toMatchObject({ healthy: true });
+    } finally {
+      releaseLookup();
+      client.destroy();
+    }
+  });
+
   it("uses the authenticated isolated gateway as the production DNS resolver", async () => {
     let authorization = "";
     let requestedPath = "";

@@ -198,3 +198,14 @@ browser and document namespaces now mask it behind an empty read-only mount.
 A real native App Server canary reproduced access to that volume in the preceding
 image; startup and native CI must reject that canary in the patched image.
 Browser and document startup probes independently check the restore boundary.
+
+## Browser connection retirement gate
+
+Main CI `38145194360` for `83ef986adfb4012151dda0b51e4dcd12c2c802cf`
+exposed an unhandled socket reset during native browser acceptance. A real TCP
+reset while CONNECT awaits DNS reproduced the same process-level error. The
+private browser proxy now owns socket errors from acceptance through close and
+does not open an upstream connection after that client has retired. A replacement
+authorized request must still succeed. DNS, authentication, address pinning and
+port restrictions are unchanged. This failed candidate must not be deployed;
+the corrected revision requires its own complete CI/publication gates.
