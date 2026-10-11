@@ -105,6 +105,7 @@ async function acceptPrivateFilesystem(router: AppServerRpcRouter, context: Work
     path.join(home, "sessions", "acceptance.txt"),
     path.join(home, "state_999.sqlite"),
     path.join(context.transportAudit, "acceptance.txt"),
+    path.join("/var/lib/aibrain-restores", `acceptance-${context.userId}-${generation}.txt`),
   ];
   const skill = path.join(home, "skills", "acceptance", "SKILL.md");
   const workspaceFile = path.join(context.workspace, "acceptance.txt");
@@ -183,6 +184,7 @@ async function acceptOneGeneration(context: WorkerLaunchContext, generation: num
       runtime.transport.close(),
       stopRuntime(runtime),
     ]);
+    await rm(path.join("/var/lib/aibrain-restores", `acceptance-${context.userId}-${generation}.txt`), { force: true });
   }
 }
 

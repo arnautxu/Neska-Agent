@@ -68,9 +68,11 @@ if [ "${AIBRAIN_BROWSER_PREFLIGHT:-}" = entrypoint-boundary-v1 ]; then
   [ "$#" -eq 2 ] && [ "$2" = --aibrain-preflight ] || fail "browser preflight arguments are invalid"
   sibling_marker=${AIBRAIN_BROWSER_PREFLIGHT_SIBLING:-}
   publish_marker=${AIBRAIN_BROWSER_PREFLIGHT_PUBLISH:-}
-  [ -n "$sibling_marker" ] && [ -n "$publish_marker" ] || fail "browser preflight markers are missing"
-  set -- /bin/sh -c '[ -f "$1" ] && [ ! -e "$2" ] && [ ! -e "$3" ] && ! /bin/sh -c '\'' : >"$1" '\'' sh "$4"' sh \
-    "$browser_root/.aibrain-preflight" "$sibling_marker" "$publish_marker" "$publish_root/browser-write-test"
+  restore_marker=${AIBRAIN_BROWSER_PREFLIGHT_RESTORE:-}
+  [ -n "$sibling_marker" ] && [ -n "$publish_marker" ] && [ -n "$restore_marker" ] || fail "browser preflight markers are missing"
+  case "$restore_marker" in /var/lib/aibrain-restores/.aibrain-browser-hidden.*) ;; *) fail "restore preflight marker is invalid" ;; esac
+  set -- /bin/sh -c '[ -f "$1" ] && [ ! -e "$2" ] && [ ! -e "$3" ] && [ ! -e "$5" ] && ! /bin/sh -c '\'' : >"$1" '\'' sh "$4"' sh \
+    "$browser_root/.aibrain-preflight" "$sibling_marker" "$publish_marker" "$publish_root/browser-write-test" "$restore_marker"
 else
   # Chromium's setuid/user-namespace sandbox cannot initialize below Docker's
   # no-new-privileges boundary and aborts before opening the inherited CDP
@@ -102,6 +104,8 @@ exec /usr/bin/bwrap \
   --proc /proc \
   --tmpfs /tmp \
   --tmpfs /run \
+  --tmpfs /var/lib/aibrain-restores \
+  --remount-ro /var/lib/aibrain-restores \
   --tmpfs "$data_root" \
   --bind "$browser_root" "$browser_root" \
   --tmpfs "$source_root" \

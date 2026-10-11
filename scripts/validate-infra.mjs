@@ -207,6 +207,9 @@ forbidMatch(egressGateway, /console\.(?:log|error)|process\.env\[["']AIBRAIN_EGR
 
 requireMatch(worker, /--ro-bind \/ \/[\s\S]*--tmpfs "\$publish_root"[\s\S]*--remount-ro "\$publish_root"/u, "worker does not mask publish-rw behind a read-only mount");
 requireMatch(worker, /--ro-bind \/ \/[\s\S]*--tmpfs \/etc\/aibrain[\s\S]*--remount-ro \/etc\/aibrain/u, "worker does not hide operator configuration behind an empty read-only mount");
+for (const [name, sandbox] of [["worker", worker], ["browser", browserSandbox], ["document", soffice]]) {
+  requireMatch(sandbox, /--tmpfs \/var\/lib\/aibrain-restores[\s\S]*--remount-ro \/var\/lib\/aibrain-restores/u, `${name} sandbox does not hide recovered employee data`);
+}
 forbidMatch(worker, /--(?:ro-)?bind[^\n]*\/etc\/aibrain/u, "worker re-exposes operator configuration");
 requireMatch(worker, /--tmpfs "\$data_root"[\s\S]*--ro-bind "\$company_root" "\$company_root"[\s\S]*--ro-bind "\$source_root" "\$source_root"/u, "worker does not hide product data before re-exposing approved read roots");
 requireMatch(worker, /company context root is outside dataRoot[\s\S]*users root is outside dataRoot[\s\S]*employee root is outside usersRoot/u, "worker does not fail closed on configured root containment");

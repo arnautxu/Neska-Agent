@@ -173,20 +173,22 @@ mkdir -p "$document_preview_root"
 document_work=$(mktemp -d "$document_preview_root/.work-XXXXXX")
 document_hidden_marker=$(mktemp /var/lib/aibrain/data/.aibrain-document-hidden.XXXXXX)
 document_publish_marker=$(mktemp /srv/aibrain/publish-rw/.aibrain-document-publish.XXXXXX)
-trap 'rm -rf "$document_test_user_root"; rm -f "$document_hidden_marker" "$document_publish_marker"' EXIT INT TERM
+document_restore_marker=$(mktemp /var/lib/aibrain-restores/.aibrain-document-hidden.XXXXXX)
+trap 'rm -rf "$document_test_user_root"; rm -f "$document_hidden_marker" "$document_publish_marker" "$document_restore_marker"' EXIT INT TERM
 for document_launcher in soffice pdfinfo pdftoppm pdftotext qpdf; do
   (
     cd "$document_work"
     AIBRAIN_DOCUMENT_SANDBOX_PREFLIGHT=entrypoint-boundary-v1 \
     AIBRAIN_DOCUMENT_PREFLIGHT_HIDDEN=$document_hidden_marker \
     AIBRAIN_DOCUMENT_PREFLIGHT_PUBLISH=$document_publish_marker \
+    AIBRAIN_DOCUMENT_PREFLIGHT_RESTORE=$document_restore_marker \
       /usr/local/bin/aibrain-$document_launcher --aibrain-preflight
   ) >/dev/null 2>&1 || fail "bubblewrap document isolation is unavailable for $document_launcher"
   [ -f "$document_work/preflight-aibrain-$document_launcher-ok" ] \
     || fail "document isolation did not preserve the $document_launcher private work directory"
 done
 rm -rf "$document_test_user_root"
-rm -f "$document_hidden_marker" "$document_publish_marker"
+rm -f "$document_hidden_marker" "$document_publish_marker" "$document_restore_marker"
 trap - EXIT INT TERM
 
 # Exercise the exact browser launcher too. A synthetic employee marker must be
@@ -200,18 +202,20 @@ mkdir -p "$browser_test_root/browser/profile" "$browser_test_root/browser/downlo
 browser_own_marker=$browser_test_root/browser/.aibrain-preflight
 browser_sibling_marker=$browser_sibling_root/browser/.aibrain-preflight
 browser_publish_marker=$(mktemp /srv/aibrain/publish-rw/.aibrain-browser-boundary.XXXXXX)
+browser_restore_marker=$(mktemp /var/lib/aibrain-restores/.aibrain-browser-hidden.XXXXXX)
 : >"$browser_own_marker"
 : >"$browser_sibling_marker"
-trap 'rm -rf "$browser_test_root" "$browser_sibling_root"; rm -f "$browser_publish_marker"' EXIT INT TERM
+trap 'rm -rf "$browser_test_root" "$browser_sibling_root"; rm -f "$browser_publish_marker" "$browser_restore_marker"' EXIT INT TERM
 AIBRAIN_BROWSER_PREFLIGHT=entrypoint-boundary-v1 \
 AIBRAIN_BROWSER_PREFLIGHT_SIBLING=$browser_sibling_marker \
 AIBRAIN_BROWSER_PREFLIGHT_PUBLISH=$browser_publish_marker \
+AIBRAIN_BROWSER_PREFLIGHT_RESTORE=$browser_restore_marker \
   /usr/local/bin/aibrain-chrome \
   --user-data-dir="$browser_test_root/browser/profile" \
   --aibrain-preflight \
   >/dev/null 2>&1 || fail "bubblewrap browser isolation is unavailable on this host"
 rm -rf "$browser_test_root" "$browser_sibling_root"
-rm -f "$browser_publish_marker"
+rm -f "$browser_publish_marker" "$browser_restore_marker"
 trap - EXIT INT TERM
 
 # A version check proves only that a binary exists. Exercise the packaged

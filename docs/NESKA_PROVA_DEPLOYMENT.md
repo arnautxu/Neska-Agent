@@ -192,3 +192,9 @@ It refuses a success receipt while any required writer is unhealthy. The
 integration fixture leaves an independent writer active unless it is explicitly
 stopped; it fails against the previous controller. Native CI and actual host
 application backup/replication/isolated restore remain required for this change.
+
+Recovered data lives in a separate restore volume outside `dataRoot`. Worker,
+browser and document namespaces now mask it behind an empty read-only mount.
+A real native App Server canary reproduced access to that volume in the preceding
+image; startup and native CI must reject that canary in the patched image.
+Browser and document startup probes independently check the restore boundary.

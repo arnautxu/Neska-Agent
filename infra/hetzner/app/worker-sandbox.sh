@@ -105,6 +105,8 @@ exec /usr/bin/bwrap \
   --proc /proc \
   --tmpfs /tmp \
   --tmpfs /run \
+  --tmpfs /var/lib/aibrain-restores \
+  --remount-ro /var/lib/aibrain-restores \
   --tmpfs /etc/aibrain \
   --remount-ro /etc/aibrain \
   --tmpfs /usr/local/share/aibrain/internal-agent-context \
