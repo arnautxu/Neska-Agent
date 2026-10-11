@@ -8,6 +8,7 @@ import {
   publicInstallationBranding,
 } from "@/config/installation-branding";
 import { getSeedManifest } from "@/config/tenants";
+import { installationUiLocale } from "@/i18n/server";
 import { loadWorkbench } from "@/workbench/store";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,8 @@ export default async function Home() {
     : getSeedManifest(session.tenant.id);
   if (!storedManifest) redirect("/login");
 
-  const manifest = applyInstallationBranding(storedManifest, installation);
+  const branded = applyInstallationBranding(storedManifest, installation);
+  const manifest = { ...branded, identity: { ...branded.identity, language: await installationUiLocale() } };
   const branding = publicInstallationBranding(installation);
   const workbench = await loadWorkbench(session);
 

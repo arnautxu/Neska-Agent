@@ -56,7 +56,7 @@ export function taskCenterId(threadId: string, messageId: string) {
 
 function taskStatus(message: ChatMessage): TaskCenterStatus | null {
   if (message.role !== "assistant") return null;
-  if (message.approvals.some((approval) => approval.status === "pending")) {
+  if (message.approvals.some((approval) => approval.status === "pending") || (message.status === "streaming" && message.incidents?.some(incident => incident.status === "open"))) {
     return "needs_attention";
   }
   if (message.status === "streaming") return "running";
@@ -80,7 +80,7 @@ function taskDetail(status: TaskCenterStatus, message: ChatMessage) {
       "Abre la conversación para revisar la acción pendiente.";
   }
   if (status === "running") {
-    return message.activity.findLast((item) => item.status === "running")?.label ??
+    return message.activity.findLast((item) => item.status === "running" && item.kind !== "reasoning" && !item.id.startsWith("runtime-"))?.label ??
       "La respuesta continúa mientras el servidor y el worker estén activos.";
   }
   if (status === "failed") {

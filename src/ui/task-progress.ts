@@ -14,7 +14,7 @@ export type TaskProgress = {
 
 /** One factual summary of a turn's plan. It never invents steps: the plan,
  * approvals and status all come from the persisted assistant message. */
-export function taskProgress(message: Pick<ChatMessage, "plan" | "approvals" | "status" | "planProposal" | "queue">): TaskProgress {
+export function taskProgress(message: Pick<ChatMessage, "plan" | "approvals" | "status" | "planProposal" | "queue" | "incidents">): TaskProgress {
   const steps = message.plan.flatMap((step, originalIndex) => {
     const label = publicActivityText(step.step, 1_000);
     return label ? [{ ...step, step: label, originalIndex }] : [];
@@ -22,7 +22,7 @@ export function taskProgress(message: Pick<ChatMessage, "plan" | "approvals" | "
   // A stopped or failed turn stays stopped even if an approval it raised was
   // never resolved; only a live or completed turn can be waiting on one.
   const terminal = message.status === "stopped" || message.status === "error";
-  const waiting = !terminal && message.approvals.some((approval) => approval.status === "pending");
+  const waiting = !terminal && (message.approvals.some((approval) => approval.status === "pending") || message.incidents?.some(incident => incident.status === "open"));
   const state: TaskState = message.status === "error" ? "failed" : terminal
     ? "stopped"
     : waiting

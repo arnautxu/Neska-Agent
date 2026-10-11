@@ -1,5 +1,5 @@
 import type { BrainManifest } from "@/config/brain";
-import type { InstallationConfig } from "@/config/installation-schema";
+import type { InstallationVisualTheme, InstallationConfig } from "@/config/installation-schema";
 
 export type PublicInstallationBranding = {
   installationId: string;
@@ -10,6 +10,7 @@ export type PublicInstallationBranding = {
   logoPath: string;
   faviconPath: string;
   accentColor: string;
+  visualTheme?: InstallationVisualTheme;
 };
 
 export function publicInstallationBranding(
@@ -24,6 +25,7 @@ export function publicInstallationBranding(
     logoPath: installation.branding.logoPath,
     faviconPath: installation.branding.faviconPath,
     accentColor: installation.branding.accentColor,
+    ...(installation.branding.visualTheme ? { visualTheme: installation.branding.visualTheme } : {}),
   };
 }
 

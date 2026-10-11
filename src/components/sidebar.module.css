@@ -279,8 +279,9 @@
 .panel .projectRow > span { min-width: 0; }
 
 /* ---------- Neska (UX plan phase 0/1) ----------
-   A flat white column with a hard ink edge; the primary action is the only
-   brown, framed control. Section labels use Geist Pixel.
+   A flat white column with a fine rule; the primary action is the only
+   framed control. Brown is reserved for live signals and primary task actions.
+   Section labels use Geist Pixel.
    Only for installations with branding.visualTheme "neska", light theme. */
 @media (min-width: 768px) {
   :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel {
@@ -294,18 +295,18 @@
 :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel .newConversation {
   min-height: 44px;
   margin: 4px 4px 14px 0;
-  border: 1px solid var(--neska-line-soft);
+  border: 1px solid var(--neska-line);
   border-radius: 0;
-  background: var(--neska-accent);
-  color: var(--neska-accent-text);
+  background: var(--neska-paper);
+  color: var(--neska-ink);
   box-shadow: none;
-  font-family: var(--font-pixel);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 13px;
+  font-family: var(--font-sans);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 15px;
 }
 :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel .newConversation:not(:disabled):hover {
-  background: color-mix(in srgb, var(--neska-accent) 88%, black);
+  background: var(--neska-sunk);
 }
 :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel .newConversation:not(:disabled):active {
   transform: none;
@@ -319,16 +320,16 @@
   color: var(--neska-ink-2);
 }
 :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel button { border-radius: 0; }
-/* Selection is a hard ink frame (as in the mockup), never a fill the row
+/* Selection uses a quiet surface (as in the mockup), never a heavy frame
    text could disappear into. */
 :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel :global(.bg-active),
 :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel :global(.bg-hover) { border-radius: 0 !important; }
-:global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel :global(.bg-active) { background: transparent; box-shadow: inset 0 0 0 2px var(--neska-ink); }
+:global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel :global(.bg-active) { background: var(--neska-sunk); box-shadow: none; }
 :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel .threadRow[aria-current="page"],
 :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel :global([data-sidebar="menu-button"][aria-current="page"]) {
   border-radius: 0;
-  background: transparent;
-  box-shadow: inset 0 0 0 2px var(--neska-ink);
+  background: var(--neska-sunk);
+  box-shadow: none;
   color: var(--neska-ink);
 }
-:global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel .projectChildren { border-left: 2px solid var(--neska-line-soft); }
+:global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel .projectChildren { border-left: 1px solid var(--neska-line-soft); }

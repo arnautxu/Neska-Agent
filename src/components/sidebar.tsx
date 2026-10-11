@@ -18,7 +18,6 @@ import {
   PushPin,
   Question,
   SpinnerGap,
-  WarningCircle,
   X,
 } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
@@ -74,6 +73,8 @@ type SidebarProps = {
   onOpenDesktop: () => void;
   onOpenCommandPalette: (returnFocus?: HTMLElement | null) => void;
   onOpenAutomations: () => void;
+  onOpenInbox?: () => void;
+  pendingTasks?: number;
   onSelectProject: (id: string) => void;
   onSelectThread: (id: string) => void;
   onNewThread: (projectId?: string) => void;
@@ -91,7 +92,7 @@ const threadStateCopy: Record<ThreadActivity["state"], string> = {
   failed: "La ejecución ha fallado",
 };
 
-function ThreadActivitySignal({ activity }: { activity: ThreadActivity | undefined }) {
+function ThreadActivitySignal({ activity, minimal = false }: { activity: ThreadActivity | undefined; minimal?: boolean }) {
   const t = useUiText();
   if (!activity || (activity.state === "idle" && activity.unreadCount === 0)) return null;
   const label = t(threadStateCopy[activity.state]);
@@ -105,8 +106,9 @@ function ThreadActivitySignal({ activity }: { activity: ThreadActivity | undefin
             ? "text-[var(--text-secondary)]"
             : "text-[var(--text-subtle)]"
       }`}>
-        {activity.state === "running" ? <SpinnerGap size={13} className="motion-safe:animate-spin" /> : null}
-        {activity.state === "needs_attention" || activity.state === "failed" ? <WarningCircle size={13} weight="fill" /> : null}
+        {activity.state === "running" ? minimal ? <span aria-hidden="true" className="neska-live size-2 bg-[var(--neska-accent)]" /> : <SpinnerGap size={13} className="motion-safe:animate-spin" /> : null}
+        {activity.state === "failed" ? <X size={13} weight="fill" /> : null}
+        {activity.state === "needs_attention" ? <span aria-hidden="true" className="size-2 border border-current" /> : null}
         {activity.state === "completed" ? <CheckCircle size={13} weight="fill" /> : null}
       </span>
     </span>
@@ -126,7 +128,7 @@ function ProjectActivitySignal({ activities }: { activities: ThreadActivity[] })
       : `${unread} ${unread === 1 ? t("actualización sin leer") : "actualizaciones sin leer"}`;
   return (
     <span aria-label={label} title={label} className="flex shrink-0 items-center gap-1 text-[var(--text-subtle)]">
-      {attention ? <WarningCircle size={12} weight="fill" className="text-[var(--danger)]" /> : null}
+      {attention ? activities.some(activity => activity.state === "failed") ? <X size={12} /> : <span aria-hidden="true" className="size-2 border border-current" /> : null}
       {!attention && running ? <SpinnerGap size={12} className="motion-safe:animate-spin" /> : null}
       {unread ? <span className="size-2 rounded-full bg-[var(--notification-accent)]" aria-label={t("Hay actualizaciones sin leer")} /> : null}
     </span>
@@ -235,6 +237,7 @@ export function Sidebar({
   onOpenDesktop,
   onOpenCommandPalette,
   onOpenAutomations,
+  onOpenInbox, pendingTasks,
   onSelectProject,
   onSelectThread,
   onNewThread,
@@ -350,6 +353,7 @@ export function Sidebar({
             <button disabled={!standaloneProject || busy} aria-label={t("Nueva conversación")} className="touch-target grid size-9 place-items-center rounded-lg text-[var(--text-secondary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)] disabled:opacity-35" onClick={() => onNewThread()}><TriggerIcon icon={SquarePenIcon} size={18} /></button>
             <button aria-label={t("Automatizaciones")} title={t("Automatizaciones")} className="touch-target grid size-9 place-items-center rounded-lg text-[var(--text-secondary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)]" onClick={onOpenAutomations}><CalendarBlank size={18} /></button>
           </div>
+          {onOpenInbox ? <button type="button" aria-label={t("Safata")} className="touch-target min-h-11 text-[var(--text-secondary)]" onClick={onOpenInbox}>{pendingTasks !== undefined && pendingTasks > 0 ? pendingTasks : "□"}</button> : null}
           <div className="mt-auto flex flex-col items-center gap-1">
             <button aria-label={t("{p0}. Mostrar cuenta", { p0: session.user.name })} className="touch-target grid size-9 place-items-center rounded-lg text-[var(--text-secondary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)]" onClick={onOpenDesktop}><UserAvatar name={session.user.name} avatarUrl={session.user.avatarUrl ?? null} className="size-6" /></button>
           </div>
@@ -368,8 +372,12 @@ export function Sidebar({
           <SidebarMenu className="gap-1">
             <SidebarMenuItem>
               <SidebarMenuButton icon={NotePencil} className={styles.newConversation} disabled={!standaloneProject || busy} render={<button onClick={() => onNewThread()} />}>
-                {" "}{t("Nueva conversación")}{" "}</SidebarMenuButton>
+                {" "}{branding.visualTheme === "neska" ? t("Nova tasca") : t("Nueva conversación")}{" "}</SidebarMenuButton>
             </SidebarMenuItem>
+            {onOpenInbox ? <>
+              <SidebarMenuItem><SidebarMenuButton isActive={activeThreadId === null} render={<button onClick={() => { onNewThread(); onCloseMobile(); }} />}>{t("Inici")}</SidebarMenuButton></SidebarMenuItem>
+              <SidebarMenuItem><SidebarMenuButton aria-label={t("Safata")} render={<button onClick={() => { onCloseMobile(); onOpenInbox(); }} />}>{t("Safata")}{pendingTasks !== undefined && pendingTasks > 0 ? <span className="ml-auto font-mono text-xs text-[var(--text-secondary)]" aria-label={t("{count} tasques pendents", { count: pendingTasks })}>{pendingTasks}</span> : null}</SidebarMenuButton></SidebarMenuItem>
+            </> : null}
             <SidebarMenuItem>
               <SidebarMenuButton icon={CalendarBlank} aria-label={t("Automatizaciones")} title={t("Gestionar automatizaciones")} render={<button onClick={onOpenAutomations} />}>
                 {" "}{t("Automatizaciones")}{" "}</SidebarMenuButton>
@@ -393,7 +401,7 @@ export function Sidebar({
                     <SidebarMenuItem key={thread.id} className={`group/thread ${menuOpen ? "z-40" : ""}`}>
                       <SidebarMenuButton isActive={active} className={`sidebar-touch-row ${styles.threadRow}`} render={<button onClick={() => selectThread(thread.id)} />}>
                         {thread.title}
-                        <ThreadActivitySignal activity={threadActivityById[thread.id]} />
+                        <ThreadActivitySignal activity={threadActivityById[thread.id]} minimal={branding.visualTheme === "neska"} />
                         <PushPin size={10} weight="fill" />
                       </SidebarMenuButton>
                       <button aria-label={t("Acciones de {p0}", { p0: thread.title })} aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuOpen ? `sidebar-thread-actions-${thread.id}` : undefined} className={`sidebar-item-action absolute right-0 top-1/2 z-20 grid size-11 -translate-y-1/2 place-items-center text-[var(--text-subtle)] opacity-0 hover:text-[var(--text)] group-hover/thread:opacity-100 focus:opacity-100 ${contextMenuOpen && !menuOpen ? "context-menu-suppressed" : ""}`} onClick={() => { setProjectMenuId(null); setThreadMenuId(menuOpen ? null : thread.id); }}><DotsThree size={14} weight="bold" /></button>
@@ -449,7 +457,7 @@ export function Sidebar({
                             <div key={thread.id} className={`relative group/thread ${threadMenuOpen ? "z-40" : ""}`}>
                               <button data-testid="sidebar-project-thread" aria-current={threadActive ? "page" : undefined} className={`${styles.threadRow} sidebar-touch-row flex w-full items-center rounded-lg px-2 py-1.5 pr-11 text-left transition ${threadActive ? "bg-[var(--surface-selected)] text-[var(--text)]" : "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"}`} onClick={() => selectThread(thread.id)}>
                                 <span className="min-w-0 flex-1 truncate text-[12px] font-normal">{thread.title}</span>
-                                <ThreadActivitySignal activity={threadActivityById[thread.id]} />
+                                <ThreadActivitySignal activity={threadActivityById[thread.id]} minimal={branding.visualTheme === "neska"} />
                                 {thread.pinned ? <PushPin size={10} weight="fill" /> : null}
                               </button>
                               <button aria-label={t("Acciones de {p0}", { p0: thread.title })} aria-haspopup="menu" aria-expanded={threadMenuOpen} aria-controls={threadMenuOpen ? `sidebar-thread-actions-${thread.id}` : undefined} className={`sidebar-item-action absolute right-0 top-1/2 z-20 grid size-11 -translate-y-1/2 place-items-center text-[var(--text-subtle)] opacity-0 hover:text-[var(--text)] group-hover/thread:opacity-100 focus:opacity-100 ${contextMenuOpen && !threadMenuOpen ? "context-menu-suppressed" : ""}`} onClick={() => { setProjectMenuId(null); setThreadMenuId(threadMenuOpen ? null : thread.id); }}><DotsThree size={13} weight="bold" /></button>
@@ -481,7 +489,7 @@ export function Sidebar({
                   <SidebarMenuItem key={thread.id} className={`group/thread ${menuOpen ? "z-40" : ""}`}>
                     <SidebarMenuButton isActive={active} className={`sidebar-touch-row ${styles.threadRow}`} render={<button onClick={() => selectThread(thread.id)} />}>
                       {thread.title}
-                      <ThreadActivitySignal activity={threadActivityById[thread.id]} />
+                      <ThreadActivitySignal activity={threadActivityById[thread.id]} minimal={branding.visualTheme === "neska"} />
                       {thread.pinned ? <PushPin size={10} weight="fill" /> : threadActivityById[thread.id]?.state === "idle" ? <span className="text-[11px] text-[var(--text-subtle)] opacity-0 group-hover/thread:opacity-100">{relativeDate(thread.updatedAt, locale)}</span> : null}
                     </SidebarMenuButton>
                     <button aria-label={t("Acciones de {p0}", { p0: thread.title })} aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuOpen ? `sidebar-thread-actions-${thread.id}` : undefined} className={`sidebar-item-action absolute right-0 top-1/2 z-20 grid size-11 -translate-y-1/2 place-items-center text-[var(--text-subtle)] opacity-0 hover:text-[var(--text)] group-hover/thread:opacity-100 focus:opacity-100 ${contextMenuOpen && !menuOpen ? "context-menu-suppressed" : ""}`} onClick={() => { setProjectMenuId(null); setThreadMenuId(menuOpen ? null : thread.id); }}><DotsThree size={14} weight="bold" /></button>

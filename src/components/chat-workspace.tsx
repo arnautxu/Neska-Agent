@@ -44,6 +44,9 @@ import type { ApprovalDecision, ApprovalItem, ChatAttachment, ChatInputAttachmen
 import type { BrainManifest, BrainPreferences } from "@/config/brain";
 import type { RuntimeStatus } from "@/lib/runtime-status";
 import type { ComposerExperience } from "@/lib/composer-experience";
+import type { PublicInstallationBranding } from "@/config/installation-branding";
+import type { TaskCenterItem } from "@/task-center/contracts";
+import { NeskaHomeHeader, NeskaCurrentTasks } from "@/components/neska-home";
 import { LandingTasks } from "@/components/landing-tasks";
 import { landingSuggestions } from "@/lib/landing-suggestions";
 import { isStandaloneProject, type WorkbenchProject, type WorkbenchThread } from "@/workbench/types";
@@ -134,6 +137,10 @@ type ChatWorkspaceProps = {
   onOpenReview: (messageId: string) => void;
   onOpenBrowser: () => void;
   readOnly?: boolean;
+  branding?: PublicInstallationBranding;
+  tasks?: readonly TaskCenterItem[];
+  onOpenInbox?: () => void;
+  onOpenTask?: (task: TaskCenterItem) => void;
 };
 
 type ComposerPickerOption = {
@@ -318,6 +325,7 @@ function AssistantMessage({
   restoreDisabled,
   readOnly = false,
   recoveryPaused = false,
+  taskTitle,
 }: {
   liveAnswers?: LiveAnswerStore;
   threadId: string;
@@ -341,6 +349,7 @@ function AssistantMessage({
   restoreDisabled?: boolean;
   readOnly?: boolean;
   recoveryPaused?: boolean;
+  taskTitle?: string;
 }) {
   const t = useUiText();
   const liveContent = useLiveAnswer(liveAnswers, `${threadId}:${message.id}`);
@@ -352,6 +361,7 @@ function AssistantMessage({
 
   return (
     <article className="message-enter group">
+      {taskTitle ? <div className="mb-6"><div className="md:hidden"><TaskStatusChip progress={taskProgress(message)} /></div><h2 className="mt-2 text-[30px] font-medium leading-tight max-sm:text-[22px]">{taskTitle}</h2></div> : null}
       {message.status === "streaming" || message.planProposal?.status === "proposed" || message.approvals.some(approval => approval.status === "pending") ? <TaskCycle message={message} threadId={threadId} readOnly={readOnly} onResolveApproval={onResolveApproval} onOpenReview={() => onOpenReview(message.id)} onMessageChange={onTaskMessageChange ? saved => onTaskMessageChange(threadId, saved) : undefined} onExecutePlan={onExecutePlan} /> : null}
       {managedAppAction && !readOnly ? <ManagedAppActionControl enabled={managedAppAction.enabled} threadId={threadId} message={message} onPrepared={managedAppAction.onPrepared} /> : null}
       {message.diff ? <button type="button" className="mt-4 min-h-11 text-sm underline underline-offset-4" onClick={() => onOpenReview(message.id)}>{t("Revisa els canvis")}</button> : null}
@@ -504,6 +514,7 @@ export function ChatWorkspace({
   onOpenReview,
   onOpenBrowser,
   readOnly = false,
+  branding, tasks = [], onOpenInbox, onOpenTask,
 }: ChatWorkspaceProps) {
   const t = useUiText();
   const locale = useUiLocale();
@@ -941,7 +952,7 @@ export function ChatWorkspace({
             {latestProgress.total > 0 || latestAssistant.queue ? <TaskStatusChip progress={latestProgress} /> : null}
             {!agentPanelOpen ? <button type="button" aria-expanded={agentPanelOpen} aria-controls="neska-activity-panel" aria-label={t("Obre l’activitat")} className="inline-flex min-h-11 items-center px-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]" ref={agentPanelTriggerRef} onClick={() => { agentPanelFocusRef.current = "panel"; setAgentPanelChoice({ messageId: latestAssistant.id, open: true }); }}>{t("Activitat")}</button> : null}
           </div>
-        ) : <div aria-hidden="true" className="workbench-navigation-balance" />}
+        ) : branding?.visualTheme === "neska" && onOpenInbox ? <button type="button" className="neska-mobile-inbox workbench-navigation-balance min-h-11 px-3 text-sm text-[var(--text-secondary)]" onClick={onOpenInbox}>{t("Safata")}{tasks.some(task => task.status === "needs_attention") ? ` · ${tasks.filter(task => task.status === "needs_attention").length}` : ""}</button> : <div aria-hidden="true" className="workbench-navigation-balance" />}
       </header>
 
 
@@ -973,6 +984,7 @@ export function ChatWorkspace({
                       liveAnswers={liveAnswers}
                       threadId={thread.id}
                       message={message}
+                      taskTitle={message.id === latestAssistantMessageId && (message.plan.length > 0 || message.approvals.length > 0 || message.incidents?.length) ? thread.title : undefined}
                       recoveryPaused={streamRecovery?.paused === true && message.status === "streaming" && message.id === latestAssistantMessageId}
                       assistantName={assistantName}
                       onTaskMessageChange={onTaskMessageChange}
@@ -1019,7 +1031,7 @@ export function ChatWorkspace({
           }}
         ><ArrowDown size={13} />{t("Volver al final")}</button></div> : null}
         <div className="relative mx-auto max-w-[768px]">
-          {!hasMessages ? <h1 className="mb-10 text-center text-balance text-[24px] font-medium leading-8 tracking-[-0.15px] text-[var(--text)]">{landingHeadline}</h1> : null}
+          {!hasMessages && branding?.visualTheme === "neska" && !imageGeneration ? <NeskaHomeHeader userName={userName} tasks={tasks} onOpenInbox={onOpenInbox} /> : !hasMessages ? <h1 className="mb-10 text-center text-balance text-[24px] font-medium leading-8 tracking-[-0.15px] text-[var(--text)]">{landingHeadline}</h1> : null}
           {sending && hasMessages ? <MessageQueue
             running={runningMessage}
             queued={queuedMessages}
@@ -1254,6 +1266,7 @@ export function ChatWorkspace({
           {!hasMessages ? <div className="landing-suggestions mx-auto mt-5 w-full max-w-[720px]" aria-label={t("Sugerencias para empezar")}>
             <LandingTasks tasks={suggestions} disabled={sending} onSelect={selectSuggestion} />
           </div> : null}
+          {!hasMessages && branding?.visualTheme === "neska" ? <NeskaCurrentTasks tasks={tasks} onOpenTask={onOpenTask} /> : null}
         </div>
       </div>}
       {agentPanelOpen && thread && latestAssistant && latestProgress ? (

@@ -12,7 +12,6 @@ import {
   CheckCircle,
   ChatCircleDots,
   SpinnerGap,
-  WarningCircle,
   X,
 } from "@phosphor-icons/react";
 import type {
@@ -45,7 +44,8 @@ const statusCopy: Record<TaskCenterItem["status"], string> = {
 function statusIcon(status: TaskCenterItem["status"]) {
   if (status === "running") return <SpinnerGap size={17} className="motion-safe:animate-spin" />;
   if (status === "completed") return <CheckCircle size={17} weight="fill" />;
-  return <WarningCircle size={17} weight="fill" />;
+  if (status === "failed") return <X size={17} />;
+  return <span aria-hidden="true" className="size-2 border border-current" />;
 }
 
 function timeLabel(value: string, locale: UiLocale = "es") {
@@ -125,7 +125,7 @@ export function TaskCenterPanel({
         <motion.section {...surfaceMotion} ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t("Centro de tareas")} className="workspace-panel relative flex h-full w-full max-w-[540px] flex-col border-l border-[var(--border-subtle)] bg-[var(--surface-raised)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-popover)]">
         <header className="workspace-panel-header flex shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] px-4 pt-[env(safe-area-inset-top)] sm:px-5 sm:pt-0">
           <span className="grid size-9 shrink-0 place-items-center rounded-[13px] bg-[var(--accent-soft)] text-[var(--brain-accent-on-soft)]"><TriggerIcon icon={HistoryIcon} size={18} /></span>
-          <div className="min-w-0 flex-1"><h2 className="workspace-panel-title text-[var(--text)]">{t("Tareas")}</h2><p className="workspace-panel-subtitle mt-0.5">{t("Sigue el trabajo de todas tus conversaciones.")}</p></div>
+          <div className="min-w-0 flex-1"><h2 className="workspace-panel-title text-[var(--text)]">{t("Safata")}</h2><p className="workspace-panel-subtitle mt-0.5">{t("Sigue el trabajo de todas tus conversaciones.")}</p></div>
           <button type="button" aria-label={t("Preferencias de notificaciones")} aria-pressed={settingsOpen} className={`touch-target grid size-10 place-items-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] ${settingsOpen ? "bg-[var(--surface-selected)]" : ""}`} onClick={() => setSettingsOpen((value) => !value)}><TriggerIcon icon={SettingsIcon} size={18} /></button>
           <button type="button" aria-label={t("Cerrar centro de tareas")} className="touch-target grid size-10 place-items-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]" onClick={onClose}><X size={18} /></button>
         </header>
@@ -156,11 +156,11 @@ export function TaskCenterPanel({
           {visible.length ? visible.map((task) => (
             <article key={task.id} className={`group mb-1 rounded-[18px] border px-3 py-3 transition ${task.unread ? "border-[color-mix(in_srgb,var(--brain-accent)_24%,var(--border))] bg-[var(--accent-soft)]" : "border-transparent hover:bg-[var(--surface-hover)]"}`}>
               <div className="flex items-start gap-3">
-                <span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-[12px] ${task.status === "completed" ? "bg-[var(--positive-soft)] text-[var(--positive)]" : task.status === "running" ? "bg-[var(--surface-muted)] text-[var(--text-secondary)]" : "bg-[var(--danger-soft)] text-[var(--danger)]"}`}>{statusIcon(task.status)}</span>
+                <span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-[12px] ${task.status === "completed" ? "bg-[var(--positive-soft)] text-[var(--positive)]" : task.status === "running" ? "bg-[var(--surface-muted)] text-[var(--text-secondary)]" : "bg-[var(--danger-soft)] text-[var(--danger)]"}`}>{task.planProposal?.status === "proposed" || task.queue?.state === "waiting" ? <span aria-hidden="true" className="size-2 border border-current" /> : statusIcon(task.status)}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2"><span className={`text-[10px] font-semibold ${task.status === "completed" ? "text-[var(--positive)]" : task.status === "running" ? "text-[var(--text-subtle)]" : "text-[var(--danger)]"}`}>{t(statusCopy[task.status] ?? "")}</span>{task.unread ? <span className="size-1.5 rounded-full bg-[var(--brain-accent)]" aria-label={t("Sin leer")} /> : null}<time className="ml-auto text-[9px] text-[var(--text-subtle)]" dateTime={task.updatedAt}>{timeLabel(task.updatedAt, locale)}</time></div>
-                  <h3 className="mt-1 line-clamp-2 text-[12px] font-semibold leading-5 text-[var(--text)]">{task.title}</h3>
-                  <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-[var(--text-subtle)]">{task.detail}</p>
+                  <div className="flex items-center gap-2"><span className={`text-[10px] font-semibold ${task.status === "completed" ? "text-[var(--positive)]" : task.status === "running" ? "text-[var(--text-subtle)]" : "text-[var(--danger)]"}`}>{t(task.planProposal?.status === "proposed" ? "Pla proposat" : task.queue?.state === "waiting" ? "A la cua" : statusCopy[task.status])}</span>{task.unread ? <span className="size-1.5 rounded-full bg-[var(--brain-accent)]" aria-label={t("Sin leer")} /> : null}<time className="ml-auto text-[9px] text-[var(--text-subtle)]" dateTime={task.updatedAt}>{timeLabel(task.updatedAt, locale)}</time></div>
+                  <h3 className="mt-1 line-clamp-2 text-[12px] font-semibold leading-5 text-[var(--text)]">{task.title ? t(task.title) : task.threadTitle}</h3>
+                  <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-[var(--text-subtle)]">{t(task.detail)}</p>
                   <p className="mt-2 truncate text-[9px] text-[var(--text-subtle)]">{task.projectName ? `${task.projectName} · ` : ""}{task.threadTitle}</p>
                 </div>
               </div>

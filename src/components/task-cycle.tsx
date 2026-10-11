@@ -7,7 +7,7 @@ import { isChatMessage } from "@/lib/chat-contract";
 import { publicActivityText } from "@/ui/public-activity";
 import { taskProgress } from "@/ui/task-progress";
 import { TaskPlan } from "./task-plan";
-import { PermissionGrant } from "./assistant-ui/elements/permission-grant";
+import { MobilePermission } from "./mobile-permission";
 
 const button = "min-h-11 rounded-[2px] px-4 py-2 text-sm disabled:opacity-40";
 export function TaskCycle({ message, threadId, readOnly = false, onResolveApproval, onMessageChange, onExecutePlan, onOpenReview, onMutate }: {
@@ -42,14 +42,14 @@ export function TaskCycle({ message, threadId, readOnly = false, onResolveApprov
     clientRequestId: crypto.randomUUID(), userMessageId: crypto.randomUUID(),
   });
   return <div className="task-cycle space-y-6">
-    {pending.map(approval => <PermissionGrant key={approval.id} approval={approval} readOnly={readOnly} connectorApproval={approval.kind === "connector"} onResolve={decision => onResolveApproval(approval, decision)} onOpenReview={message.diff ? onOpenReview : undefined} />)}
+    {pending.map((approval, index) => <MobilePermission sheetAllowed={index === 0} key={approval.id} approval={approval} readOnly={readOnly} connectorApproval={approval.kind === "connector"} onResolve={decision => onResolveApproval(approval, decision)} onOpenReview={message.diff ? onOpenReview : undefined} />)}
     {message.incidents?.filter(incident => incident.status !== "resolved").map(incident => {
       const label = publicActivityText(incident.message, 1000);
       const detail = incident.detail ? publicActivityText(incident.detail, 1000) : null;
       if (!label) return null;
       return <div key={incident.id} role="status" className="flex gap-3 py-3 text-[var(--text)]"><X size={16} className="mt-1 shrink-0" aria-hidden="true" /><div className="min-w-0"><p className="font-medium">{label}</p>{detail ? <p className="mt-1 text-sm text-[var(--text-secondary)]">{detail}</p> : null}
         <p className="mt-1 font-mono text-xs text-[var(--text-muted)]">{t("Pas {step}", { step: incident.stepIndex + 1 })}</p>
-        {incident.status === "open" && !readOnly && onMessageChange ? <div className="mt-3 flex flex-wrap gap-2">{incident.actions.map(action => <button key={action} type="button" disabled={busy} className={`${button} border border-[var(--border)]`} onClick={() => act(incident, action)}>{t(action === "retry" ? "Torna-ho a provar" : "Omet aquest pas")}</button>)}</div> : incident.status !== "open" ? <p className="mt-2 text-sm text-[var(--text-secondary)]">{t(incident.status === "retry_requested" ? "Reintent sol·licitat" : "Omissió sol·licitada")}</p> : null}
+        {incident.status === "open" && message.status === "streaming" && !readOnly && onMessageChange ? <div className="mt-3 flex flex-wrap gap-2">{incident.actions.map(action => <button key={action} type="button" disabled={busy} className={`${button} border border-[var(--border)]`} onClick={() => act(incident, action)}>{t(action === "retry" ? "Torna-ho a provar" : "Omet aquest pas")}</button>)}</div> : incident.status !== "open" ? <p className="mt-2 text-sm text-[var(--text-secondary)]">{t(incident.status === "retry_requested" ? "Reintent sol·licitat" : "Omissió sol·licitada")}</p> : null}
       </div></div>;
     })}
     {proposed ? <div><p className="neska-px mb-2 text-xs text-[var(--text-secondary)]">{t("Pla proposat")}</p><p className="text-sm text-[var(--text-secondary)]">{t("Revisa els passos abans d’executar-los.")}</p></div> : null}

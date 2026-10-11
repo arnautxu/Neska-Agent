@@ -994,16 +994,23 @@ export function BrainApp({
     if (!remainsInConversation) setPreviewDocument(null);
   }, [activeThread, previewDocument]);
   const taskCenterItems = useMemo(() => {
-    const local = deriveTaskCenterItems({ projects, threads }, taskCenterPayload.readTaskIds);
-    const merged = initialWorkbench.persistence === "browser-preview"
-      ? new Map(taskCenterPayload.tasks.map((task) => [task.id, task]))
-      : new Map(local.map((task) => [task.id, task]));
-    for (const task of initialWorkbench.persistence === "browser-preview" ? local : taskCenterPayload.tasks) {
-      merged.set(task.id, task);
-    }
+    const records = initialWorkbench.persistence === "browser-preview"
+      ? deriveTaskCenterItems({ projects, threads }, taskCenterPayload.readTaskIds)
+      : taskCenterPayload.tasks;
+    const merged = new Map(records.map(task => [task.id, task]));
     return [...merged.values()].sort((left, right) =>
       right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id));
   }, [initialWorkbench.persistence, projects, taskCenterPayload.readTaskIds, taskCenterPayload.tasks, threads]);
+  const neskaSidebarActivity = useMemo(() => {
+    const records: Record<string, ThreadActivity> = {};
+    for (const task of [...taskCenterItems].sort((left, right) => right.createdAt.localeCompare(left.createdAt))) {
+      if (!records[task.threadId]) records[task.threadId] = {
+        state: task.planProposal?.status === "proposed" || task.queue?.state === "waiting" ? "idle" : task.status,
+        unreadCount: task.planProposal?.status === "proposed" || task.queue?.state === "waiting" ? 0 : task.unread ? 1 : 0,
+      };
+    }
+    return records;
+  }, [taskCenterItems]);
   const taskSummary = useMemo(() => ({
     unread: taskCenterItems.filter((task) => task.unread).length,
     running: taskCenterItems.filter((task) => task.status === "running").length,
@@ -2339,7 +2346,7 @@ export function BrainApp({
         mobileReturnFocusRef={mobileSidebarOpenerRef}
         desktopOpen={desktopSidebarOpen}
         busy={actionBusy}
-        threadActivityById={threadActivityById}
+        threadActivityById={branding.visualTheme === "neska" ? neskaSidebarActivity : threadActivityById}
         onCloseMobile={dismissMobileSidebar}
         onCloseDesktop={() => setDesktopSidebarOpen(false)}
         onOpenDesktop={() => setDesktopSidebarOpen(true)}
@@ -2348,6 +2355,8 @@ export function BrainApp({
           setCommandPaletteOpen(true);
         }}
         onOpenAutomations={() => { setMobileSidebarOpen(false); setAutomationsOpen(true); }}
+        onOpenInbox={branding.visualTheme === "neska" ? () => { setMobileSidebarOpen(false); setTaskCenterOpen(true); } : undefined}
+        pendingTasks={taskSummary.needsAttention}
         onSelectProject={(projectId) => { setAutomationsOpen(false); selectProject(projectId); }}
         onSelectThread={(threadId) => { setAutomationsOpen(false); selectThread(threadId); }}
         onNewThread={(projectId) => { setAutomationsOpen(false); startNewThread(projectId); }}
@@ -2417,6 +2426,10 @@ export function BrainApp({
         onFreezePublication={freezePublication}
         onDecidePublication={decidePublication}
         onComposerNotice={(message, kind = "warning") => setNotice(workbenchNotice(message, kind))}
+        branding={branding}
+        tasks={taskCenterItems}
+        onOpenInbox={() => setTaskCenterOpen(true)}
+        onOpenTask={task => { void selectThread(task.threadId); if (task.unread) void mutateTaskCenter({ action: "mark_read", taskIds: [task.id] }); }}
         onSend={submitComposerMessage}
         onPlanRequest={() => void sendMessage(undefined, undefined, { mode: "plan" })}
         onExecutePlan={proposal => void sendMessage("Executa el pla revisat", "Executa el pla revisat", { proposal })}
