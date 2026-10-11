@@ -1,3 +1,4 @@
+import { observeTaskEvent, proposalAtCompletion } from "@/runtime/task-events";
 import { randomUUID } from "node:crypto";
 import { MAX_FILES_PER_MESSAGE } from "@/lib/chat-attachment-limits";
 import { NextResponse } from "next/server";
@@ -701,7 +702,13 @@ export async function POST(request: Request) {
       }, CHAT_STREAM_KEEPALIVE_MS);
       keepalive.unref?.();
       const emit = async (event: ChatStreamEvent, projection?: WorkerTurnProjection) => {
-        const projectedEvent = projectChatStreamEvent(event, {
+        if (event.type === "done") {
+          const proposal = proposalAtCompletion(assistantMessage, body.options.mode);
+          if (proposal) await emit(proposal);
+        }
+        const timestamp = projection?.envelope.occurredAt ?? new Date().toISOString();
+        const projectedEvent = projectChatStreamEvent(observeTaskEvent(assistantMessage, event, timestamp), {
+          timestamp,
           sequence: projection?.envelope.sequence,
           terminalDurationMs: Math.max(0, Math.round(performance.now() - requestStartedAt)),
         });

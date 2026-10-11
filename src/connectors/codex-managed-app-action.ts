@@ -130,7 +130,7 @@ export class CodexManagedAppAction {
       authorizationFingerprint: authorization.authorizationFingerprint,
       approval: {
         id: locator.approvalId, threadId: locator.threadId, turnId: locator.turnId, itemId: locator.itemId,
-        kind: "command", title: "Confirmar acción conectada", detail: "Ejecutar la acción aprobada de la aplicación conectada.", status: "pending",
+        kind: "connector", title: "Confirma l’acció de l’aplicació connectada", detail: "Revisa l’acció abans de permetre que l’aplicació l’executi.", status: "pending",
       },
     };
   }

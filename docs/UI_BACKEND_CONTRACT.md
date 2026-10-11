@@ -1645,3 +1645,86 @@ original bytes. Save that source through the existing project PATCH. Ready file
 references with null excerpt resolve through their server-private project/owner
 namespace; `pending-index` is a legacy missing-original state, not an active job.
 Supported originals: XLSX, PDF, DOCX, PPTX and text, maximum 20 MB per file.
+
+## 19. Neska: contracte additiu del cicle de tasca (2026-10-11)
+
+Els estats i camps V1 existents continuen sent vàlids. Els clients antics poden
+ignorar els nous camps. El servidor persisteix i reprodueix les extensions en la
+mateixa projecció privada del torn; no hi ha fixtures en aquestes rutes.
+
+- `PlanStep.status` accepta també `failed` i `skipped`. Camps opcionals:
+  `tool` (nom visible), `requiresApproval`, `startedAt`, `completedAt`,
+  `progress: { done, total }` i `current`. El validador rebutja progrés negatiu,
+  fraccionari, totals nuls i `done > total`, i dates fora d’ordre. Els temps són
+  observacions server-side de transicions explícites; no s’inventa un inici
+  quan un pas arriba ja completat. Eina, progrés i necessitat de permís només
+  es publiquen si el runtime els aporta explícitament.
+- `ApprovalItem` afegeix `kind: connector`, `stepIndex?` (base zero) i
+  `reviewUrl?` (contingut autenticat `/api/`). L’índex s’associa server-side
+  només quan hi ha un únic pas en curs. Els permisos, decisions i fingerprints
+  existents continuen sent autoritat. Cap metadada del pla autoritza una acció.
+- `ActivityItem` afegeix `timestamp?`, `object?` i `kind: decision` amb
+  `criterion` obligatori. La projecció publica el temps observat pel servidor.
+  El worker conserva activitat factual encara que el panell estigui tancat;
+  el panell no publica `reasoning`, ni sortides internes del model.
+- `ChatMessage` afegeix `planExplanation?`, `planProposal?`, `queue?` i
+  `incidents?`. Esdeveniments nous: `proposal`, `queue` i `incident`.
+  `queue` prové de l’admissió real del worker: `state: waiting | running`,
+  `timestamp` i `position?` només mentre espera. No modifica l’estat terminal.
+- Una incidència no fatal té `id`, `stepIndex`, `message`, `detail?`,
+  `actions: (retry | skip)[]`, `status: open | retry_requested | skip_requested |
+  resolved` i `timestamp`. No termina el torn ni canvia el pas a completat.
+  Una confirmació de steering només publica l’acció sol·licitada; el runtime
+  ha de publicar el resultat observat per resoldre-la.
+- Imatges i documents poden publicar `summary?` curt; els documents també
+  `progress?`. No es fabriquen metadades de files ni un percentatge d’esborrany.
+  Task Center afegeix `queue?`, `planProposal?` i `pendingApprovals?` per oferir
+  totes les aprovacions pendents en l’àmbit autoritzat de l’usuari.
+
+### Pla proposat editable
+
+Quan un torn en mode `plan` acaba amb passos publicats, el servidor emet
+`proposal: { status: proposed, revision: 1 }`. El reducer conserva títols, eina
+visible i requisit de permís, i deixa els passos proposats pendents sense temps
+ni progrés d’execució. No tracta aquesta proposta com a treball executat.
+
+`POST /api/runtime/plans`, same-origin i sessió local:
+
+```ts
+{ action: "edit", threadId, assistantMessageId, revision, steps: string[] }
+{ action: "execute", threadId, assistantMessageId, revision, execution: ChatRequest }
+```
+
+Editar retorna `{ message: ChatMessage }`, incrementa la revisió i conserva
+metadades només dels títols que no han canviat. Executar reserva atòmicament els
+IDs nous de `execution`, marca `planProposal.status: accepted` i retorna el mateix
+NDJSON que `/api/chat`. El text executat deriva del pla guardat i de la petició
+original. Torna a validar els permisos del torn, adjunts, eines i política al
+handler de chat ordinari. Una repetició amb els mateixos IDs reprèn la mateixa
+execució durable; una altra execució o revisió obsoleta rep `409`.
+
+### Accions d’incidència
+
+`POST /api/runtime/incidents`, same-origin i sessió local:
+
+```ts
+{ threadId, assistantMessageId, incidentId, action: "retry" | "skip",
+  clientRequestId, userMessageId }
+```
+
+Només accepta accions publicades d’una incidència oberta en un torn actiu.
+Resol l’accés editor/owner abans de llegir la projecció privada i dirigeix una
+indicació acotada a `/api/runtime/turns/control`. Manté la identitat privada del
+runtime i la idempotència existent. Retorna `{ ok: true, message }` després de
+l’acceptació. Si cal un nou upload, s’adjunta pel composer i s’autoritza en el
+flux documental existent; no es publica `retry_with_upload` sense aquest suport.
+
+El canal runtime `neska_task.report` pot publicar plans, incidències i criteris
+de decisió explícits. Revalida el thread/turn exacte, filtra text intern i no
+executa efectes ni concedeix permisos. La revisió del toolset s’incrementa perquè
+les eines dinàmiques es fixen quan es crea el thread. La continuïtat de threads
+antics segueix el rebootstrap autoritzat i l’historial immutable existent.
+
+Estimacions, push mòbil, records utilitzats i repetició d’una tasca feta no es
+publiquen amb aquest canvi. La UI n’ha d’ometre els controls mentre no hi hagi
+una dada o capacitat real; les automatitzacions continuen al seu contracte propi.

@@ -30,3 +30,14 @@ This is local work on the fetched source revision in an isolated worktree. Valid
 The five core findings now have local remediations: password recovery revokes existing local sessions under a per-identity cross-process lock; task-center mutations require the configured same origin; private native filesystem profiles apply regardless of usage quotas; unsupported restricted native turns are rejected before context/model dispatch; production sharp/source-map-js dependencies are updated.
 
 See [SECURITY_REMEDIATION.md](SECURITY_REMEDIATION.md) for behavior, evidence and release requirements. The development-only braces advisory has no upstream patched version at this date and remains tracked. Local validation does not establish Backend CI, GHCR publication, Linux container acceptance, deployment or authenticated live acceptance. No real customer connection has been configured.
+
+## Task UI contract (2026-10-11)
+
+Neska task events now support explicit step metadata, nonfatal incidents, public
+decision criteria, real worker queue admission, and a revisioned plan proposal.
+The private `neska_task.report` channel is presentation data only; permissions
+and connector approvals remain server-owned. The thread toolset revision is
+advanced for newly provisioned runtime threads. Plan execution reuses ordinary
+chat authorization and durable dispatch with atomically reserved execution IDs.
+See UI_BACKEND_CONTRACT section 19 for compatibility and unknown-data rules.
+Local tests are not Backend CI, GHCR publication, deployment or live acceptance.

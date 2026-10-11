@@ -25,6 +25,42 @@
       "type": "string",
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
     },
+    "TaskIncident": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "stepIndex", "message", "actions", "status", "timestamp"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"},
+        "stepIndex": {"type": "integer", "minimum": 0, "maximum": 99},
+        "message": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "actions": {"type": "array", "maxItems": 2, "uniqueItems": true, "items": {"enum": ["retry", "skip"]}},
+        "status": {"enum": ["open", "retry_requested", "skip_requested", "resolved"]},
+        "timestamp": {"$ref": "#/$defs/IsoDate"}
+      }
+    },
+    "PlanProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "status"],
+      "properties": {
+        "revision": {"type": "integer", "minimum": 1},
+        "status": {"enum": ["proposed", "accepted"]},
+        "execution": {"type": "object", "additionalProperties": false, "required": ["userMessageId", "assistantMessageId"], "properties": {"userMessageId": {"$ref": "#/$defs/Uuid"}, "assistantMessageId": {"$ref": "#/$defs/Uuid"}}}
+      },
+      "allOf": [{"if": {"properties": {"status": {"const": "accepted"}}}, "then": {"required": ["execution"], "properties": {"execution": {}}}, "else": {"not": {"required": ["execution"], "properties": {"execution": {}}}}}]
+    },
+    "TaskQueue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "timestamp"],
+      "properties": {
+        "state": {"enum": ["waiting", "running"]},
+        "timestamp": {"$ref": "#/$defs/IsoDate"},
+        "position": {"type": "integer", "minimum": 1}
+      },
+      "allOf": [{"if": {"properties": {"state": {"const": "running"}}}, "then": {"not": {"required": ["position"], "properties": {"position": {}}}}}]
+    },
     "IsoDate": {
       "type": "string",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$"
@@ -109,14 +145,18 @@
       "additionalProperties": false,
       "required": ["id", "kind", "label", "status"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "kind": { "enum": ["system", "reasoning", "plan", "command", "file", "tool", "web", "agent"] },
-        "label": { "type": "string" },
-        "detail": { "type": "string" },
-        "output": { "type": "string" },
-        "sequence": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
-        "status": { "enum": ["pending", "running", "waiting", "complete", "failed", "stopped"] }
-      }
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["system", "reasoning", "plan", "command", "file", "tool", "web", "agent", "decision"]},
+        "label": {"type": "string"},
+        "detail": {"type": "string"},
+        "output": {"type": "string"},
+        "sequence": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "status": {"enum": ["pending", "running", "waiting", "complete", "failed", "stopped"]},
+        "timestamp": {"$ref": "#/$defs/IsoDate"},
+        "object": {"type": "string", "minLength": 1, "maxLength": 240},
+        "criterion": {"type": "string", "minLength": 1, "maxLength": 1000}
+      },
+      "allOf": [{"if": {"properties": {"kind": {"const": "decision"}}}, "then": {"required": ["criterion"], "properties": {"criterion": {}}}}]
     },
     "TurnSource": {
       "type": "object",
@@ -153,8 +193,14 @@
       "additionalProperties": false,
       "required": ["step", "status"],
       "properties": {
-        "step": { "type": "string" },
-        "status": { "enum": ["pending", "in_progress", "completed"] }
+        "step": {"type": "string"},
+        "status": {"enum": ["pending", "in_progress", "completed", "failed", "skipped"]},
+        "tool": {"type": "string", "minLength": 1, "maxLength": 120},
+        "requiresApproval": {"type": "boolean"},
+        "startedAt": {"$ref": "#/$defs/IsoDate"},
+        "completedAt": {"$ref": "#/$defs/IsoDate"},
+        "progress": {"type": "object", "additionalProperties": false, "required": ["done", "total"], "properties": {"done": {"type": "integer", "minimum": 0}, "total": {"type": "integer", "minimum": 1}}},
+        "current": {"type": "string", "minLength": 1, "maxLength": 240}
       }
     },
     "ApprovalItem": {
@@ -162,17 +208,19 @@
       "additionalProperties": false,
       "required": ["id", "threadId", "turnId", "itemId", "kind", "title", "detail", "status"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "threadId": { "type": "string", "minLength": 1 },
-        "turnId": { "type": "string", "minLength": 1 },
-        "itemId": { "type": "string", "minLength": 1 },
-        "kind": { "enum": ["command", "file", "browser"] },
-        "title": { "type": "string" },
-        "detail": { "type": "string" },
-        "command": { "type": "string" },
-        "cwd": { "type": "string" },
-        "permissionFingerprint": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-        "status": { "enum": ["pending", "accepted", "accepted_session", "declined"] }
+        "id": {"type": "string", "minLength": 1},
+        "threadId": {"type": "string", "minLength": 1},
+        "turnId": {"type": "string", "minLength": 1},
+        "itemId": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["command", "file", "browser", "connector"]},
+        "title": {"type": "string"},
+        "detail": {"type": "string"},
+        "command": {"type": "string"},
+        "cwd": {"type": "string"},
+        "permissionFingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "status": {"enum": ["pending", "accepted", "accepted_session", "declined"]},
+        "stepIndex": {"type": "integer", "minimum": 0, "maximum": 99},
+        "reviewUrl": {"type": "string", "pattern": "^/api/[A-Za-z0-9][^\\s\\\\]*$"}
       }
     },
     "ConnectorCapability": {
@@ -304,22 +352,26 @@
       "additionalProperties": false,
       "required": ["id", "role", "content", "createdAt", "status", "activity", "plan", "approvals", "diff", "attachments", "artifacts"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "role": { "enum": ["user", "assistant"] },
-        "content": { "type": "string" },
-        "createdAt": { "$ref": "#/$defs/IsoDate" },
-        "durationMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
-        "status": { "enum": ["complete", "streaming", "error", "stopped"] },
-        "activity": { "type": "array", "items": { "$ref": "#/$defs/ActivityItem" } },
-        "plan": { "type": "array", "items": { "$ref": "#/$defs/PlanStep" } },
-        "approvals": { "type": "array", "items": { "$ref": "#/$defs/ApprovalItem" } },
-        "diff": { "type": "string" },
-        "connectorMentions": { "type": "array", "maxItems": 20, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:[-.:][a-z0-9]+)*$" } },
-        "serverReferences": { "type": "array", "maxItems": 5, "items": { "$ref": "#/$defs/ServerReference" } },
-        "attachments": { "type": "array", "items": { "$ref": "#/$defs/ChatAttachment" } },
-        "artifacts": { "type": "array", "items": { "$ref": "#/$defs/GeneratedArtifact" } },
-        "sources": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/TurnSource" } },
-        "toolResults": { "type": "array", "items": { "$ref": "#/$defs/ToolResult" } }
+        "id": {"type": "string", "minLength": 1},
+        "role": {"enum": ["user", "assistant"]},
+        "content": {"type": "string"},
+        "createdAt": {"$ref": "#/$defs/IsoDate"},
+        "durationMs": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "status": {"enum": ["complete", "streaming", "error", "stopped"]},
+        "activity": {"type": "array", "items": {"$ref": "#/$defs/ActivityItem"}},
+        "plan": {"type": "array", "items": {"$ref": "#/$defs/PlanStep"}},
+        "approvals": {"type": "array", "items": {"$ref": "#/$defs/ApprovalItem"}},
+        "diff": {"type": "string"},
+        "connectorMentions": {"type": "array", "maxItems": 20, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:[-.:][a-z0-9]+)*$"}},
+        "serverReferences": {"type": "array", "maxItems": 5, "items": {"$ref": "#/$defs/ServerReference"}},
+        "attachments": {"type": "array", "items": {"$ref": "#/$defs/ChatAttachment"}},
+        "artifacts": {"type": "array", "items": {"$ref": "#/$defs/GeneratedArtifact"}},
+        "sources": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/TurnSource"}},
+        "toolResults": {"type": "array", "items": {"$ref": "#/$defs/ToolResult"}},
+        "planExplanation": {"type": "string"},
+        "planProposal": {"$ref": "#/$defs/PlanProposal"},
+        "queue": {"$ref": "#/$defs/TaskQueue"},
+        "incidents": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/TaskIncident"}}
       }
     },
     "WorkbenchWorkspace": {
@@ -554,16 +606,19 @@
     },
     "ChatStreamEvent": {
       "oneOf": [
-        { "type": "object", "additionalProperties": false, "required": ["type", "message"], "properties": { "type": { "const": "snapshot" }, "message": { "$ref": "#/$defs/ChatMessage" } } },
-        { "type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": { "type": { "enum": ["content", "diff", "delta"] }, "value": { "type": "string" } } },
-        { "type": "object", "additionalProperties": false, "required": ["type", "item"], "properties": { "type": { "const": "activity" }, "item": { "$ref": "#/$defs/ActivityItem" } } },
-        { "type": "object", "additionalProperties": false, "required": ["type", "item"], "properties": { "type": { "const": "approval" }, "item": { "$ref": "#/$defs/ApprovalItem" } } },
-        { "type": "object", "additionalProperties": false, "required": ["type", "item"], "properties": { "type": { "const": "artifact" }, "item": { "$ref": "#/$defs/GeneratedArtifact" } } },
-        { "type": "object", "additionalProperties": false, "required": ["type", "item"], "properties": { "type": { "const": "source" }, "item": { "$ref": "#/$defs/TurnSource" } } },
-        { "type": "object", "additionalProperties": false, "required": ["type", "item"], "properties": { "type": { "const": "toolResult" }, "item": { "$ref": "#/$defs/ToolResult" } } },
-        { "type": "object", "additionalProperties": false, "required": ["type", "explanation", "steps"], "properties": { "type": { "const": "plan" }, "explanation": { "type": ["string", "null"] }, "steps": { "type": "array", "items": { "$ref": "#/$defs/PlanStep" } } } },
-        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "enum": ["done", "stopped"] } } },
-        { "type": "object", "additionalProperties": false, "required": ["type", "message"], "properties": { "type": { "const": "error" }, "message": { "type": "string" } } }
+        {"type": "object", "additionalProperties": false, "required": ["type", "message"], "properties": {"type": {"const": "snapshot"}, "message": {"$ref": "#/$defs/ChatMessage"}}},
+        {"type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": {"type": {"enum": ["content", "diff", "delta"]}, "value": {"type": "string"}}},
+        {"type": "object", "additionalProperties": false, "required": ["type", "item"], "properties": {"type": {"const": "activity"}, "item": {"$ref": "#/$defs/ActivityItem"}}},
+        {"type": "object", "additionalProperties": false, "required": ["type", "item"], "properties": {"type": {"const": "approval"}, "item": {"$ref": "#/$defs/ApprovalItem"}}},
+        {"type": "object", "additionalProperties": false, "required": ["type", "item"], "properties": {"type": {"const": "artifact"}, "item": {"$ref": "#/$defs/GeneratedArtifact"}}},
+        {"type": "object", "additionalProperties": false, "required": ["type", "item"], "properties": {"type": {"const": "source"}, "item": {"$ref": "#/$defs/TurnSource"}}},
+        {"type": "object", "additionalProperties": false, "required": ["type", "item"], "properties": {"type": {"const": "toolResult"}, "item": {"$ref": "#/$defs/ToolResult"}}},
+        {"type": "object", "additionalProperties": false, "required": ["type", "explanation", "steps"], "properties": {"type": {"const": "plan"}, "explanation": {"type": ["string", "null"]}, "steps": {"type": "array", "items": {"$ref": "#/$defs/PlanStep"}}}},
+        {"type": "object", "additionalProperties": false, "required": ["type"], "properties": {"type": {"enum": ["done", "stopped"]}}},
+        {"type": "object", "additionalProperties": false, "required": ["type", "message"], "properties": {"type": {"const": "error"}, "message": {"type": "string"}}},
+        {"type": "object", "additionalProperties": false, "required": ["type", "proposal"], "properties": {"type": {"const": "proposal"}, "proposal": {"$ref": "#/$defs/PlanProposal"}}},
+        {"type": "object", "additionalProperties": false, "required": ["type", "queue"], "properties": {"type": {"const": "queue"}, "queue": {"$ref": "#/$defs/TaskQueue"}}},
+        {"type": "object", "additionalProperties": false, "required": ["type", "incident"], "properties": {"type": {"const": "incident"}, "incident": {"$ref": "#/$defs/TaskIncident"}}}
       ]
     },
     "LegacyExcelProvenance": {

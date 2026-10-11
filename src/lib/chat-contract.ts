@@ -11,7 +11,8 @@ export type ActivityKind =
   | "file"
   | "tool"
   | "web"
-  | "agent";
+  | "agent"
+  | "decision";
 
 export type ActivityStatus =
   | "pending"
@@ -31,6 +32,11 @@ export type ActivityItem = {
   /** Monotonic App Server transport sequence for cross-kind timeline ordering. */
   sequence?: number;
   status: ActivityStatus;
+  /** Server-observed time, never synthesized by the browser. */
+  timestamp?: string;
+  object?: string;
+  /** Public decision criterion; never model reasoning. */
+  criterion?: string;
 };
 
 export type ActivityFileChange = {
@@ -68,7 +74,46 @@ export type ToolResult = {
 
 export type PlanStep = {
   step: string;
-  status: "pending" | "in_progress" | "completed";
+  status: "pending" | "in_progress" | "completed" | "failed" | "skipped";
+  tool?: string;
+  requiresApproval?: boolean;
+  startedAt?: string;
+  completedAt?: string;
+  progress?: { done: number; total: number };
+  current?: string;
+};
+
+export type TaskIncident = {
+  id: string;
+  stepIndex: number;
+  message: string;
+  detail?: string;
+  actions: ("retry" | "skip")[];
+  status: "open" | "retry_requested" | "skip_requested" | "resolved";
+  timestamp: string;
+};
+
+export type PlanProposal = {
+  revision: number;
+  status: "proposed" | "accepted";
+  execution?: { userMessageId: string; assistantMessageId: string };
+};
+
+export type TaskQueue = { state: "waiting" | "running"; timestamp: string; position?: number };
+
+export type PlanMutationRequest = {
+  threadId: string;
+  assistantMessageId: string;
+  revision: number;
+} & ({ action: "edit"; steps: string[] } | { action: "execute"; execution: ChatRequest });
+
+export type IncidentActionRequest = {
+  threadId: string;
+  assistantMessageId: string;
+  incidentId: string;
+  action: "retry" | "skip";
+  clientRequestId: string;
+  userMessageId: string;
 };
 
 export type ApprovalDecision = "accept" | "acceptForSession" | "decline";
@@ -92,6 +137,7 @@ export type ImageArtifact = {
   name: string;
   url: string;
   prompt: string | null;
+  summary?: string;
   /** Intrinsic PNG dimensions, omitted by older persisted messages. */
   width?: number;
   height?: number;
@@ -112,6 +158,8 @@ export type DocumentArtifact = {
   pages: number | null;
   previewUrl: string | null;
   previewFormat?: "spreadsheet";
+  summary?: string;
+  progress?: { done: number; total: number };
   publicationStatus: PublicationStatus | null;
   publicationError: string | null;
   targetLabel: string | null;
@@ -158,12 +206,15 @@ export type ApprovalItem = {
   threadId: string;
   turnId: string;
   itemId: string;
-  kind: "command" | "file" | "browser";
+  kind: "command" | "file" | "browser" | "connector";
   title: string;
   detail: string;
   command?: string;
   cwd?: string;
   permissionFingerprint?: string;
+  stepIndex?: number;
+  /** Authenticated same-origin content supplied by the backend. */
+  reviewUrl?: string;
   status: "pending" | "accepted" | "accepted_session" | "declined";
 };
 
@@ -177,6 +228,10 @@ export type ChatMessage = {
   status: "complete" | "streaming" | "error" | "stopped";
   activity: ActivityItem[];
   plan: PlanStep[];
+  planExplanation?: string;
+  planProposal?: PlanProposal;
+  queue?: TaskQueue;
+  incidents?: TaskIncident[];
   approvals: ApprovalItem[];
   diff: string;
   attachments: ChatAttachment[];
@@ -243,6 +298,9 @@ export type ChatStreamEvent =
   | { type: "content"; value: string }
   | { type: "activity"; item: ActivityItem }
   | { type: "plan"; explanation: string | null; steps: PlanStep[] }
+  | { type: "proposal"; proposal: PlanProposal }
+  | { type: "queue"; queue: TaskQueue }
+  | { type: "incident"; incident: TaskIncident }
   | { type: "approval"; item: ApprovalItem }
   | { type: "diff"; value: string }
   | { type: "delta"; value: string }
@@ -255,6 +313,7 @@ export type ChatStreamEvent =
 
 type ChatStreamProjectionMetadata = {
   sequence?: number;
+  timestamp?: string;
   terminalDurationMs?: number;
 };
 
@@ -264,8 +323,8 @@ export function projectChatStreamEvent(
   metadata: ChatStreamProjectionMetadata,
 ): ChatStreamEvent {
   const sequence = metadata.sequence;
-  if (event.type === "activity" && sequence !== undefined) {
-    return { ...event, item: { ...event.item, sequence: event.item.sequence ?? sequence } };
+  if (event.type === "activity") {
+    return { ...event, item: { ...event.item, ...(sequence !== undefined ? { sequence: event.item.sequence ?? sequence } : {}), ...(metadata.timestamp ? { timestamp: event.item.timestamp ?? metadata.timestamp } : {}) } };
   }
   if (event.type === "toolResult" && sequence !== undefined) {
     return { ...event, item: { ...event.item, sequence: event.item.sequence ?? sequence } };
@@ -278,7 +337,7 @@ export function projectChatStreamEvent(
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object");
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function hasOptionalString(value: Record<string, unknown>, key: string) {
@@ -296,7 +355,7 @@ function isUuidString(value: unknown) {
 }
 
 function isIsoDate(value: unknown) {
-  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) && !Number.isNaN(Date.parse(value));
 }
 
 function isSafeNullableText(value: unknown, maximum: number) {
@@ -427,6 +486,8 @@ export function isTurnOptions(value: unknown): value is TurnOptions {
 export function isGeneratedArtifact(value: unknown): value is GeneratedArtifact {
   if (!isRecord(value) || typeof value.id !== "string" || !/^[0-9a-f-]{36}$/i.test(value.id) ||
     typeof value.name !== "string" || !value.name.trim() || value.name.length > 120) return false;
+  if (value.summary !== undefined && !isPublicText(value.summary, 240)) return false;
+  if (value.type === "document" && value.progress !== undefined && !isStepProgress(value.progress)) return false;
   if (value.type === "image") {
     return /^[^/\\\u0000-\u001f\u007f]+\.png$/u.test(value.name) &&
       typeof value.url === "string" &&
@@ -484,12 +545,16 @@ export function isActivityItem(value: unknown): value is ActivityItem {
       value.kind === "file" ||
       value.kind === "tool" ||
       value.kind === "web" ||
-      value.kind === "agent") &&
+      value.kind === "agent" || value.kind === "decision") &&
     typeof value.label === "string" &&
     hasOptionalString(value, "detail") &&
     hasOptionalString(value, "output") &&
     (!("sequence" in value) || value.sequence === undefined ||
       (Number.isSafeInteger(value.sequence) && Number(value.sequence) >= 0)) &&
+    (value.timestamp === undefined || isIsoDate(value.timestamp)) &&
+    (value.object === undefined || isPublicText(value.object, 240)) &&
+    (value.criterion === undefined || isPublicText(value.criterion, 1_000)) &&
+    (value.kind !== "decision" || isPublicText(value.criterion, 1_000)) &&
     validFiles &&
     (value.status === "pending" ||
       value.status === "running" ||
@@ -500,14 +565,70 @@ export function isActivityItem(value: unknown): value is ActivityItem {
   );
 }
 
+function isPublicText(value: unknown, maximum: number) {
+  return typeof value === "string" && value.trim().length > 0 && value.length <= maximum &&
+    !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(value);
+}
+
+function isIndex(value: unknown) { return Number.isSafeInteger(value) && Number(value) >= 0 && Number(value) < 100; }
+
+export function isStepProgress(value: unknown): value is { done: number; total: number } {
+  return isRecord(value) && Object.keys(value).length === 2 &&
+    Number.isSafeInteger(value.done) && Number(value.done) >= 0 &&
+    Number.isSafeInteger(value.total) && Number(value.total) > 0 && Number(value.done) <= Number(value.total);
+}
+
 export function isPlanStep(value: unknown): value is PlanStep {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.step === "string" &&
-    (value.status === "pending" ||
-      value.status === "in_progress" ||
-      value.status === "completed")
-  );
+  return isRecord(value) && typeof value.step === "string" &&
+    ["pending", "in_progress", "completed", "failed", "skipped"].includes(String(value.status)) &&
+    (value.tool === undefined || isPublicText(value.tool, 120)) &&
+    (value.requiresApproval === undefined || typeof value.requiresApproval === "boolean") &&
+    (value.startedAt === undefined || isIsoDate(value.startedAt)) &&
+    (value.completedAt === undefined || isIsoDate(value.completedAt)) &&
+    (value.startedAt === undefined || value.completedAt === undefined || Date.parse(String(value.completedAt)) >= Date.parse(String(value.startedAt))) &&
+    (value.progress === undefined || isStepProgress(value.progress)) &&
+    (value.current === undefined || isPublicText(value.current, 240));
+}
+
+export function isTaskIncident(value: unknown): value is TaskIncident {
+  return isRecord(value) && isOpaqueRuntimeId(value.id) && isIndex(value.stepIndex) &&
+    isPublicText(value.message, 1_000) && (value.detail === undefined || isPublicText(value.detail, 1_000)) &&
+    Array.isArray(value.actions) && value.actions.length <= 2 && new Set(value.actions).size === value.actions.length &&
+    value.actions.every(action => action === "retry" || action === "skip") &&
+    ["open", "retry_requested", "skip_requested", "resolved"].includes(String(value.status)) && isIsoDate(value.timestamp);
+}
+
+export function isPlanProposal(value: unknown): value is PlanProposal {
+  return isRecord(value) && Number.isSafeInteger(value.revision) && Number(value.revision) >= 1 &&
+    (value.status === "proposed" ? value.execution === undefined : value.status === "accepted" &&
+      isRecord(value.execution) && Object.keys(value.execution).length === 2 &&
+      isUuidString(value.execution.userMessageId) && isUuidString(value.execution.assistantMessageId));
+}
+
+export function isTaskQueue(value: unknown): value is TaskQueue {
+  return isRecord(value) && (value.state === "waiting" || value.state === "running") && isIsoDate(value.timestamp) &&
+    (value.position === undefined || (value.state === "waiting" && Number.isSafeInteger(value.position) && Number(value.position) >= 1));
+}
+
+export function isPlanMutationRequest(value: unknown): value is PlanMutationRequest {
+  if (!isRecord(value) || !isUuidString(value.threadId) || !isUuidString(value.assistantMessageId) ||
+      !Number.isSafeInteger(value.revision) || Number(value.revision) < 1 || Object.keys(value).length !== 5) return false;
+  if (value.action === "edit") return Array.isArray(value.steps) && value.steps.length > 0 && value.steps.length <= 100 &&
+    value.steps.every(step => isPublicText(step, 1_000));
+  if (value.action === "execute") return isRecord(value.execution) && value.execution.threadId === value.threadId &&
+    isUuidString(value.execution.projectId) && isUuidString(value.execution.userMessageId) && isUuidString(value.execution.assistantMessageId) &&
+    value.execution.assistantMessageId !== value.assistantMessageId && value.execution.userMessageId !== value.execution.assistantMessageId &&
+    typeof value.execution.message === "string" && isRecord(value.execution.preferences) &&
+    ["direct", "balanced", "detailed"].includes(String(value.execution.preferences.tone)) &&
+    ["ca", "es", "en"].includes(String(value.execution.preferences.language)) && typeof value.execution.preferences.showActivity === "boolean" &&
+    isTurnOptions(value.execution.options) && value.execution.options.mode === "agent";
+  return false;
+}
+
+export function isIncidentActionRequest(value: unknown): value is IncidentActionRequest {
+  return isRecord(value) && Object.keys(value).length === 6 && isUuidString(value.threadId) &&
+    isUuidString(value.assistantMessageId) && isOpaqueRuntimeId(value.incidentId) &&
+    (value.action === "retry" || value.action === "skip") && isUuidString(value.clientRequestId) && isUuidString(value.userMessageId);
 }
 
 export function isApprovalItem(value: unknown): value is ApprovalItem {
@@ -518,11 +639,13 @@ export function isApprovalItem(value: unknown): value is ApprovalItem {
     isOpaqueRuntimeId(value.threadId) &&
     isOpaqueRuntimeId(value.turnId) &&
     isOpaqueRuntimeId(value.itemId) &&
-    (value.kind === "command" || value.kind === "file" || value.kind === "browser") &&
+    (value.kind === "command" || value.kind === "file" || value.kind === "browser" || value.kind === "connector") &&
     typeof value.title === "string" &&
     typeof value.detail === "string" &&
     hasOptionalString(value, "command") &&
     hasOptionalString(value, "cwd") &&
+    (value.stepIndex === undefined || isIndex(value.stepIndex)) &&
+    (value.reviewUrl === undefined || (typeof value.reviewUrl === "string" && /^\/api\/[A-Za-z0-9][^\s\\]*$/.test(value.reviewUrl))) &&
     (!("permissionFingerprint" in value) || value.permissionFingerprint === undefined ||
       (typeof value.permissionFingerprint === "string" && /^[0-9a-f]{64}$/u.test(value.permissionFingerprint))) &&
     (value.status === "pending" ||
@@ -601,6 +724,9 @@ export function isChatStreamEvent(value: unknown): value is ChatStreamEvent {
   if (value.type === "source") return isTurnSource(value.item);
   if (value.type === "toolResult") return isToolResult(value.item);
   if (value.type === "activity") return isActivityItem(value.item);
+  if (value.type === "proposal") return isPlanProposal(value.proposal);
+  if (value.type === "queue") return isTaskQueue(value.queue);
+  if (value.type === "incident") return isTaskIncident(value.incident);
   if (value.type === "approval") return isApprovalItem(value.item);
   if (value.type === "plan") {
     return (
@@ -632,6 +758,12 @@ export function isChatMessage(message: unknown): message is ChatMessage {
   }
   if (!Array.isArray(message.activity) || !message.activity.every(isActivityItem)) return false;
   if (!Array.isArray(message.plan) || !message.plan.every(isPlanStep)) return false;
+  if (message.planExplanation !== undefined && typeof message.planExplanation !== "string") return false;
+  if (message.planProposal !== undefined && !isPlanProposal(message.planProposal)) return false;
+  if (message.queue !== undefined && !isTaskQueue(message.queue)) return false;
+  if (message.incidents !== undefined && (!Array.isArray(message.incidents) || message.incidents.length > 100 ||
+      !message.incidents.every(isTaskIncident) || new Set(message.incidents.map(item => item.id)).size !== message.incidents.length ||
+      message.incidents.some(item => item.stepIndex >= (message.plan as PlanStep[]).length))) return false;
   if (!Array.isArray(message.approvals) || !message.approvals.every(isApprovalItem)) return false;
   if (message.connectorMentions !== undefined && (!Array.isArray(message.connectorMentions) || message.connectorMentions.length > 20 || new Set(message.connectorMentions).size !== message.connectorMentions.length || !message.connectorMentions.every(id => typeof id === "string" && /^[a-z][a-z0-9]*(?:[-.:][a-z0-9]+)*$/.test(id)))) return false;
   if (message.serverReferences !== undefined && !isServerReferenceList(message.serverReferences)) return false;
@@ -654,13 +786,27 @@ export function applyChatStreamEvent(message: ChatMessage, event: ChatStreamEven
     const activity = [...message.activity];
     activity[index] = {
       ...event.item,
+      ...(activity[index]?.timestamp ? { timestamp: activity[index].timestamp } : {}),
       ...(activity[index]?.sequence !== undefined || event.item.sequence !== undefined
         ? { sequence: activity[index]?.sequence ?? event.item.sequence }
         : {}),
     };
     return { ...message, activity };
   }
-  if (event.type === "plan") return { ...message, plan: event.steps };
+  if (event.type === "plan") return { ...message, plan: event.steps, ...(event.explanation !== null ? { planExplanation: event.explanation } : {}) };
+  if (event.type === "proposal") return { ...message, planProposal: event.proposal,
+    ...(event.proposal.status === "proposed" && event.proposal.revision === 1 ? { plan: message.plan.map(step => ({
+      step: step.step, status: "pending" as const, ...(step.tool ? { tool: step.tool } : {}),
+      ...(step.requiresApproval !== undefined ? { requiresApproval: step.requiresApproval } : {}),
+    })) } : {}) };
+  if (event.type === "queue") return { ...message, queue: event.queue };
+  if (event.type === "incident") {
+    if (event.incident.stepIndex >= message.plan.length) return message;
+    const incidents = message.incidents ?? [];
+    const index = incidents.findIndex(item => item.id === event.incident.id);
+    if (index < 0) return incidents.length < 100 ? { ...message, incidents: [...incidents, event.incident] } : message;
+    return { ...message, incidents: incidents.map((item, i) => i === index ? event.incident : item) };
+  }
   if (event.type === "approval") {
     const index = message.approvals.findIndex((item) => item.id === event.item.id);
     if (index === -1) return { ...message, approvals: [...message.approvals, event.item] };

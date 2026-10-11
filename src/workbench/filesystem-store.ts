@@ -206,13 +206,13 @@ function isCanonicalIsoDate(value: unknown) {
 
 function hasExactArtifactKeys(value: ChatMessage["artifacts"][number]) {
   if (value.type === "image") {
-    return hasExactKeys(value, ["id", "type", "name", "url", "prompt"], ["width", "height"]);
+    return hasExactKeys(value, ["id", "type", "name", "url", "prompt"], ["width", "height", "summary"]);
   }
   if (value.type === "document") {
     return hasExactKeys(value, [
       "id", "type", "name", "url", "kind", "mimeType", "size", "status", "pages",
       "previewUrl", "publicationStatus", "publicationError", "targetLabel", "error",
-    ], ["previewFormat"]);
+    ], ["previewFormat", "summary", "progress"]);
   }
   return hasExactKeys(value, [
     "id", "type", "name", "status", "control", "viewerUrl", "captureUrl", "downloadUrl", "error",
@@ -220,17 +220,17 @@ function hasExactArtifactKeys(value: ChatMessage["artifacts"][number]) {
 }
 
 function isStrictChatMessage(value: unknown): value is ChatMessage {
-  if (!hasExactKeys(value, MESSAGE_KEYS, ["sources", "toolResults", "durationMs", "serverReferences", "connectorMentions"]) || !isChatMessage(value)) return false;
+  if (!hasExactKeys(value, MESSAGE_KEYS, ["sources", "toolResults", "durationMs", "serverReferences", "connectorMentions", "planExplanation", "planProposal", "queue", "incidents"]) || !isChatMessage(value)) return false;
   if (!isUuid(value.id)) return false;
   if (!isCanonicalIsoDate(value.createdAt)) return false;
   if (!value.activity.every((item) =>
-    hasExactKeys(item, ["id", "kind", "label", "status"], ["detail", "output", "files", "sequence"]))) return false;
-  if (!value.plan.every((item) => hasExactKeys(item, ["step", "status"]))) return false;
+    hasExactKeys(item, ["id", "kind", "label", "status"], ["detail", "output", "files", "sequence", "timestamp", "object", "criterion"]))) return false;
+  if (!value.plan.every((item) => hasExactKeys(item, ["step", "status"], ["tool", "requiresApproval", "startedAt", "completedAt", "progress", "current"]))) return false;
   if (!value.approvals.every((item) =>
     hasExactKeys(
       item,
       ["id", "threadId", "turnId", "itemId", "kind", "title", "detail", "status"],
-      ["command", "cwd", "permissionFingerprint"],
+      ["command", "cwd", "permissionFingerprint", "stepIndex", "reviewUrl"],
     ))) return false;
   if (!value.attachments.every((item) =>
     hasExactKeys(item, ["id", "name", "mimeType", "size"]))) return false;
@@ -1196,7 +1196,7 @@ export class FileWorkbenchStore {
     assertFilesystemWorkbenchId(messageId);
     return this.mutate(userId, (state) => {
       if (
-        !hasExactKeys(item, ["id", "kind", "label", "status"], ["detail", "output", "files"]) ||
+        !hasExactKeys(item, ["id", "kind", "label", "status"], ["detail", "output", "files", "sequence", "timestamp", "object", "criterion"]) ||
         !isActivityItem(item)
       ) {
         throw new WorkbenchPersistenceError("L’activitat no és vàlida.");

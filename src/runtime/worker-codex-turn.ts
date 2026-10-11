@@ -1,3 +1,4 @@
+import { TASK_REPORT_NAMESPACE, TASK_REPORT_TOOLS, TASK_REPORT_INSTRUCTIONS, handleTaskReport } from "@/runtime/task-report-tools";
 import { rememberProjectSource } from "@/documents/remember-project-source";
 import { saveProjectPreferences } from "@/workbench/project-preferences";
 import { resolveProjectSourceDocuments } from "@/documents/project-sources";
@@ -520,6 +521,7 @@ async function runWorkerCodexTurnAttempt(
     telemetry.finish("completed");
     return;
   }
+  let publishedStepCount = 0;
   const activities = new Map<string, ActivityItem>();
   const agentMessagePhases = new Map<string, "commentary" | "final_answer" | null>();
   const commentaryText = new Map<string, string>();
@@ -535,7 +537,7 @@ async function runWorkerCodexTurnAttempt(
   const upsertActivity = async (item: ActivityItem, projection?: WorkerTurnProjection) => {
     activities.set(item.id, item);
     telemetry.activity();
-    if (chatRequest.preferences.showActivity) await emit({ type: "activity", item }, projection);
+    if (item.kind !== "reasoning") await emit({ type: "activity", item }, projection);
   };
   let activeRuntimePhaseId: string | null = null;
   const completeRuntimePhase = async (
@@ -777,10 +779,12 @@ async function runWorkerCodexTurnAttempt(
           signal: queueController.signal, recovering: submission.hasPendingModelTurn,
           onWaiting: async position => {
             waited = true;
+            await emit({ type: "queue", queue: { state: "waiting", position, timestamp: new Date().toISOString() } });
             await upsertActivity({ id: "runtime-model-queue", kind: "system", label: "Petición en espera",
               detail: `Posición ${position} en la cola. Comenzará automáticamente cuando haya disponibilidad.`, status: "waiting" });
           },
         });
+      await emit({ type: "queue", queue: { state: "running", timestamp: new Date().toISOString() } });
       if (queueController.signal.aborted) throw queueController.signal.reason;
       if (waited) await upsertActivity({ id: "runtime-model-queue", kind: "system", label: "Petición admitida",
         detail: "Preparando el asistente", status: "complete" });
@@ -922,6 +926,7 @@ async function runWorkerCodexTurnAttempt(
   } : {};
 
   const developerInstructions = [
+    TASK_REPORT_INSTRUCTIONS,
     buildCodexDeveloperInstructions(chatRequest, permissions, assistantName, internalAgentContext),
     localDocumentDeveloperInstructions(),
     readableFilesDeveloperInstructions(enterpriseDocumentRoots),
@@ -1102,6 +1107,7 @@ async function runWorkerCodexTurnAttempt(
             // Thread-level dynamic tools cannot be added on a later turn. Each
             // handler still revalidates the authenticated turn and its scope.
             dynamicTools: [
+              ...TASK_REPORT_TOOLS,
               ...BROWSER_DYNAMIC_TOOLS,
               ...DOCUMENT_DYNAMIC_TOOLS,
               ...(enterpriseDocumentNetwork ? COMPANY_FILES_DYNAMIC_TOOLS : []),
@@ -1733,7 +1739,7 @@ async function runWorkerCodexTurnAttempt(
         }
         if (method === "turn/plan/updated") {
           const plan = planFromNotification(params);
-          if (plan) await emit({ type: "plan", ...plan }, { envelope, key: "turn:plan" });
+          if (plan) { publishedStepCount = plan.steps.length; await emit({ type: "plan", ...plan }, { envelope, key: "turn:plan" }); }
           return;
         }
         if (method === "turn/diff/updated" && isRecord(params) && typeof params.diff === "string") {
@@ -1843,6 +1849,15 @@ async function runWorkerCodexTurnAttempt(
         try {
         if (request.method === "item/tool/call") {
           if (!runtimeTurnId) throw new Error("Dynamic tool call arrived before the turn was bound.");
+          if (isRecord(request.params) && request.params.namespace === TASK_REPORT_NAMESPACE) {
+            return await handleTaskReport(request.params as never, {
+              runtimeThreadId: threadId, runtimeTurnId, stepCount: publishedStepCount,
+              emit: async event => {
+                if (event.type === "plan") publishedStepCount = event.steps.length;
+                await emit(event, { envelope, key: `task-report:${String(request.params.callId)}` });
+              },
+            }) as JsonValue;
+          }
           if (automationSession && isRecord(request.params) && request.params.namespace === AIBRAIN_AUTOMATION_TOOL_NAMESPACE) {
             return await handleAutomationToolCall(request.params as never, {
               session: automationSession,
