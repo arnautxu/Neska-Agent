@@ -36,6 +36,14 @@ const FORWARDED_ENVIRONMENT = Object.freeze([
   "RESTIC_REST_USERNAME",
   "RESTIC_REST_PASSWORD",
   "RCLONE_CONFIG",
+  "RCLONE_CONFIG_BACKUP_TYPE",
+  "RCLONE_CONFIG_BACKUP_PROVIDER",
+  "RCLONE_CONFIG_BACKUP_ACCESS_KEY_ID",
+  "RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY",
+  "RCLONE_CONFIG_BACKUP_ENDPOINT",
+  "RCLONE_CONFIG_BACKUP_REGION",
+  "RCLONE_CONFIG_BACKUP_FORCE_PATH_STYLE",
+  "RCLONE_CONFIG_BACKUP_NO_CHECK_BUCKET",
   "SSL_CERT_FILE",
 ] as const);
 
@@ -377,6 +385,9 @@ export class ResticBackupReplicator {
         const value = this.#environment[name];
         if (value !== undefined) environment[name] = safeConfigurationValue(name, value, 8_192);
       }
+      // The approved rclone transport is configured only through the narrow
+      // environment allowlist; never load a user-supplied executable/config hook.
+      if (this.#repository.startsWith("rclone:")) environment.RCLONE_CONFIG = "/dev/null";
       const tags = [
         tag("aibrain-installation", this.#installationId),
         tag("aibrain-backup", manifest.backupId),

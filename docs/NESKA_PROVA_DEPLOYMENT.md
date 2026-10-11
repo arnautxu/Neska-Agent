@@ -97,3 +97,20 @@ passive XLS sandbox. The passive reader and generic document extractors now moun
 that optional loader directory read-only when present; `/usr` and `/lib` remain
 mandatory. Namespace, capability, network and filesystem isolation are unchanged.
 The existing real container acceptance must pass on both architectures.
+
+## Off-host trial copies
+
+Supabase Free Storage provides a bounded 1 GB trial destination, not an unlimited
+backup service. A private bucket and dedicated server-only S3 key are required.
+The endpoint has a path prefix, so use Restic's rclone transport with the fixed
+`backup` S3 remote from `replica.env.example`. Native Restic S3 URL parsing cannot
+represent that endpoint. The image includes rclone from the same pinned Debian
+snapshot. Preflight rejects local/alias remotes, non-HTTPS endpoints and extra
+rclone overrides; the replica process forwards only the explicit S3 fields and
+ignores configuration files. Secrets remain exclusive to the replica service.
+
+A synthetic encrypted upload, complete data check and byte-identical restore to
+a separate local directory succeeded against the trial bucket. This is provider
+compatibility evidence only. Host application snapshot/replication/restore is
+still required. Monitor the free quota and Supabase's inactivity pause policy;
+do not promise production availability from the free trial configuration.

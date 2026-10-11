@@ -106,6 +106,7 @@ RUN printf '%s\n' \
     python3-venv \
     qpdf \
     restic \
+    rclone \
     tini \
   && rm -rf /var/lib/apt/lists/* \
   && npm install --global --omit=dev "@openai/codex@0.153.4" "tsx@4.20.6" \

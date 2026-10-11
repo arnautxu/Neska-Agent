@@ -48,7 +48,7 @@ afterEach(async () => {
 });
 
 describe("ResticBackupReplicator", () => {
-  it("replicates, reads back, checks and records one idempotent encrypted snapshot", async () => {
+  it.each(["s3:https://storage.example.test/aibrain-replica-qa", "rclone:backup:replica-qa/restic"])("replicates, reads back, checks and records an idempotent encrypted snapshot through %s", async (repository) => {
     const test = await fixture();
     const calls: Array<{ arguments_: readonly string[]; environment: NodeJS.ProcessEnv }> = [];
     let lookup = 0;
@@ -77,7 +77,7 @@ describe("ResticBackupReplicator", () => {
     const replicator = new ResticBackupReplicator({
       installationId: "replica-qa",
       resticBinary: process.execPath,
-      repository: "s3:https://storage.example.test/aibrain-replica-qa",
+      repository,
       passwordFile: test.passwordFile,
       stateRoot: test.stateRoot,
       verifySnapshot: async () => {
@@ -88,6 +88,10 @@ describe("ResticBackupReplicator", () => {
         NODE_ENV: "test",
         AWS_ACCESS_KEY_ID: "synthetic-access",
         AWS_SECRET_ACCESS_KEY: "synthetic-secret",
+        RCLONE_CONFIG: "/tmp/uncontrolled.conf",
+        RCLONE_CONFIG_BACKUP_TYPE: "s3",
+        RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY: "synthetic-rclone-secret",
+        RCLONE_CONFIG_PASS: "must-not-cross-boundary",
         UNRELATED_SECRET: "must-not-cross-boundary",
       },
       now: () => Date.parse("2026-08-27T13:00:00.000Z"),
@@ -108,12 +112,16 @@ describe("ResticBackupReplicator", () => {
     expect(calls[1]?.arguments_).toContain(test.snapshotRoot);
     expect(calls[0]?.arguments_.join(" ")).toContain(`aibrain-source=${EMPTY_SHA256}`);
     expect(calls[0]?.environment).toMatchObject({
-      RESTIC_REPOSITORY: "s3:https://storage.example.test/aibrain-replica-qa",
+      RESTIC_REPOSITORY: repository,
       RESTIC_PASSWORD_FILE: test.passwordFile,
       AWS_ACCESS_KEY_ID: "synthetic-access",
       AWS_SECRET_ACCESS_KEY: "synthetic-secret",
     });
     expect(calls[0]?.environment).not.toHaveProperty("UNRELATED_SECRET");
+    expect(calls[0]?.environment).not.toHaveProperty("RCLONE_CONFIG_PASS");
+    if (repository.startsWith("rclone:")) {
+      expect(calls[0]?.environment).toMatchObject({ RCLONE_CONFIG: "/dev/null", RCLONE_CONFIG_BACKUP_TYPE: "s3", RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY: "synthetic-rclone-secret" });
+    }
 
     await expect(replicator.replicate(test.snapshotRoot)).resolves.toEqual(first);
     expect(calls).toHaveLength(4);
