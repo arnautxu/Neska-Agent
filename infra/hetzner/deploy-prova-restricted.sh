@@ -41,7 +41,7 @@ install -d -m 0700 "$config/image-evidence/$revision"
 for component in app gateway; do
   image="$app"
   [[ "$component" == app ]] || image="$gateway"
-  trivy image --scanners vuln --severity CRITICAL --exit-code 1 --format json \
+  trivy image --scanners vuln --ignorefile /dev/null --severity CRITICAL --exit-code 1 --format json \
     --output "$config/image-evidence/$revision/$component-critical.json" "$image" >&2
   trivy image --format cyclonedx --output "$config/image-evidence/$revision/$component-sbom.json" "$image" >&2
 done

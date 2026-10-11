@@ -426,3 +426,13 @@ jobs:
             --env AIBRAIN_SYNTHETIC_ACCEPTANCE=1 \
             --entrypoint node "aibrain-ci:${GITHUB_SHA}" \
             /usr/local/share/aibrain/container-xls-passive-acceptance.mjs
+      - name: Scan both native images without vulnerability exceptions
+        run: bash scripts/scan-container-images.sh "${GITHUB_SHA}" "${RUNNER_TEMP}/container-security"
+      - name: Retain native vulnerability reports and SBOMs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: container-security-${{ matrix.runner }}-${{ github.sha }}
+          path: ${{ runner.temp }}/container-security
+          if-no-files-found: warn
+          retention-days: 14

@@ -89,3 +89,7 @@ Re-run native document conversion, passive XLS, packaged App Server and browser
 isolation, encrypted backup/restore, and the raw image scan on both architectures.
 No suppression or risk exception is enabled. Do not promote until these gates
 and the exact main CI/publication gates pass.
+
+Backend CI now also scans both native app/gateway images with hash-verified Trivy 0.75.0. CRITICAL findings or scanner errors fail CI; raw reports and SBOMs are retained as architecture-specific artifacts. The host independently re-scans the published immutable digests before starting any service. No ignore file, VEX override or unfixed filtering is used.
+
+The ARM quality gate exposed a race in the negative Unix-peer test: authentication correctly closes an unauthorized socket before a large UTF-8 send completes, yielding BrokenPipe instead of read-side reset/EOF. The test now accepts either closed-socket outcome only for the explicitly unauthorized request, while still requiring no dispatch or binding access. Authorized requests propagate all transport errors. Production authentication is unchanged.
