@@ -54,7 +54,7 @@ describe("employee-facing activity sanitization", () => {
     ].join("\n"));
 
     expect(result).toContain("Identifying access issue");
-    expect(result).toContain("Arnall");
+    expect(result).toContain("esta empresa");
     expect(result).not.toMatch(/\*\*|Codex|AiBrain|\/var\/lib|company-qa|fc71a2c4/iu);
   });
 
@@ -76,12 +76,12 @@ describe("employee-facing activity sanitization", () => {
     const artifactUrl = "/api/projects/00000000-0000-4000-8000-000000000011/artifacts/00000000-0000-4000-8000-000000000012";
     const result = publicAssistantText(
       `## Resultado\n\nAiBrain Instalación: company-qa ${internalPath}\n\n[Abrir](${artifactUrl})`,
-      "Arnall AI",
+      "Example Company AI",
     );
     expect(result).toContain("## Resultado");
-    expect(result).toContain("Arnall AI Arnall archivo interno");
+    expect(result).toContain("Example Company AI esta empresa archivo interno");
     expect(result).toContain(`[Abrir](${artifactUrl})`);
     expect(result).not.toMatch(/AiBrain|company-qa|\/var\/lib/iu);
-    expect(publicAssistantText("Hola ", "Arnall AI")).toBe("Hola ");
+    expect(publicAssistantText("Hola ", "Example Company AI")).toBe("Hola ");
   });
 });

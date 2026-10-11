@@ -13,8 +13,8 @@ import { workbenchThreadAccess, type WorkbenchProject, type WorkbenchThread } fr
 
 const project: WorkbenchProject = {
   id: "00000000-0000-4000-8000-000000000001",
-  name: "Operaciones Arnall",
-  slug: "operaciones-arnall",
+  name: "Operaciones Example Company",
+  slug: "operaciones-example-company",
   status: "active",
   pinned: false,
   instructions: "",
@@ -27,7 +27,7 @@ const project: WorkbenchProject = {
 };
 
 const preferences: BrainPreferences = {
-  assistantName: "Arnall AI",
+  assistantName: "Example Company AI",
   tone: "balanced",
   accent: "blue",
   density: "comfortable",
@@ -91,8 +91,8 @@ function renderWorkspace(
     thread={thread}
     projects={[project]}
     userName="Ada"
-    companyName="Arnall"
-    assistantName="Arnall AI"
+    companyName="Example Company"
+    assistantName="Example Company AI"
     hydrated={hydrated}
     prompt={prompt}
     composerExperience="smart"
@@ -414,13 +414,13 @@ describe("chat workspace simplificado", () => {
     expect(screen.getByTestId("composer")).toHaveClass("composer-landing");
     expect(screen.getByTestId("composer")).not.toHaveClass("composer-compact");
     expect(screen.getByTestId("composer-controls")).toContainElement(screen.getByRole("button", { name: "Añadir al mensaje" }));
-    expect(screen.getAllByText("Operaciones Arnall").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "¿Cómo puedo ayudarte en Operaciones Arnall?" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Destino de la conversación")).toHaveTextContent("Operaciones Arnall");
+    expect(screen.getAllByText("Operaciones Example Company").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "¿Cómo puedo ayudarte en Operaciones Example Company?" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Destino de la conversación")).toHaveTextContent("Operaciones Example Company");
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Mensaje" })).toHaveFocus());
     expect(screen.queryByText("Trabajar")).not.toBeInTheDocument();
     expect(screen.getByText("Prepárame una presentación")).toBeInTheDocument();
-    expect(screen.getByTestId("project-breadcrumb")).toHaveTextContent("Operaciones Arnall");
+    expect(screen.getByTestId("project-breadcrumb")).toHaveTextContent("Operaciones Example Company");
     expect(screen.queryByRole("button", { name: /Abrir contexto/ })).not.toBeInTheDocument();
     for (const removed of ["Analizar información", "Crear un documento", "Resumir contenido", "Comprueba los datos importantes antes de usarlos.", "Planificar", "Preguntar", "↵ enviar"]) {
       expect(screen.queryByText(removed, { exact: false })).not.toBeInTheDocument();
@@ -429,10 +429,10 @@ describe("chat workspace simplificado", () => {
   });
 
   it("uses only the employee's first name on a standalone landing", () => {
-    renderWorkspace(null, null, { userName: "David Liria" });
+    renderWorkspace(null, null, { userName: "Alex Example" });
 
-    expect(screen.getByRole("heading", { name: "¿En qué te puedo ayudar, David?" })).toBeInTheDocument();
-    expect(screen.queryByText("David Liria", { exact: true })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "¿En qué te puedo ayudar, Alex?" })).toBeInTheDocument();
+    expect(screen.queryByText("Alex Example", { exact: true })).not.toBeInTheDocument();
   });
 
   it("keeps the add menu limited to files and authorized connectors", async () => {
@@ -571,15 +571,15 @@ describe("chat workspace simplificado", () => {
     const onAttachmentsChange = vi.fn();
     const onDestinationChange = vi.fn();
     renderWorkspace(null, project, { prompt: "Mi borrador.  ", onSend, onAttachmentsChange, onDestinationChange });
-    fireEvent.click(screen.getByRole("button", { name: /Trabajemos en los horarios/ }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Dame los horarios preparados" }));
-    expect(screen.getByRole("textbox", { name: "Mensaje" })).toHaveValue("Dame los horarios preparados del equipo de Arnall para…");
+    fireEvent.click(screen.getByRole("button", { name: /Trabajemos con la información/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Buscar información" }));
+    expect(screen.getByRole("textbox", { name: "Mensaje" })).toHaveValue("Busca en los documentos autorizados de Example Company información sobre…");
     expect(onSend).not.toHaveBeenCalled();
     expect(onAttachmentsChange).not.toHaveBeenCalled();
     expect(onDestinationChange).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Archivos del servidor" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: /Trabajemos en los horarios/ }));
-    expect(screen.getByRole("menuitem", { name: "Revisar cambios de horarios" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Trabajemos con la información/ }));
+    expect(screen.getByRole("menuitem", { name: "Comparar documentos" })).toBeInTheDocument();
     expect(onSend).not.toHaveBeenCalled();
   });
 

@@ -92,8 +92,6 @@ La aceptación debe cubrir de forma separada:
 5. conversión real PDF/DOCX/PPTX/XLSX y extracción XLSM sin macros;
 6. visor responsive con navegación, zoom, fullscreen, cierre y descarga.
 
-La validación local no prueba por sí sola CI, publicación, despliegue ni
-aceptación autenticada en Arnall.
 
 ## Autoría, revisión y entrega de presentaciones
 
@@ -136,14 +134,7 @@ locales cubren formatos, límites, paginación y entrega durable; la aceptación
 una presentación requiere además inspección del archivo real generado por un
 turno autenticado. CI, publicación y despliegue siguen siendo gates separados.
 
-## Logo oficial en los diseños de Arnall
 
-En cada turno de la instalación `companySlug=arnall`, el servidor prepara una
-copia del logo oficial en `.aibrain-brand/arnall-logo.jpg` dentro del proyecto
-privado del empleado. Usa el JPEG empaquetado en `public/branding/arnall/`,
-verifica el SHA-256 registrado en `SOURCE.md`, rechaza enlaces simbólicos y
-repone copias modificadas. No descarga activos externos ni prepara logos o
-instrucciones de Arnall para otras instalaciones.
 
 La política del turno exige incorporar la imagen completa, legible y con sus
 proporciones, colores y fondo originales en todos los archivos de diseño y

@@ -70,9 +70,6 @@ records bind `installationId`, optional `userId`, provider, scopes and secret
 reference. A credential from one installation or employee must fail closed in
 all other contexts.
 
-Shared Codex authentication used for the current Arnall QA phase is a temporary
-runtime configuration choice; it does not change these connector isolation
-rules and should not be reused for customer email or CRM identities.
 
 ## Local document generation and preview
 
@@ -111,7 +108,6 @@ credentials, validates type and size, and displays only a revocable local
 not promoted to App Server workspaces, preventing nested workspace discovery
 from trying to create `.git` below `/srv/aibrain/source-ro`.
 
-## Arnall Codex MCP action gate
 
 The only implemented mutation path is disabled unless the installation supplies
 one reviewed `connectors.codexManagedAppAction` manifest. It must name one
@@ -124,12 +120,6 @@ arguments (including normalized authorization, cookie, password, secret,
 access/refresh-token and API-key variants). Credentials belong only to a
 binding/provider boundary and are never configuration values.
 
-This is the sole missing Arnall input: one approved action manifest for a
-personal Codex App/MCP connection. Its binding needs only `app.installed.read`
-and `mcp.tool.call`; the real provider OAuth scopes remain the App owner's
-choice and must not be invented here. Until that manifest and personal binding
-are present, the UI hides the connector and the API returns
-`CODEX_APP_ACTION_NOT_CONFIGURED`.
 
 ## P0 authenticated UI consumer
 
@@ -161,11 +151,6 @@ npx vitest run tests/unit/codex-managed-app-ui.test.ts \
 3 files passed, 10 tests passed
 ```
 
-The fake-fetch tests cover missing/connected capability gating,
-prepare→pending→accept→execute, decline without execute, stale cross-thread
-descriptor rejection, indeterminate visibility data and forbidden-field
-absence. This is local UI/contract evidence only: no Arnall manifest, binding,
-provider action or live readback was used.
 
 ### Recovery safety
 

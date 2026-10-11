@@ -13,8 +13,8 @@ for (const width of [1440, 390]) {
     ].map((event) => JSON.stringify(event)).join("\n") + "\n" }));
     await page.route("**/api/projects/*/files?*", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({
       schemaVersion: 1, kind: "spreadsheet", truncated: false, sheets: [
-        { name: "S’Agaró", hidden: false, cells: [{ address: "A1", value: "Treballador (prova)" }, { address: "B1", value: "Entrada" }, { address: "C1", value: "Sortida" }, { address: "A2", value: "Persona fictícia" }, { address: "B2", value: "09:00" }, { address: "C2", value: "17:00" }] },
-        { name: "Torre", hidden: false, cells: [{ address: "C3", value: "10:30" }] },
+        { name: "Àrea d’exemple", hidden: false, cells: [{ address: "A1", value: "Treballador (prova)" }, { address: "B1", value: "Entrada" }, { address: "C1", value: "Sortida" }, { address: "A2", value: "Persona fictícia" }, { address: "B2", value: "09:00" }, { address: "C2", value: "17:00" }] },
+        { name: "Arxiu", hidden: false, cells: [{ address: "C3", value: "10:30" }] },
       ],
     }) }));
     await page.goto("/login");

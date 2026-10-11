@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocked = vi.hoisted(() => ({
   session: null as null | { provider: "local" | "demo"; tenant: { id: string }; user: { id: string } },
-  installation: { installationId: "arnall", paths: { dataRoot: "/private/arnall" }, usageLimits: undefined as undefined | { weeklyTokens: number; timeZone: "Europe/Madrid"; unlimitedUntil?: string } },
+  installation: { installationId: "example-company", paths: { dataRoot: "/private/example-company" }, usageLimits: undefined as undefined | { weeklyTokens: number; timeZone: "Europe/Madrid"; unlimitedUntil?: string } },
   status: vi.fn(),
   constructed: vi.fn(),
   loadInstallation: vi.fn(),
@@ -41,7 +41,7 @@ const STATUS = {
 describe("installation weekly budget route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocked.session = { provider: "local", tenant: { id: "arnall" }, user: { id: "authenticated-user" } };
+    mocked.session = { provider: "local", tenant: { id: "example-company" }, user: { id: "authenticated-user" } };
     mocked.installation.usageLimits = { weeklyTokens: 7_500_000, timeZone: "Europe/Madrid" };
     mocked.loadInstallation.mockResolvedValue(mocked.installation);
     mocked.status.mockResolvedValue(STATUS);
@@ -77,7 +77,7 @@ describe("installation weekly budget route", () => {
     const response = await GET();
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
-    expect(mocked.constructed).toHaveBeenCalledWith({ installationId: "arnall", dataRoot: "/private/arnall", limitTokens: 7_500_000 });
+    expect(mocked.constructed).toHaveBeenCalledWith({ installationId: "example-company", dataRoot: "/private/example-company", limitTokens: 7_500_000 });
     expect(await response.json()).toEqual({ budget: null });
   });
 
@@ -111,7 +111,7 @@ describe("installation weekly budget route", () => {
   });
 
   it("fails closed without leaking a corrupt store path or reporting zero usage", async () => {
-    mocked.status.mockRejectedValue(new Error("corrupt /private/arnall/secret-file"));
+    mocked.status.mockRejectedValue(new Error("corrupt /private/example-company/secret-file"));
     const response = await GET();
     expect(response.status).toBe(503);
     expect(response.headers.get("cache-control")).toBe("private, no-store");

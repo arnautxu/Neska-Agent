@@ -54,7 +54,3 @@ authorization, blocked internal paths, inline `<img>` loading, iPhone WebKit,
 download filename, conversation reload, and image-only A4 PDF output. A real
 Codex App Server generation is a separate gate from deterministic browser and
 HTTP tests.
-
-CI, image publication, deployment and authenticated Arnall acceptance remain
-separate release gates. Local evidence does not imply that the correction is
-deployed.

@@ -110,11 +110,11 @@ describe("LocalFileMemoryService", () => {
     const projectId = "00000000-0000-4000-8000-000000000011";
     const governed = new FileMemoryProposalStore({ config });
     const context = { ...contextA, projectId };
-    const proposal = (await governed.propose(context, { kind: "decision", content: "Use the confirmed Arnall handoff.", proposedScope: "project", threadId: "thread-1", turnId: "turn-1", callId: "call-1", toolNames: ["aibrain_browser.read"], sourceExcerpt: "Confirmed in this assisted chat." })).proposal;
+    const proposal = (await governed.propose(context, { kind: "decision", content: "Use the confirmed Example Company handoff.", proposedScope: "project", threadId: "thread-1", turnId: "turn-1", callId: "call-1", toolNames: ["aibrain_browser.read"], sourceExcerpt: "Confirmed in this assisted chat." })).proposal;
     const memory = (await governed.confirm(context, { proposalId: proposal.proposalId, explicit: true, content: proposal.content, scope: "project", allowCompanyScope: false })).memory;
     const snapshot = await service.buildPromptSnapshot(context, { maxItems: 20, maxCharacters: 12_000 });
     expect(snapshot.memoryIds).toContain(memory.memoryId);
-    expect(snapshot.text).toContain("Use the confirmed Arnall handoff");
+    expect(snapshot.text).toContain("Use the confirmed Example Company handoff");
     expect(snapshot.text).toContain('"scope":"project"');
     const otherProject = await service.buildPromptSnapshot({ ...context, projectId: "00000000-0000-4000-8000-000000000012" }, { maxItems: 20, maxCharacters: 12_000 });
     expect(otherProject.memoryIds).not.toContain(memory.memoryId);

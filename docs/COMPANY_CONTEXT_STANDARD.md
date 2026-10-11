@@ -1,11 +1,5 @@
 # Shared company context standard, version 1
 
-Every installation uses the same information architecture. Only identity and
-company information vary. The canonical template is
-`src/users/company-context-standard.ts`; a customer seed supplies facts, never
-permissions. Arnall's versioned seed contains only public/product information
-and explicitly unknown internal details. Private customer content stays out of
-the product repository.
 
 ## Layers and storage
 

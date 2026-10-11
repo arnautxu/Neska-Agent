@@ -92,6 +92,18 @@ export function permissionAllowsGenericToolExecution(permissions: ResolvedPermis
   return rules.some((rule) => rule.effect === "allow");
 }
 
+/** Native commands can run without an approval request. Reject unsupported
+ * restricted turns before any model dispatch instead of relying on instructions. */
+export function assertNativeTurnPermissions(permissions: ResolvedPermissions) {
+  const documentRules = permissions.rules.filter((rule) => rule.ruleId === "documents.read" && rule.action === "consult");
+  if (!permissionAllowsGenericToolExecution(permissions) ||
+      !documentRules.some((rule) => rule.effect === "allow") ||
+      permissions.rules.some((rule) => rule.effect === "deny" && ["consult", "execute", "respond"].includes(rule.action))) {
+    throw new PermissionResolutionError("PERMISSION_POLICY_DENIED",
+      "La política de este usuario no permite iniciar un turno con acceso nativo a herramientas y documentos.");
+  }
+}
+
 /**
  * Resolves and durably audits the effective policy for one authenticated turn.
  * Every identity field must come from the server-side session/thread context.

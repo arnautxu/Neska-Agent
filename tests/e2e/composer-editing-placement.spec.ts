@@ -17,7 +17,7 @@ for (const zoom of [1, 1.5]) for (const viewport of [{ width: 1440, height: 900 
       await expect(page.getByRole("button", { name: "Tareas recurrentes", exact: true })).toHaveCount(0);
       return;
     }
-    const trigger = page.getByRole("button", { name: /Trabajemos en los horarios/ });
+    const trigger = page.getByRole("button", { name: /Trabajemos con la información/ });
     if (zoom > 1) { await trigger.focus(); await trigger.press("Enter"); } else await trigger.click();
     const menu = page.getByRole("menu", { name: "Horarios del equipo", exact: true });
     const popup = page.locator("[data-connector-popover]");
@@ -36,9 +36,9 @@ for (const zoom of [1, 1.5]) for (const viewport of [{ width: 1440, height: 900 
     };
     await expect(assertAnchor).toPass({ timeout: 3_000 });
     await page.keyboard.press("End");
-    await expect(menu.getByRole("menuitem", { name: "Revisar cambios de horarios", exact: true })).toBeFocused();
+    await expect(menu.getByRole("menuitem", { name: "Comparar documentos", exact: true })).toBeFocused();
     await page.keyboard.press("Home");
-    await expect(menu.getByRole("menuitem", { name: "Enviar los WhatsApps a los trabajadores", exact: true })).toBeFocused();
+    await expect(menu.getByRole("menuitem", { name: "Preparar un resumen", exact: true })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(trigger).toBeFocused();
   });

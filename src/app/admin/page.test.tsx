@@ -4,7 +4,7 @@ const mocked = vi.hoisted(() => ({ session: null as null | { user: { id: string 
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND"); }, redirect: () => { throw new Error("REDIRECT"); } }));
 vi.mock("@/auth/session", () => ({ getSession: async () => mocked.session }));
 vi.mock("@/admin/server-service", () => ({ isWorkspaceAdmin: mocked.isAdmin }));
-vi.mock("@/config/installation", () => ({ loadInstallationConfig: async () => ({ branding: { productName: "Arnall AI" } }) }));
+vi.mock("@/config/installation", () => ({ loadInstallationConfig: async () => ({ branding: { productName: "Example Company AI" } }) }));
 vi.mock("@/components/admin-center", () => ({ AdminCenter: () => null }));
 
 import AdminPage from "@/app/admin/page";

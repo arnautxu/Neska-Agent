@@ -3,10 +3,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "../render-spanish";
 import { afterEach, expect, it, vi } from "vitest";
 import { ServerPicker } from "@/components/server-picker";
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
-const folder = { path: "server-arnall/Y/QA", name: "QA", kind: "directory", modifiedAt: null, size: 0, scope: "company" };
+const folder = { path: "server-example-company/Y/QA", name: "QA", kind: "directory", modifiedAt: null, size: 0, scope: "company" };
 function reply(results: object[]) { return { ok: true, json: async () => ({ available: true, sourceChecked: true, checkedAt: new Date().toISOString(), results, nextQuery: null }) }; }
 it("navigates, refreshes external changes and attaches folder references without reading content", async () => {
-  const fetcher = vi.fn().mockResolvedValueOnce(reply([folder])).mockResolvedValueOnce(reply([{ ...folder, path: "server-arnall/Y/QA/New.txt", name: "New.txt", kind: "file" }])).mockResolvedValueOnce(reply([{ ...folder, path: "server-arnall/Y/QA/Changed.txt", name: "Changed.txt", kind: "file" }]));
+  const fetcher = vi.fn().mockResolvedValueOnce(reply([folder])).mockResolvedValueOnce(reply([{ ...folder, path: "server-example-company/Y/QA/New.txt", name: "New.txt", kind: "file" }])).mockResolvedValueOnce(reply([{ ...folder, path: "server-example-company/Y/QA/Changed.txt", name: "Changed.txt", kind: "file" }]));
   vi.stubGlobal("fetch", fetcher);
   const select = vi.fn(); const close = vi.fn();
   render(<ServerPicker projectId="project" selected={[]} onSelect={select} onClose={close}/>);
@@ -29,7 +29,7 @@ it("does not present cached results as a live folder", async () => {
 });
 
 it("escapes a transformed composer, labels drives and restores focus when closed", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply([{ ...folder, path: "server-arnall/C/", name: "C" }])));
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply([{ ...folder, path: "server-example-company/C/", name: "C" }])));
   const trigger = document.createElement("button"); document.body.append(trigger); trigger.focus();
   const view = render(<div style={{ transform: "translateY(1px)" }}><ServerPicker projectId="project" selected={[]} onSelect={vi.fn()} onClose={vi.fn()}/></div>);
   await screen.findByText("Unidad C:");
@@ -50,7 +50,7 @@ it("returns focus to a stable trigger when the opening menu item has unmounted",
 
 it("opens work-folder shortcuts without calling them live files and keeps all drives reachable", async () => {
   const home = { ok: true, json: async () => ({ available: true, navigation: true, sourceChecked: false, checkedAt: null, results: [{ ...folder, name: "Compres" }], nextQuery: null }) };
-  const fetcher = vi.fn().mockResolvedValueOnce(home).mockResolvedValueOnce(reply([{ ...folder, path: "server-arnall/C/", name: "C" }, { ...folder, path: "server-arnall/Y/", name: "Y" }]));
+  const fetcher = vi.fn().mockResolvedValueOnce(home).mockResolvedValueOnce(reply([{ ...folder, path: "server-example-company/C/", name: "C" }, { ...folder, path: "server-example-company/Y/", name: "Y" }]));
   vi.stubGlobal("fetch", fetcher);
   render(<ServerPicker projectId="project" selected={[]} onSelect={vi.fn()} onClose={vi.fn()}/>);
   await screen.findByText("Compres");
@@ -65,7 +65,7 @@ it("opens work-folder shortcuts without calling them live files and keeps all dr
 
 it("reads a selected work folder fresh and can select/deselect a supported file", async () => {
   const home = { ok: true, json: async () => ({ available: true, navigation: true, sourceChecked: false, checkedAt: null, results: [folder], nextQuery: null }) };
-  const fetcher = vi.fn().mockResolvedValueOnce(home).mockResolvedValueOnce(reply([{ ...folder, name: "test.txt", path: "server-arnall/Y/QA/test.txt", kind: "file" }]));
+  const fetcher = vi.fn().mockResolvedValueOnce(home).mockResolvedValueOnce(reply([{ ...folder, name: "test.txt", path: "server-example-company/Y/QA/test.txt", kind: "file" }]));
   vi.stubGlobal("fetch", fetcher);
   const select = vi.fn();
   render(<ServerPicker projectId="project" selected={[]} onSelect={select} onClose={vi.fn()}/>);

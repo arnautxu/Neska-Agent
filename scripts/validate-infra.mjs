@@ -65,9 +65,7 @@ const browserEgressProxy = read("src/runtime/browser/egress-proxy.ts");
 const workerCodexTurn = read("src/runtime/worker-codex-turn.ts");
 const turnAttachments = read("src/documents/turn-attachments.ts");
 const productionRunbook = read("docs/PRODUCTION.md");
-const arnallDeployGateway = read("infra/hetzner/app/deploy-arnall-main.sh");
-const arnallDeployWorkflow = read(".github/workflows/deploy-arnall.yml");
-const deployArtifacts = [dockerfile, compose, worker, browserSandbox, backup, backupReplicate, alerts, alertController, alertControllerHealthcheck, documentMaintenance, entrypoint, soffice, runtimeEnv, composeEnv, egressEnv, alertsEnv, replicaEnv, egressGateway, ingressGateway, arnallDeployGateway].join("\n");
+const deployArtifacts = [dockerfile, compose, worker, browserSandbox, backup, backupReplicate, alerts, alertController, alertControllerHealthcheck, documentMaintenance, entrypoint, soffice, runtimeEnv, composeEnv, egressEnv, alertsEnv, replicaEnv, egressGateway, ingressGateway].join("\n");
 
 forbidMatch([compose, runtimeEnv, composeEnv].join("\n"), /\b(?:Arnay|studio|operations)\b/iu, "Compose/env artifacts contain a tenant/user hardcode");
 forbidMatch(dockerfile, /\/(?:codex|workspaces|computer)\/(?:studio|operations)(?:\/|\s|$)/iu, "Dockerfile contains a tenant/user filesystem hardcode");
@@ -75,31 +73,20 @@ forbidMatch(deployArtifacts, /docker\.sock/iu, "deployment artifacts reference d
 forbidMatch(compose, /^\s*privileged\s*:/mu, "Compose enables privileged mode");
 forbidMatch(compose, /^\s*network_mode\s*:/mu, "Compose joins another network namespace");
 forbidMatch(compose, /^\s*external\s*:\s*true/mu, "Compose reuses an external network or volume");
-forbidMatch(arnallDeployGateway, /(?:docker\s+(?:system|builder|image)\s+prune|docker\s+volume\s+(?:rm|prune)|docker\s+network\s+(?:rm|prune)|BGreenly)/iu, "Arnall deploy gateway contains a broad cleanup or foreign tenant reference");
-forbidMatch(arnallDeployGateway, /(?:git\s+archive|docker\s+build|docker\s+push|dd\s+if=\/dev\/stdin|tar\s+--extract)/u, "Arnall deploy gateway still receives source or builds locally");
-requireMatch(arnallDeployGateway, /SSH_ORIGINAL_COMMAND[\s\S]{0,240}\^deploy-ghcr\\ \(\[0-9a-f\]\{40\}\)/u, "Arnall deploy gateway does not constrain the forced SSH command to revision and GHCR digests");
-requireMatch(arnallDeployGateway, /AIBRAIN_INSTALLATION_ID=\$\{INSTALLATION_ID\}[\s\S]{0,250}AIBRAIN_COMPOSE_PROJECT_NAME=\$\{COMPOSE_PROJECT\}/u, "Arnall deploy gateway does not verify the exact installation and Compose project");
-requireMatch(arnallDeployGateway, /validate_release_secret_contract\n[\s\S]{0,160}require_release_readback_runtime/u, "Arnall deploy gateway does not fail fast on the release secret contract");
-requireMatch(arnallDeployGateway, /GHCR_APP_REPOSITORY="ghcr\.io\/arnautxu\/aibrain"[\s\S]{0,160}GHCR_EGRESS_REPOSITORY="ghcr\.io\/arnautxu\/aibrain-egress"/u, "Arnall deploy gateway does not pin the two approved GHCR repositories");
-requireMatch(arnallDeployGateway, /mktemp -d "\$\{RELEASE_ROOT\}\/.ghcr-docker\.[X]+"[\s\S]{0,500}docker --config "\$ghcr_docker_config" pull "\$app_image"[\s\S]{0,160}pull "\$egress_image"/u, "Arnall deploy gateway does not use ephemeral GHCR authentication for exact pulls");
-requireMatch(arnallDeployGateway, /verify_public_health[\s\S]{0,180}cleanup_inactive_aibrain_images[\s\S]{0,120}cleanup_legacy_release_directories/u, "Arnall deploy gateway does not run bounded storage retention after public health");
 requireMatch(journaldRetention, /^\[Journal\]\nSystemMaxUse=512M\n$/u, "journald retention does not enforce the reviewed persistent disk cap");
-requireMatch(arnallDeployGateway, /manage-release\.mjs[\s\S]*health\/live[\s\S]*health\/ready/u, "Arnall deploy gateway does not promote transactionally and verify public health");
-requireMatch(arnallDeployGateway, /require_noninteractive_browser_policy[\s\S]*CODEX_APPROVAL_POLICY=never[\s\S]*AIBRAIN_BROWSER_INTERACTIVE_APPROVALS=disabled/u, "Arnall deploy gateway does not fail closed on interactive browser approval policy");
-requireMatch(arnallDeployWorkflow, /workflow_run:[\s\S]*Publish GHCR images[\s\S]*conclusion == 'success'/u, "Arnall deployment is not gated on successful GHCR publication after Backend CI");
-requireMatch(arnallDeployWorkflow, /deploy-ghcr \$TESTED_SHA \$APP_IMAGE \$EGRESS_IMAGE \$GHCR_USERNAME/u, "Arnall deployment does not transmit the immutable tested GHCR digests");
-requireMatch(arnallDeployWorkflow, /actions\/workflows\/backend-ci\.yml\/runs[\s\S]*\.name == "Backend CI"[\s\S]*backend_ci_run_id/u, "Arnall deployment does not resolve the real successful Backend CI run for the release SHA");
-requireMatch(arnallDeployWorkflow, /collect-readbacks \$TESTED_SHA \$BACKEND_CI_RUN_ID \$PUBLISH_RUN_ID \$DEPLOY_RUN_ID \$APP_DIGEST \$EGRESS_DIGEST/u, "Arnall readback does not preserve separate Backend CI, Publish and Deploy identities plus both digests");
-forbidMatch(arnallDeployWorkflow, /CI_RUN_ID: \$\{\{ github\.event\.workflow_run\.id \}\}/u, "Arnall deployment still labels the Publish run as Backend CI");
-requireMatch(arnallDeployWorkflow, /GHCR_PULL_TOKEN: \$\{\{ github\.token \}\}/u, "Arnall deployment does not use its temporary package token for the pull");
-requireMatch(arnallDeployWorkflow, /StrictHostKeyChecking=yes[\s\S]*UserKnownHostsFile=/u, "Arnall deployment does not pin the SSH host identity");
 
 requireMatch(dockerfile, /@openai\/codex@0\.153\.4/u, "Dockerfile does not pin the approved Codex version");
 forbidMatch(dockerfile, /ARG CODEX_VERSION/u, "Dockerfile permits the App Server contract version to be overridden");
-requireMatch(dockerfile, /ARG NODE_IMAGE=node:24\.18\.1-bookworm-slim@sha256:[0-9a-f]{64}/u, "Dockerfile does not pin the reviewed Node 24 runtime digest");
-requireMatch(dockerfile, /ARG DEBIAN_SNAPSHOT=\d{8}T\d{6}Z/u, "Dockerfile does not pin an immutable Debian snapshot");
-requireMatch(dockerfile, /snapshot\.debian\.org\/archive\/debian\/\$\{DEBIAN_SNAPSHOT\}/u, "Dockerfile APT source is not the pinned Debian snapshot");
-requireMatch(dockerfile, /snapshot\.debian\.org\/archive\/debian-security\/\$\{DEBIAN_SNAPSHOT\}/u, "Dockerfile security APT source is not the pinned Debian snapshot");
+requireMatch(dockerfile, /ARG NODE_IMAGE=node:24\.21\.0-bookworm-slim@sha256:[0-9a-f]{64}/u, "Dockerfile does not pin the reviewed Node 24 runtime digest");
+requireMatch(dockerfile, /ARG OS_IMAGE=ubuntu:24\.04@sha256:[0-9a-f]{64}/u, "Dockerfile does not pin the reviewed Ubuntu LTS runtime digest");
+requireMatch(dockerfile, /ARG UBUNTU_SNAPSHOT=\d{8}T\d{6}Z/u, "Dockerfile does not pin an immutable Ubuntu snapshot");
+requireMatch(dockerfile, /FROM \$\{OS_IMAGE\} AS patched-base[\s\S]*apt-get upgrade -y[\s\S]*FROM patched-base AS egress-gateway/u, "Gateway must inherit the patched operating-system base");
+requireMatch(dockerfile, /FROM patched-base AS runtime/u, "Application must inherit the patched operating-system base");
+requireMatch(dockerfile, /FROM patched-base AS egress-gateway[\s\S]*rm -rf \/usr\/local\/lib\/node_modules\/npm \/usr\/local\/bin\/npm \/usr\/local\/bin\/npx[\s\S]*USER aibrain-egress/u, "Gateway must not ship an unused package manager");
+requireMatch(dockerfile, /snapshot\.ubuntu\.com\/ubuntu\/\$\{UBUNTU_SNAPSHOT\}\//u, "Dockerfile APT source is not the pinned Ubuntu snapshot");
+requireMatch(dockerfile, /noble-security main universe/u, "Dockerfile snapshot excludes the Ubuntu security archive");
+requireMatch(dockerfile, /COPY --from=node-toolchain \/usr\/local\/bin\/node \/usr\/local\/bin\/node/u, "Runtime must use the pinned official Node build");
+requireMatch(dockerfile, /install-container-chrome\.py/u, "Browser must use the hash-verified official stable package");
 requireMatch(dockerfile, /USER aibrain:aibrain/u, "Dockerfile final process is not non-root");
 requireMatch(dockerfile, /npm run build:presentation-runtime/u, "Dockerfile does not build the offline presentation runtime");
 requireMatch(dockerfile, /COPY --from=builder --chown=root:root \/app\/dist\/pptxgenjs\.cjs \/usr\/local\/share\/aibrain\/pptxgenjs\.cjs/u, "Dockerfile does not ship the locked presentation authoring bundle");
@@ -135,8 +122,8 @@ for (const tool of ["soffice", "pdfinfo", "pdftoppm", "pdftotext", "qpdf"]) {
   requireMatch(dockerfile, new RegExp(`COPY --chown=root:root infra/hetzner/app/soffice-safe\\.sh /usr/local/bin/aibrain-${tool}`, "u"), `Dockerfile does not install the sandboxed ${tool} launcher`);
 }
 requireMatch(dockerfile, /org\.opencontainers\.image\.revision="\$\{AIBRAIN_REVISION\}"/u, "Docker image does not record its exact source revision");
-requireMatch(dockerfile, /FROM \$\{NODE_IMAGE\} AS egress-gateway/u, "Dockerfile lacks the first-party egress gateway target on the pinned Node base");
-requireMatch(dockerfile, /FROM \$\{NODE_IMAGE\} AS egress-gateway[\s\S]*FROM \$\{NODE_IMAGE\} AS dependencies/u, "egress target follows the expensive application builder under the legacy server builder");
+requireMatch(dockerfile, /FROM patched-base AS egress-gateway/u, "Dockerfile lacks the first-party egress gateway target on the pinned Node base");
+requireMatch(dockerfile, /FROM patched-base AS egress-gateway[\s\S]*FROM patched-base AS dependencies/u, "egress target follows the expensive application builder under the legacy server builder");
 requireMatch(dockerfile, /USER aibrain-egress:aibrain-egress[\s\S]*ENTRYPOINT \["node", "\/usr\/local\/share\/aibrain\/egress-gateway\.mts"\]/u, "egress gateway image is not an unprivileged first-party Node target");
 
 for (const marker of [
@@ -220,6 +207,9 @@ forbidMatch(egressGateway, /console\.(?:log|error)|process\.env\[["']AIBRAIN_EGR
 
 requireMatch(worker, /--ro-bind \/ \/[\s\S]*--tmpfs "\$publish_root"[\s\S]*--remount-ro "\$publish_root"/u, "worker does not mask publish-rw behind a read-only mount");
 requireMatch(worker, /--ro-bind \/ \/[\s\S]*--tmpfs \/etc\/aibrain[\s\S]*--remount-ro \/etc\/aibrain/u, "worker does not hide operator configuration behind an empty read-only mount");
+for (const [name, sandbox] of [["worker", worker], ["browser", browserSandbox], ["document", soffice]]) {
+  requireMatch(sandbox, /--tmpfs \/var\/lib\/aibrain-restores[\s\S]*--remount-ro \/var\/lib\/aibrain-restores/u, `${name} sandbox does not hide recovered employee data`);
+}
 forbidMatch(worker, /--(?:ro-)?bind[^\n]*\/etc\/aibrain/u, "worker re-exposes operator configuration");
 requireMatch(worker, /--tmpfs "\$data_root"[\s\S]*--ro-bind "\$company_root" "\$company_root"[\s\S]*--ro-bind "\$source_root" "\$source_root"/u, "worker does not hide product data before re-exposing approved read roots");
 requireMatch(worker, /company context root is outside dataRoot[\s\S]*users root is outside dataRoot[\s\S]*employee root is outside usersRoot/u, "worker does not fail closed on configured root containment");
@@ -273,7 +263,7 @@ forbidMatch(nginx, /proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for
 requireMatch(hostPreflight, /\.aibrain-owner\.json/u, "host preflight does not require ownership markers");
 requireMatch(hostPreflight, /AIBRAIN_BACKUP_VOLUME_NAME[\s\S]*AIBRAIN_RESTORE_VOLUME_NAME/u, "host preflight does not validate independent backup and restore volumes");
 requireMatch(hostPreflight, /existing Docker[\s\S]*not owned/u, "host preflight does not reject foreign Docker resources");
-requireMatch(hostPreflight, /must never address BGreenly/u, "host preflight does not fail closed on BGreenly paths");
+requireMatch(hostPreflight, /roots must be children of the owned host root/u, "host preflight does not reject paths outside the owned installation root");
 requireMatch(hostPreflight, /\/usr\/bin\/flock/u, "host preflight does not require OS release serialization on Linux");
 requireMatch(releaseManager, /@sha256:\[0-9a-f\]\{64\}/u, "release manager does not require immutable image digests");
 requireMatch(releaseManager, /org\.opencontainers\.image\.revision/u, "release manager does not verify the OCI source revision");
@@ -291,7 +281,8 @@ requireMatch(releaseManager, /\/usr\/bin\/flock/u, "release manager lacks OS adv
 requireMatch(releaseManager, /\/usr\/bin\/lockf/u, "release manager lacks OS advisory locking on macOS QA");
 requireMatch(backupOrchestrator, /snapshot-created[\s\S]*snapshot-verified[\s\S]*app-restarted[\s\S]*admission-resumed/u, "backup orchestrator lacks durable recovery phases");
 requireMatch(backupOrchestrator, /AIBRAIN_MAINTENANCE_SECRET/u, "backup orchestrator does not read the private maintenance secret");
-requireMatch(backupOrchestrator, /"stop", "app"[\s\S]*createSnapshot[\s\S]*verifySnapshot/u, "backup orchestrator does not stop app and verify the snapshot");
+requireMatch(backupOrchestrator, /DATA_WRITERS = Object\.freeze\(\["app", "automation-worker", "alert-dispatcher"\]\)/u, "backup orchestrator does not include all durable data writers");
+requireMatch(backupOrchestrator, /"stop", \.\.\.DATA_WRITERS[\s\S]*createSnapshot[\s\S]*verifySnapshot/u, "backup orchestrator does not stop all writers and verify the snapshot");
 requireMatch(backupOrchestrator, /\/usr\/bin\/flock/u, "backup orchestrator lacks Linux OS advisory locking");
 requireMatch(backupOrchestrator, /\/usr\/bin\/lockf/u, "backup orchestrator lacks macOS OS advisory locking");
 requireMatch(backupRecoveryUnit, /After=docker\.service[\s\S]*orchestrate-backup\.mjs recover[\s\S]*NoNewPrivileges=true/u, "systemd does not recover interrupted backups after Docker startup");
@@ -444,7 +435,7 @@ if (failures.length > 0) {
 
 process.stdout.write("Static Docker/Compose boundary validation: PASS\n");
 process.stdout.write("Private inherited Chrome CDP pipe (no TCP endpoint): PASS\n");
-process.stdout.write("Pinned base image, Debian snapshot and Node toolchain: PASS\n");
+process.stdout.write("Pinned LTS base image, Ubuntu snapshot and Node toolchain: PASS\n");
 if (existsSync("/usr/local/bin/docker") || existsSync("/usr/bin/docker") || existsSync("/opt/homebrew/bin/docker")) {
   try {
     execFileSync("docker", [

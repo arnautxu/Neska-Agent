@@ -29,7 +29,7 @@ vi.mock("@/automations/server-service", () => ({
     directory: {
       membershipPolicy: "current" as const,
       currentUserId: mocks.userId,
-      users: [{ id: mocks.userId, name: "David" }],
+      users: [{ id: mocks.userId, name: "Example Employee" }],
       groups: [],
     },
   })),
@@ -50,7 +50,7 @@ import {
 
 const session: AuthSession = {
   provider: "local",
-  user: { id: mocks.userId, name: "David", email: "david@example.test" },
+  user: { id: mocks.userId, name: "Example Employee", email: "employee@example.test" },
   tenant: { id: "automation-qa", name: "Automation QA" },
   expiresAt: "2030-01-01T00:00:00.000Z",
 };

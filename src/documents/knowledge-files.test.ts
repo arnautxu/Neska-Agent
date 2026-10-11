@@ -9,7 +9,7 @@ import { handleCompanyFilesDynamicToolCall } from "@/runtime/enterprise-document
 const temporary: string[] = [], servers: Server[] = [], sockets: Socket[] = [];
 const company = { scope: "company", scopeId: null };
 const partition = createHash("sha256").update("company").digest("hex").slice(0, 32);
-const reference = `knowledge-arnall/${partition}/Y/Report.pdf?sha256=${"a".repeat(64)}&part=1`;
+const reference = `knowledge-example-company/${partition}/Y/Report.pdf?sha256=${"a".repeat(64)}&part=1`;
 afterEach(async () => {
   for (const socket of sockets.splice(0)) socket.destroy();
   await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve()))));
@@ -26,7 +26,7 @@ async function fixture(reply?: (request: Record<string, unknown>) => object) {
     }), search: vi.fn(async () => []) };
   const directory = path.join(root, "locks/knowledge");
   await mkdir(directory, { recursive: true, mode: 0o750 });
-  await writeFile(path.join(directory, "arnall.json"), JSON.stringify({ schemaVersion: 1, installationId: "test", connectionId: "arnall", mode: "read-only", publications: [company] }), { mode: 0o440 });
+  await writeFile(path.join(directory, "example-company.json"), JSON.stringify({ schemaVersion: 1, installationId: "test", connectionId: "example-company", mode: "read-only", publications: [company] }), { mode: 0o440 });
   const requests: Record<string, unknown>[] = [];
   const server = createServer((socket) => {
     sockets.push(socket);
@@ -41,8 +41,8 @@ async function fixture(reply?: (request: Record<string, unknown>) => object) {
     });
   });
   servers.push(server);
-  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(path.join(directory, "arnall.sock"), resolve); });
-  await chmod(path.join(directory, "arnall.sock"), 0o660);
+  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(path.join(directory, "example-company.sock"), resolve); });
+  await chmod(path.join(directory, "example-company.sock"), 0o660);
   const files = new KnowledgeDocumentFiles(network as never, { ownerUid: process.getuid?.() ?? 0, timeoutMs: 100 });
   return { roots: roots as never, network, files, requests, directory };
 }
@@ -75,12 +75,12 @@ describe("indexed knowledge transport", () => {
   it("keeps metadata map matches when the content index is also available", async () => {
     const f = await fixture();
     const serverSearch = vi.fn().mockResolvedValue({ available: true, lookupMode: "metadata-map", sourceChecked: false,
-      results: [{ scope: "company", path: "server-arnall/Y/contract-unparsed.pdf" }], warning: "Partial metadata map." });
+      results: [{ scope: "company", path: "server-example-company/Y/contract-unparsed.pdf" }], warning: "Partial metadata map." });
     const result = await handleCompanyFilesDynamicToolCall({ namespace: "aibrain_company_files", tool: "search", threadId: "thread", turnId: "turn", callId: "call", arguments: { query: "contract" } } as never,
       { network: f.network, roots: f.roots, knowledgeFiles: f.files, serverFiles: { search: serverSearch }, runtimeThreadId: "thread", runtimeTurnId: "turn" } as never);
     expect(result.success).toBe(true);
-    expect(JSON.stringify(result)).toContain("knowledge-arnall");
-    expect(JSON.stringify(result)).toContain("server-arnall/Y/contract-unparsed.pdf");
+    expect(JSON.stringify(result)).toContain("knowledge-example-company");
+    expect(JSON.stringify(result)).toContain("server-example-company/Y/contract-unparsed.pdf");
     expect(JSON.stringify(result)).toContain("Partial metadata map.");
     expect(serverSearch).toHaveBeenCalledOnce();
   });

@@ -17,7 +17,7 @@ class BrokerTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.manifest = {"installationId": "test", "connectionId": "arnall", "state": Path(self.temp.name)}
+        self.manifest = {"installationId": "test", "connectionId": "example-company", "state": Path(self.temp.name)}
         patcher = patch.object(broker.sync.rdp, "private_file", side_effect=Path)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -27,9 +27,15 @@ class BrokerTests(unittest.TestCase):
         self.addCleanup(value.executor.shutdown)
         return value
 
+    def test_service_unit_is_an_operator_pinned_name_not_a_command_or_path(self):
+        self.assertEqual(broker.approved_service_unit("neska-document-sync.service"), "neska-document-sync.service")
+        for value in (None, "", "/etc/systemd/system/other.service", "--all.service", "a.service; touch /tmp/file", "a\n.service", "a.timer"):
+            with self.assertRaisesRegex(ValueError, "INVALID_SYNC_SERVICE_UNIT"):
+                broker.approved_service_unit(value)
+
     def test_request_cannot_select_another_installation_path_or_command(self):
         valid = {"schemaVersion": 1, "operation": "refresh", "requestId": "00000000-0000-4000-8000-000000000001",
-                 "installationId": "test", "connectionId": "arnall"}
+                 "installationId": "test", "connectionId": "example-company"}
         self.assertTrue(broker.validate_request(valid, self.manifest))
         for changed in [dict(valid, installationId="other"), dict(valid, connectionId="other"),
                         dict(valid, path=r"C:\Secrets"), dict(valid, operation="powershell"), dict(valid, requestId="invalid")]:

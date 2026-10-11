@@ -9,6 +9,7 @@ No se guardan contraseñas, tokens, claves de Supabase ni credenciales del repos
 - Producción exige `AIBRAIN_INSTALLATION_CONFIG` con una ruta absoluta a un fichero regular. El arranque falla si falta, contiene JSON inválido, usa una versión desconocida, incluye campos extra o viola las restricciones de rutas y branding.
 - Desarrollo sin la variable utiliza únicamente el fixture sintético `config/installations/development.example.json`.
 - QA puede usar `config/installations/qa.example.json`. Ambos fixtures tienen empresas, marcas, dominios y raíces diferentes y no contienen datos reales.
+- `branding.visualTheme` es opcional y solo acepta `"neska"`: activa la capa visual Neska (`src/styles/neska.css`, ver `DESIGN.md`) en el tema claro. Sin el campo, la instalación conserva el tema base. El esquema JSON y `manage-release.mjs` aceptan el campo; cualquier otro valor o clave de branding se rechaza.
 - Los paths de contexto, usuarios y backups deben quedar dentro de `dataRoot`.
 - `sourceReadRoot` y `publishWriteRoot` deben ser distintos y no pueden contenerse entre sí. La configuración no concede permisos: Compose debe montar el primero read-only en el worker y reservar el segundo al publicador server-side.
 
@@ -49,21 +50,3 @@ Antes de arrancar:
 7. Ejecutar `npm run typecheck`, `npm run test:unit` y `npm run build`.
 
 La configuración no contiene un literal reservado para una empresa concreta. `installationId` y `companySlug` aceptan cualquier identificador canónico; la primera instalación real se crea con el mismo comando después de confirmar nombre, dominio, rutas y branding.
-
-## Readback de la instalación Arnall
-
-El fixture versionado `config/installations/arnall.qa.example.json` es la referencia no secreta para el canary Arnall. Antes de una futura publicación autorizada, el operador debe aplicar en el `AIBRAIN_INSTALLATION_CONFIG` privado del host estos valores exactos y conservar el resto de rutas/identidad de la instalación:
-
-```json
-{
-  "companyName": "Arnall",
-  "companySlug": "arnall",
-  "branding": {
-    "productName": "Arnall AI",
-    "logoPath": "/branding/arnall/logo.jpg",
-    "faviconPath": "/branding/arnall/logo.jpg"
-  }
-}
-```
-
-`public/branding/arnall/logo.jpg` es el asset original versionado. No sustituyas esos paths por `/branding/aibrain/*`. Tras reiniciar una release autorizada, verifica por separado la proyección autenticada de instalación, el `src` del logo, el título `Arnall AI · Arnall` y la respuesta 200 del asset; un health check no prueba el branding visible.

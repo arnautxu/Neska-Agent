@@ -51,7 +51,7 @@ describe("versioned document history", () => {
       threadId: THREAD_ID,
       documentId: DOCUMENT_ID,
       document: original,
-      author: { userId: USER_ID, name: "David" },
+      author: { userId: USER_ID, name: "Example Employee" },
       scope: { kind: "project", id: "0198b9f0-6631-7000-8000-000000000631" },
     });
     const v1 = created.versions[0]!;
@@ -62,7 +62,7 @@ describe("versioned document history", () => {
       versionId: VERSION_TWO,
       baseEtag: v1.etag,
       document: staged(VERSION_TWO, "plan.txt", "version two"),
-      author: { userId: USER_ID, name: "David" },
+      author: { userId: USER_ID, name: "Example Employee" },
     });
     expect(updated.versions).toHaveLength(2);
     expect(updated.versions[0]).toEqual(v1);
@@ -78,7 +78,7 @@ describe("versioned document history", () => {
       sourceVersionId: DOCUMENT_ID,
       restoreVersionId: RESTORE_ID,
       baseEtag: updated.versions[1]!.etag,
-      author: { userId: USER_ID, name: "David" },
+      author: { userId: USER_ID, name: "Example Employee" },
     });
     expect(restored.versions).toHaveLength(3);
     expect(restored.versions[0]).toEqual(v1);
@@ -97,7 +97,7 @@ describe("versioned document history", () => {
       threadId: THREAD_ID,
       documentId: DOCUMENT_ID,
       document: staged(DOCUMENT_ID, "notes.txt", "one"),
-      author: { userId: USER_ID, name: "David" },
+      author: { userId: USER_ID, name: "Example Employee" },
       scope: { kind: "private", id: USER_ID },
     });
     const stale = created.versions[0]!.etag;
@@ -107,7 +107,7 @@ describe("versioned document history", () => {
       versionId: VERSION_TWO,
       baseEtag: stale,
       document: staged(VERSION_TWO, "notes.txt", "two"),
-      author: { userId: USER_ID, name: "David" },
+      author: { userId: USER_ID, name: "Example Employee" },
     });
     await expect(versions.restore({
       threadId: THREAD_ID,
@@ -115,7 +115,7 @@ describe("versioned document history", () => {
       sourceVersionId: DOCUMENT_ID,
       restoreVersionId: RESTORE_ID,
       baseEtag: stale,
-      author: { userId: USER_ID, name: "David" },
+      author: { userId: USER_ID, name: "Example Employee" },
     })).rejects.toMatchObject({ code: "DOCUMENT_VERSION_CONFLICT" });
     expect((await versions.read(THREAD_ID, DOCUMENT_ID)).versions).toHaveLength(2);
   });
@@ -126,7 +126,7 @@ describe("versioned document history", () => {
       threadId: THREAD_ID,
       documentId: DOCUMENT_ID,
       document: staged(DOCUMENT_ID, "notes.txt", "one"),
-      author: { userId: USER_ID, name: "David" },
+      author: { userId: USER_ID, name: "Example Employee" },
       scope: { kind: "company", id: "documents-lab" },
     });
     const manifest = path.join(versions.rootDirectory, THREAD_ID, DOCUMENT_ID, "document.json");

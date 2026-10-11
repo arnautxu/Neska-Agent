@@ -623,6 +623,9 @@ export class BrowserEgressProxy {
   }
 
   private trackClientSocket(socket: Socket) {
+    // CONNECT detaches Node's HTTP parser before policy/DNS awaits complete.
+    // Own transport errors from acceptance through close, including that gap.
+    socket.on("error", () => socket.destroy());
     if (this.clientSockets.size >= this.maxConnections) {
       socket.destroy(new BrowserEgressProxyError("BROWSER_PROXY_SATURATED", "Browser proxy is saturated."));
       return;
@@ -633,6 +636,7 @@ export class BrowserEgressProxy {
   }
 
   private trackUpstreamSocket(socket: Socket) {
+    socket.on("error", () => socket.destroy());
     this.upstreamSockets.add(socket);
     socket.setTimeout(this.idleTimeoutMs, () => socket.destroy());
     socket.once("close", () => this.upstreamSockets.delete(socket));
@@ -852,7 +856,9 @@ export class BrowserEgressProxy {
       }
       const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
       const target = await this.resolveTarget(`https://${bracketed}:${port}/`, "https:");
+      if (client.destroyed) return;
       const upstream = await this.openPinnedSocket(target);
+      if (client.destroyed) { upstream.destroy(); return; }
       let transferred = head.length;
       let closedForLimit = false;
       const exceedLimit = () => {

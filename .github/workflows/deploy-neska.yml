@@ -1,0 +1,78 @@
+name: Deploy Neska
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_ci_run:
+        description: Successful main Backend CI run for the current revision
+        required: true
+        type: string
+      publish_run:
+        description: Successful GHCR publication run for the current revision
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  packages: read
+
+concurrency:
+  group: deploy-neska-prova
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && vars.NESKA_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: neska-prova
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CI_RUN: ${{ inputs.backend_ci_run }}
+      PUBLISH_RUN: ${{ inputs.publish_run }}
+    steps:
+      - name: Checkout the exact deployment revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Read CI, publication and the architecture-specific manifest
+        run: |
+          [[ "$CI_RUN" =~ ^[0-9]+$ ]]
+          [[ "$PUBLISH_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN" > ci-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PUBLISH_RUN" > publish-run.json
+          gh run download "$PUBLISH_RUN" --repo "$GITHUB_REPOSITORY" \
+            --name "aibrain-ghcr-release-$GITHUB_SHA-arm64" --dir release
+      - name: Reject mismatched or incomplete release gates
+        id: gates
+        run: node scripts/validate-deploy-gates.mjs
+      - name: Deploy through the installation's restricted SSH command
+        env:
+          DEPLOY_HOST: ${{ vars.NESKA_DEPLOY_HOST }}
+          DEPLOY_KEY: ${{ secrets.NESKA_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.NESKA_DEPLOY_KNOWN_HOSTS }}
+          APP_DIGEST: ${{ steps.gates.outputs.appDigest }}
+          GATEWAY_DIGEST: ${{ steps.gates.outputs.gatewayDigest }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$GITHUB_ACTOR" =~ ^[A-Za-z0-9-]+$ ]]
+          umask 077
+          sshdir=$(mktemp -d)
+          trap 'rm -rf -- "$sshdir"' EXIT
+          printf '%s\n' "$DEPLOY_KEY" > "$sshdir/key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$sshdir/known_hosts"
+          printf '%s\n' "$GH_TOKEN" | ssh -T -i "$sshdir/key" \
+            -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$sshdir/known_hosts" \
+            "root@$DEPLOY_HOST" "deploy $GITHUB_SHA $APP_DIGEST $GATEWAY_DIGEST $GITHUB_ACTOR" \
+            > deploy-readback.json
+      - name: Preserve the non-secret deployment readback
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: neska-deploy-${{ github.sha }}
+          path: deploy-readback.json
+          if-no-files-found: error
+          retention-days: 30

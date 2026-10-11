@@ -102,7 +102,7 @@ describe("versioned AiBrain UI/backend contract", () => {
     expect(uiContractErrors("KnowledgeReviewGetResponse", { ...listed, scopes: [{ scope: "private", scopeId: null, label: "Private", canReview: false }] })).not.toBeNull();
     delete listed.records[0].citations[0].sha256;
     expect(uiContractErrors("KnowledgeReviewGetResponse", listed)).not.toBeNull();
-    expect(uiContractErrors("KnowledgeReviewPostResponse", { available: true, connectionId: "arnall" })).not.toBeNull();
+    expect(uiContractErrors("KnowledgeReviewPostResponse", { available: true, connectionId: "example-company" })).not.toBeNull();
   });
 
   it("keeps employee weekly percentages private and distinguishes unknown from zero", () => {

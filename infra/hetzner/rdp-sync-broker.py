@@ -6,6 +6,7 @@ import datetime as dt
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import socketserver
@@ -31,9 +32,15 @@ def public_status(status):
     return result
 
 
+def approved_service_unit(value):
+    sync.require(isinstance(value, str) and re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.@-]{0,180}\.service", value), "INVALID_SYNC_SERVICE_UNIT")
+    return value
+
+
 class Coordinator:
-    def __init__(self, manifest, run=None, wait_seconds=175):
+    def __init__(self, manifest, run=None, wait_seconds=175, service_unit=None):
         self.manifest = manifest
+        self.service_unit = service_unit
         self.run = run or self.run_service
         self.wait_seconds = wait_seconds
         self.executor = ThreadPoolExecutor(max_workers=1)
@@ -45,10 +52,11 @@ class Coordinator:
         return sync.read_json(self.manifest["state"] / "status.json", {})
 
     def run_service(self):
-        # Fixed unit; callers can never select commands, paths or source roots.
+        # Operator-pinned unit; callers cannot choose commands, units or source roots.
+        approved_service_unit(self.service_unit)
         for audience in self.manifest["publications"]:
             sync.scope_directory(self.manifest, audience)
-        result = subprocess.run(["/usr/bin/systemctl", "start", "aibrain-arnall-sync.service"],
+        result = subprocess.run(["/usr/bin/systemctl", "start", self.service_unit],
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1815)
         status = self.status()
         if result.returncode != 0 and status.get("state") == "ready":
@@ -142,12 +150,16 @@ class Handler(socketserver.StreamRequestHandler):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True)
+    parser.add_argument("--installation-id", required=True)
+    parser.add_argument("--connection-id", required=True)
+    parser.add_argument("--service-unit", required=True)
     args = parser.parse_args()
+    approved_service_unit(args.service_unit)
     sync.require(os.geteuid() == 0, "HOST_OPERATOR_REQUIRED")
     os.umask(0o077)
     manifest = sync.load_manifest(args.manifest)
     # This unit has one installation and one sync service, fixed by the operator.
-    sync.require(manifest["connectionId"] == "arnall" and manifest["installationId"] == "company-qa", "UNSUPPORTED_BROKER_BINDING")
+    sync.require(manifest["connectionId"] == args.connection_id and manifest["installationId"] == args.installation_id, "UNSUPPORTED_BROKER_BINDING")
     sync.require(bool(manifest["publications"]), "NO_AUTHORIZED_PUBLICATION")
     directory = Path(manifest["dataRootHost"]) / "locks" / "document-sync"
     directory.mkdir(mode=0o750, exist_ok=True)
@@ -171,7 +183,7 @@ def main():
             raise ValueError("BROKER_ALREADY_RUNNING")
         finally:
             probe.close()
-    with Server(address, Coordinator(manifest)) as server:
+    with Server(address, Coordinator(manifest, service_unit=args.service_unit)) as server:
         os.chown(address, 0, manifest["appGid"])
         os.chmod(address, 0o660)
         server.serve_forever(poll_interval=0.5)

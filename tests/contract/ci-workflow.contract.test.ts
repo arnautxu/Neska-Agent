@@ -7,10 +7,11 @@ import { describe, expect, it } from "vitest";
 const workflowPath = path.join(process.cwd(), ".github", "workflows", "backend-ci.yml");
 type Job = {
   name: string;
+  "runs-on"?: string;
   needs?: string | string[];
   if?: string;
   "continue-on-error"?: boolean;
-  strategy?: { "fail-fast": boolean; matrix: { shard?: number[]; include?: { command: string }[] } };
+  strategy?: { "fail-fast": boolean; matrix: { runner?: string[]; shard?: number[]; include?: { command: string }[] } };
   steps: { run?: string; if?: string; "continue-on-error"?: boolean; env?: Record<string, string>; with?: Record<string, unknown> }[];
 };
 const yaml = createRequire(import.meta.url)("js-yaml") as { load(source: string): { jobs: Record<string, Job> } };
@@ -24,7 +25,7 @@ describe("backend CI contract", () => {
     const jobs = await readJobs();
     const build = jobs["quality-build"];
     const tests = jobs["quality-tests"];
-    expect(tests.strategy).toEqual({ "fail-fast": false, matrix: { shard: [1, 2, 3] } });
+    expect(tests.strategy).toEqual({ "fail-fast": false, matrix: { runner: ["ubuntu-24.04", "ubuntu-24.04-arm"], shard: [1, 2, 3] } });
     expect(tests.steps.filter((step) => step.run?.startsWith("npm test"))).toEqual([
       { name: "Unit, integration and contract test shard", run: "npm test -- --shard=${{ matrix.shard }}/3" },
     ]);
@@ -37,33 +38,46 @@ describe("backend CI contract", () => {
       expect(job.steps.some((step) => step.with?.cache === "npm" && step.with["cache-dependency-path"] === "package-lock.json")).toBe(true);
     }
     const commands = build.steps.map((step) => step.run ?? "").join("\n");
-    for (const command of ["npm run contracts:verify", "npm run typecheck", "npm run lint", "test_rdp*.py", "test_knowledge*.py", "--require-hashes", "npm run build:automation-worker", "npm run build", "npm run infra:validate", "bash -n infra/hetzner/app/deploy-arnall-main.sh"]) {
+    for (const command of ["npm run contracts:verify", "npm run typecheck", "npm run lint", "test_rdp*.py", "test_knowledge*.py", "--require-hashes", "npm run build:automation-worker", "npm run build", "scripts/verify-security-http.ts", "npm run infra:validate"]) {
       expect(commands).toContain(command);
     }
     expect(commands).not.toContain("npm test");
   });
 
+  it("requires native ARM and x86 for every execution gate", async () => {
+    const jobs = await readJobs();
+    for (const id of ["quality-build", "quality-tests", "e2e-suites", "webkit", "documents", "containers"]) {
+      expect(jobs[id]["runs-on"]).toBe("${{ matrix.runner }}");
+      expect(jobs[id].strategy?.matrix.runner).toEqual(["ubuntu-24.04", "ubuntu-24.04-arm"]);
+      expect(jobs[id]["continue-on-error"]).toBeUndefined();
+    }
+    const publish = await readFile(path.join(process.cwd(), ".github/workflows/publish-ghcr.yml"), "utf8");
+    expect(publish).toContain("platforms: linux/${{ matrix.arch }}");
+    expect(publish).toContain("arch: arm64");
+    expect(publish).toContain("arch: amd64");
+    expect(publish).toContain("buildcache-${{ matrix.arch }}");
+    expect(publish).toContain("head_sha }}-${{ matrix.arch }}");
+  });
+
   it("retains the required check and fails closed for every non-success dependency result", async () => {
     const gate = (await readJobs()).quality;
     expect(gate.name).toBe("Types, lint, contracts, tests and build");
-    expect(gate.needs).toEqual(["quality-build", "quality-tests", "horaria-tests"]);
+    expect(gate.needs).toEqual(["quality-build", "quality-tests"]);
     expect(gate.if).toBe("always()");
     expect(gate["continue-on-error"]).toBeUndefined();
     expect(gate.steps).toHaveLength(1);
     const step = gate.steps[0];
     expect(step.if).toBeUndefined();
     expect(step["continue-on-error"]).toBeUndefined();
-    expect(step.env).toEqual({ BUILD_RESULT: "${{ needs.quality-build.result }}", TESTS_RESULT: "${{ needs.quality-tests.result }}", HORARIA_RESULT: "${{ needs.horaria-tests.result }}" });
+    expect(step.env).toEqual({ BUILD_RESULT: "${{ needs.quality-build.result }}", TESTS_RESULT: "${{ needs.quality-tests.result }}" });
     expect(step.run).toBeTruthy();
     for (const build of ["success", "failure", "cancelled", "skipped", ""]) {
       for (const tests of ["success", "failure", "cancelled", "skipped", ""]) {
-        for (const horaria of ["success", "failure", "cancelled", "skipped", ""]) {
-          const result = spawnSync("bash", ["--noprofile", "--norc", "-eo", "pipefail", "-c", step.run!], {
-            env: { ...process.env, BUILD_RESULT: build, TESTS_RESULT: tests, HORARIA_RESULT: horaria },
+        const result = spawnSync("bash", ["--noprofile", "--norc", "-eo", "pipefail", "-c", step.run!], {
+          env: { ...process.env, BUILD_RESULT: build, TESTS_RESULT: tests },
         });
         expect(result.error).toBeUndefined();
-        expect(result.status === 0, `build=${build}, tests=${tests}, horaria=${horaria}`).toBe(build === "success" && tests === "success" && horaria === "success");
-        }
+        expect(result.status === 0, `build=${build}, tests=${tests}`).toBe(build === "success" && tests === "success");
       }
     }
   });
@@ -93,6 +107,33 @@ describe("backend CI contract", () => {
     expect(publish).toContain("cache-from:");
     expect(publish).toContain("cache-to:");
     expect(publish).toContain(":buildcache");
+  });
+
+  it("requires operator opt-in and successful same-repository main CI before publication", async () => {
+    const workflow = yaml.load(await readFile(path.join(process.cwd(), ".github/workflows/publish-ghcr.yml"), "utf8"));
+    const publish = workflow.jobs.publish;
+    expect(publish.if).toContain("vars.NESKA_PUBLISH_ENABLED == 'true'");
+    expect(publish.if).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(publish.if).toContain("github.event.workflow_run.event == 'push'");
+    expect(publish.if).toContain("github.event.workflow_run.head_branch == 'main'");
+    expect(publish.if).toContain("github.event.workflow_run.head_repository.full_name == github.repository");
+    const validationIndex = publish.steps.findIndex((step) => step.run?.includes('"$APP_REPOSITORY" != "$EGRESS_REPOSITORY"'));
+    const authenticationIndex = publish.steps.findIndex((step) => step.with?.registry === "ghcr.io");
+    expect(validationIndex).toBeGreaterThanOrEqual(0);
+    expect(validationIndex).toBeLessThan(authenticationIndex);
+    for (const [app, egress, valid] of [
+      ["ghcr.io/example/neska", "ghcr.io/example/neska-egress", true],
+      ["", "ghcr.io/example/neska-egress", false],
+      ["ghcr.io/example/neska", "ghcr.io/example/neska", false],
+      ["registry.example/neska", "ghcr.io/example/neska-egress", false],
+      ["ghcr.io/example/neska:latest", "ghcr.io/example/neska-egress", false],
+    ] as const) {
+      const result = spawnSync("bash", ["--noprofile", "--norc", "-eo", "pipefail", "-c", publish.steps[validationIndex].run!], {
+        env: { ...process.env, APP_REPOSITORY: app, EGRESS_REPOSITORY: egress },
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.status === 0).toBe(valid);
+    }
   });
 
   it("rejects every incomplete E2E dependency, including skipped WebKit", async () => {
@@ -130,12 +171,29 @@ describe("backend CI contract", () => {
       "--target runtime",
       "--target egress-gateway",
       "--no-cache",
+      "bash scripts/scan-container-images.sh",
+      "/usr/local/share/aibrain/container-browser-acceptance.mjs",
     ]) {
       expect(workflow, `missing CI gate: ${command}`).toContain(command);
     }
-    expect(workflow).not.toContain("npm audit");
-    expect(workflow).toContain("node-version: 24.18.1");
+    expect(workflow).toContain("npm audit --omit=dev --audit-level=high");
+    expect(workflow).toContain("node-version: 24.21.0");
     expect(workflow).toMatch(/permissions:\n\s+contents: read/u);
+  });
+
+  it("blocks native container promotion on scanner failures and retains evidence", async () => {
+    const job = (await readJobs()).containers;
+    expect(job.strategy?.matrix.runner).toEqual(["ubuntu-24.04", "ubuntu-24.04-arm"]);
+    const scanner = job.steps.find((step) => step.run?.startsWith("bash scripts/scan-container-images.sh"));
+    expect(scanner).toBeDefined();
+    expect(scanner?.if).toBeUndefined();
+    expect(scanner?.["continue-on-error"]).toBeUndefined();
+    const reports = job.steps.find((step) => step.with?.name === "container-security-${{ matrix.runner }}-${{ github.sha }}");
+    expect(reports?.if).toBe("always()");
+    const script = await readFile(path.join(process.cwd(), "scripts/scan-container-images.sh"), "utf8");
+    expect(script).toContain("--ignorefile /dev/null --severity CRITICAL --exit-code 1");
+    expect(script).not.toContain("--ignore-unfixed");
+    expect(script).toContain("exit \"$result\"");
   });
 
   it("pins actions and does not grant CI a secret-bearing trigger", async () => {
@@ -149,35 +207,4 @@ describe("backend CI contract", () => {
     expect(workflow).not.toMatch(/persist-credentials:\s*true/u);
   });
 
-  it("publishes only after the protected gates and deploys the immutable GHCR digests", async () => {
-    const publish = await readFile(path.join(process.cwd(), ".github", "workflows", "publish-ghcr.yml"), "utf8");
-    const workflow = await readFile(path.join(process.cwd(), ".github", "workflows", "deploy-arnall.yml"), "utf8");
-    const deploy = workflow.indexOf('root@"$DEPLOY_HOST" "deploy-ghcr $TESTED_SHA $APP_IMAGE $EGRESS_IMAGE $GHCR_USERNAME"');
-    const collection = workflow.indexOf("Collect post-deploy release identity readbacks");
-
-    expect(publish).toContain("Backend CI");
-    expect(publish).toContain("packages: write");
-    expect(publish).toContain("docker/build-push-action@");
-    expect(publish).toContain("AIBRAIN_REVISION=${{ github.event.workflow_run.head_sha }}");
-    expect(publish).toContain("aibrain-ghcr-release-${{ github.event.workflow_run.head_sha }}");
-    expect(deploy).toBeGreaterThan(-1);
-    expect(collection).toBeGreaterThan(deploy);
-    expect(workflow).toContain("Publish GHCR images");
-    expect(workflow).toContain("packages: read");
-    expect(workflow).toContain("GHCR_PULL_TOKEN: ${{ github.token }}");
-    expect(workflow).toContain("actions/download-artifact@");
-    expect(workflow).toContain("Resolve and verify the real Backend CI run");
-    expect(workflow).toContain('actions/workflows/backend-ci.yml/runs');
-    expect(workflow).toContain('.name == "Backend CI"');
-    expect(workflow).toContain('.name == "Publish GHCR images"');
-    expect(workflow).toContain("BACKEND_CI_RUN_ID: ${{ steps.pipeline.outputs.backend_ci_run_id }}");
-    expect(workflow).toContain("PUBLISH_RUN_ID: ${{ github.event.workflow_run.id }}");
-    expect(workflow).toContain("DEPLOY_RUN_ID: ${{ github.run_id }}");
-    expect(workflow).toContain('root@"$DEPLOY_HOST" "collect-readbacks $TESTED_SHA $BACKEND_CI_RUN_ID $PUBLISH_RUN_ID $DEPLOY_RUN_ID $APP_DIGEST $EGRESS_DIGEST" > /dev/null');
-    expect(workflow).toContain('root@"$DEPLOY_HOST" "bootstrap-admin $BOOTSTRAP_ADMIN_USER_ID"');
-    expect(workflow).toContain("vars.ARNALL_BOOTSTRAP_ADMIN_USER_ID != ''");
-    expect(workflow).toContain("[[ \"$TESTED_SHA\" =~ ^[0-9a-f]{40}$ ]]");
-    expect(workflow).toContain("[[ \"$BACKEND_CI_RUN_ID\" =~ ^[0-9]{6,20}$ ]]");
-    expect(workflow).not.toContain("CI_RUN_ID: ${{ github.event.workflow_run.id }}");
-  });
 });

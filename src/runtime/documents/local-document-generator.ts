@@ -1,6 +1,4 @@
 import { createHash } from "node:crypto";
-import { styleScheduleWorkbook } from "./schedule-spreadsheet";
-import { arnallScheduleParts, type ArnallSchedule } from "./arnall-schedule";
 import JSZip from "jszip";
 import { PDFDocument } from "pdf-lib";
 
@@ -29,8 +27,6 @@ export type LocalDocumentInput = Readonly<{
   rows?: readonly (readonly LocalDocumentCell[])[];
   slides?: readonly LocalDocumentSlide[];
   sourcePng?: Uint8Array;
-  spreadsheetLayout?: "schedule";
-  arnallSchedule?: ArnallSchedule;
 }>;
 
 export type GeneratedLocalDocument = Readonly<{
@@ -131,11 +127,7 @@ function normalizedInput(input: LocalDocumentInput) {
   if (slides && (sourcePng || !["pdf", "pptx"].includes(input.format))) {
     throw new LocalDocumentGenerationError("LOCAL_DOCUMENT_SLIDES_INVALID", "Slides require PDF or PPTX without a source image.");
   }
-  if (input.spreadsheetLayout && (input.format !== "xlsx" || !input.rows || input.rows.some(row => row.length !== 9))) {
-    throw new LocalDocumentGenerationError("LOCAL_DOCUMENT_ROWS_INVALID", "Schedule layout requires nine spreadsheet columns.");
-  }
-  if (input.arnallSchedule && (input.format !== "xlsx" || input.spreadsheetLayout !== "schedule")) throw new LocalDocumentGenerationError("LOCAL_DOCUMENT_ROWS_INVALID", "The approved schedule template requires an XLSX schedule.");
-  return { format: input.format, title, content, rows: input.rows, slides, sourcePng, spreadsheetLayout: input.spreadsheetLayout, arnallSchedule: input.arnallSchedule };
+  return { format: input.format, title, content, rows: input.rows, slides, sourcePng };
 }
 
 export function normalizeDocumentSlides(value: unknown): readonly LocalDocumentSlide[] {
@@ -218,7 +210,7 @@ function columnName(index: number) {
   return name;
 }
 
-async function xlsxBytes(title: string, content: string, explicitRows?: readonly (readonly LocalDocumentCell[])[], layout?: "schedule") {
+async function xlsxBytes(title: string, content: string, explicitRows?: readonly (readonly LocalDocumentCell[])[]) {
   const rows = spreadsheetRows(content, explicitRows);
   const sheetRows = rows.map((row, rowIndex) => {
     const cells = row.map((cell, columnIndex) => {
@@ -240,7 +232,6 @@ async function xlsxBytes(title: string, content: string, explicitRows?: readonly
     "docProps/core.xml": coreProperties(title),
     "docProps/app.xml": appProperties("AiBrain Spreadsheet Generator"),
   };
-  if (layout === "schedule") styleScheduleWorkbook(files, title, content, rows);
   return zipBytes(files);
 }
 
@@ -421,7 +412,7 @@ export async function generateLocalDocument(input: LocalDocumentInput): Promise<
   } else if (normalized.format === "docx") {
     data = await docxBytes(normalized.title, normalized.content);
   } else if (normalized.format === "xlsx") {
-    data = normalized.arnallSchedule ? await zipBytes(arnallScheduleParts(normalized.arnallSchedule)) : await xlsxBytes(normalized.title, normalized.content, normalized.rows, normalized.spreadsheetLayout);
+    data = await xlsxBytes(normalized.title, normalized.content, normalized.rows);
   } else {
     const slides = presentationSlides(normalized.title, normalized.content, normalized.slides);
     data = await pptxBytes(normalized.title, slides);

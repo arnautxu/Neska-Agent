@@ -26,6 +26,9 @@ process.umask(0o077);
 const INSTALLATION = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
 const BACKUP_ID = /^[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}$/u;
 const SHA256 = /^[0-9a-f]{64}$/u;
+// All three services write the installation's durable data. Draining the web
+// process alone does not quiesce the separate automation and alert processes.
+const DATA_WRITERS = Object.freeze(["app", "automation-worker", "alert-dispatcher"]);
 const PHASES = new Set([
   "prepared",
   "drained",
@@ -258,17 +261,20 @@ function verifySnapshot(options, backupId, expectedFingerprint = null) {
 }
 
 function startAndWaitForApp(options) {
-  runDocker(options, composeArgs(options, "up", "-d", "--no-deps", "app", "alert-dispatcher"));
+  runDocker(options, composeArgs(options, "up", "-d", "--no-deps", ...DATA_WRITERS));
   const deadline = performance.now() + options.healthTimeoutMs;
-  const containerId = runDocker(options, composeArgs(options, "ps", "-q", "app"));
-  if (!/^[a-f0-9]{12,64}$/u.test(containerId)) throw new BackupOperationError("BACKUP_OPERATION_APP_INVALID", "Compose did not return the app container.");
+  const containerIds = DATA_WRITERS.map((service) => {
+    const id = runDocker(options, composeArgs(options, "ps", "-q", service));
+    if (!/^[a-f0-9]{12,64}$/u.test(id)) throw new BackupOperationError("BACKUP_OPERATION_APP_INVALID", "Compose did not return a required writer container.");
+    return id;
+  });
   while (performance.now() <= deadline) {
-    const health = runDocker(options, ["inspect", "--format", "{{.State.Health.Status}}", containerId]);
-    if (health === "healthy") return;
-    if (health === "unhealthy") break;
+    const health = containerIds.map((id) => runDocker(options, ["inspect", "--format", "{{.State.Health.Status}}", id]));
+    if (health.every((status) => status === "healthy")) return;
+    if (health.includes("unhealthy")) break;
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.min(500, Math.max(1, deadline - performance.now())));
   }
-  throw new BackupOperationError("BACKUP_OPERATION_APP_UNHEALTHY", "App did not become healthy within the recovery deadline.");
+  throw new BackupOperationError("BACKUP_OPERATION_APP_UNHEALTHY", "Required writer services did not become healthy within the recovery deadline.");
 }
 
 async function maintenance(options, secret, action) {
@@ -382,7 +388,7 @@ async function execute(options) {
   try {
     await maintenance(options, secret, "drain");
     journal = writeJournal(options, journal, "drained");
-    runDocker(options, composeArgs(options, "stop", "app"));
+    runDocker(options, composeArgs(options, "stop", ...DATA_WRITERS));
     journal = writeJournal(options, journal, "app-stopped");
     const created = createSnapshot(options);
     journal = writeJournal(options, journal, "snapshot-created", {

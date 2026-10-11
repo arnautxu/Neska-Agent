@@ -31,10 +31,10 @@ import { workspaceAdminSnapshot } from "@/admin/server-service";
 const session = {
   provider: "local" as const,
   user: { id: "00000000-0000-4000-8000-000000000001", name: "Employee", email: "employee@example.test" },
-  tenant: { id: "arnall", name: "Arnall" },
+  tenant: { id: "example-company", name: "Example Company" },
   expiresAt: "2026-12-31T00:00:00Z",
 };
-const installation = { installationId: "arnall", companyName: "Arnall", paths: { dataRoot: "/private/data", usersRoot: "/private/users" } };
+const installation = { installationId: "example-company", companyName: "Example Company", paths: { dataRoot: "/private/data", usersRoot: "/private/users" } };
 
 describe("administration allowance privacy", () => {
   beforeEach(() => {

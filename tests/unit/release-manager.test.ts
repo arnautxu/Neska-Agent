@@ -273,10 +273,11 @@ if (args[0] === "image" && args[1] === "inspect") {
   };
 }
 
-function commandArgs(files: Awaited<ReturnType<typeof fixture>>, command: "promote" | "rollback") {
+function commandArgs(files: Awaited<ReturnType<typeof fixture>>, command: "bootstrap" | "promote" | "rollback") {
   return [
     manager,
     command,
+    ...(command === "bootstrap" ? ["--current-compose-file", files.currentComposeFile] : []),
     ...(command === "promote" ? [
       "--image", digestB,
       "--egress-image", egressDigestB,
@@ -347,6 +348,32 @@ afterEach(async () => {
 // separate fake-Docker subprocess per command. Keep this suite's harness bound
 // independently from the production release and Docker deadlines it asserts.
 describe("immutable release manager", { timeout: 20_000 }, () => {
+  it("records a healthy first installation without inventing rollback history", async () => {
+    const files = await fixture();
+    const result = await execFileAsync(process.execPath, commandArgs(files, "bootstrap"), { env: environment(files) });
+    expect(JSON.parse(result.stdout)).toMatchObject({ schemaVersion: 3,
+      current: { image: digestA, egressImage: egressDigestA, revision: revisionA }, previous: null });
+    const first = await readFile(files.stateFile, "utf8");
+    await expect(execFileAsync(process.execPath, commandArgs(files, "bootstrap"), { env: environment(files) }))
+      .rejects.toMatchObject({ stderr: expect.stringContaining("RELEASE_ALREADY_INITIALIZED") });
+    await expect(execFileAsync(process.execPath, commandArgs(files, "rollback"), { env: environment(files) }))
+      .rejects.toMatchObject({ stderr: expect.stringContaining("RELEASE_ROLLBACK_UNAVAILABLE") });
+    expect(await readFile(files.stateFile, "utf8")).toBe(first);
+    const calls = (await readFile(files.logFile, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+    expect(calls.some(args => args.includes("up"))).toBe(false);
+    await execFileAsync(process.execPath, commandArgs(files, "promote"), { env: environment(files) });
+    await execFileAsync(process.execPath, commandArgs(files, "rollback"), { env: environment(files) });
+    expect(JSON.parse(await readFile(files.stateFile, "utf8"))).toMatchObject({ current: { revision: revisionA } });
+  });
+
+  it("does not record an unhealthy first installation", async () => {
+    const files = await fixture();
+    const args = commandArgs(files, "bootstrap");
+    args[args.indexOf("--health-timeout-ms") + 1] = "500";
+    await expect(execFileAsync(process.execPath, args, { env: environment(files, digestA) })).rejects.toThrow();
+    await expect(readFile(files.stateFile, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("promotes and rolls back exact image digests with durable state", async () => {
     const files = await fixture();
     const promoted = await execFileAsync(process.execPath, commandArgs(files, "promote"), {
@@ -594,7 +621,7 @@ describe("immutable release manager", { timeout: 20_000 }, () => {
     const files = await fixture();
     const previous = await readFile(files.activeConfigFile, "utf8");
     const candidate = JSON.parse(installationConfigInput("Mailbox"));
-    candidate.connectors.companyMail = { enabled: true, host: "hc65.infoselfcloud.com", emailDomain: "arnall.cat" };
+    candidate.connectors.companyMail = { enabled: true, host: "mail.example.invalid", emailDomain: "example.invalid" };
     const contents = `${JSON.stringify(candidate, null, 2)}\n`;
     await writeFile(files.installationConfig, contents);
     await execFileAsync(process.execPath, commandArgs(files, "promote"), { env: environment(files) });
@@ -603,17 +630,41 @@ describe("immutable release manager", { timeout: 20_000 }, () => {
     expect(await readFile(files.activeConfigFile, "utf8")).toBe(previous);
   }, 20_000);
 
+  it("promotes an installation that opts into the Neska visual theme", async () => {
+    const files = await fixture();
+    const candidate = JSON.parse(installationConfigInput("Neska"));
+    candidate.branding.visualTheme = "neska";
+    const contents = `${JSON.stringify(candidate, null, 2)}\n`;
+    await writeFile(files.installationConfig, contents);
+    await execFileAsync(process.execPath, commandArgs(files, "promote"), { env: environment(files) });
+    expect(await readFile(files.activeConfigFile, "utf8")).toBe(contents);
+  }, 20_000);
+
+  it.each([
+    ["unknown visual theme", { visualTheme: "midnight" }],
+    ["unknown branding key", { theme: "neska" }],
+  ])("rejects %s before container mutation", async (_label, extra) => {
+    const files = await fixture();
+    const candidate = JSON.parse(installationConfigInput("Unsafe branding"));
+    Object.assign(candidate.branding, extra);
+    await writeFile(files.installationConfig, `${JSON.stringify(candidate)}\n`);
+    await expect(execFileAsync(process.execPath, commandArgs(files, "promote"), { env: environment(files) }))
+      .rejects.toMatchObject({ stderr: expect.stringContaining("RELEASE_INSTALLATION_CONFIG_INVALID") });
+    const calls = (await readFile(files.logFile, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+    expect(calls.some(args => args.includes("up"))).toBe(false);
+  });
+
   it.each([
     null,
-    { enabled: "true", host: "hc65.infoselfcloud.com", emailDomain: "arnall.cat" },
-    { enabled: true, host: "127.0.0.1", emailDomain: "arnall.cat" },
-    { enabled: true, host: "mail.internal", emailDomain: "arnall.cat" },
-    { enabled: true, host: "mail.localhost", emailDomain: "arnall.cat" },
-    { enabled: true, host: "mail.local", emailDomain: "arnall.cat" },
-    { enabled: true, host: "HC65.infoselfcloud.com", emailDomain: "arnall.cat" },
-    { enabled: true, host: "hc65.infoselfcloud.com:993", emailDomain: "arnall.cat" },
-    { enabled: true, host: "hc65.infoselfcloud.com", emailDomain: "@arnall.cat" },
-    { enabled: true, host: "hc65.infoselfcloud.com", emailDomain: "arnall.cat", password: "never-versioned" },
+    { enabled: "true", host: "mail.example.invalid", emailDomain: "example.invalid" },
+    { enabled: true, host: "127.0.0.1", emailDomain: "example.invalid" },
+    { enabled: true, host: "mail.internal", emailDomain: "example.invalid" },
+    { enabled: true, host: "mail.localhost", emailDomain: "example.invalid" },
+    { enabled: true, host: "mail.local", emailDomain: "example.invalid" },
+    { enabled: true, host: "MAIL.example.invalid", emailDomain: "example.invalid" },
+    { enabled: true, host: "mail.example.invalid:993", emailDomain: "example.invalid" },
+    { enabled: true, host: "mail.example.invalid", emailDomain: "@example.invalid" },
+    { enabled: true, host: "mail.example.invalid", emailDomain: "example.invalid", password: "never-versioned" },
   ])("rejects invalid company mailbox inputs before container mutation: %j", async (companyMail) => {
     const files = await fixture();
     const candidate = JSON.parse(installationConfigInput("Mailbox"));
@@ -648,9 +699,9 @@ describe("immutable release manager", { timeout: 20_000 }, () => {
     expect(calls.some(args => args.includes("up"))).toBe(false);
   });
 
-  it("rejects Compose that connects an external BGreenly resource", async () => {
+  it("rejects Compose that connects an external foreign installation resource", async () => {
     const files = await fixture();
-    await writeFile(files.composeFile, `${composeInput("B")}\nvolumes:\n  bgreenly-data:\n    external: true\n`);
+    await writeFile(files.composeFile, `${composeInput("B")}\nvolumes:\n  foreign-company-data:\n    external: true\n`);
     await expect(execFileAsync(process.execPath, commandArgs(files, "promote"), { env: environment(files) }))
       .rejects.toMatchObject({ stderr: expect.stringContaining("RELEASE_COMPOSE_UNSAFE") });
     const dockerCalls = (await readFile(files.logFile, "utf8")).trim().split("\n").map((line) => JSON.parse(line));

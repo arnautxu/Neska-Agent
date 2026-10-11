@@ -2,11 +2,6 @@
 
 ## Baseline and risk
 
-Baseline `08f3ba41c978e85ee70319709b1c732746ee1664` exposed only
-`read-availability`; it had no MCP tool-call mutation, durable connector
-approval consumption, or provider readback. Arnall has no reviewed MCP action
-manifest or personal OAuth binding, so live reproduction would require an
-unauthorised provider side effect and was not attempted.
 
 ## Changed behaviour
 
@@ -47,16 +42,6 @@ hidden and the capability fails closed with a precise code.
 
 ## Remaining validation
 
-Implemented and locally validated with fake transport only. Not live-validated:
-no Arnall MCP manifest, personal App/OAuth binding, approval-route handoff, or
-provider readback has been used. Before dispatch the approval becomes durable
-`executing`; an execution/readback failure after dispatch becomes durable
-`indeterminate`. A second execute or restart does not call the provider again.
-This is at-most-once dispatch, not proof of a provider-side exactly-once
-outcome: manual provider recovery/readback and an idempotency capability remain
-required. The remaining single Arnall input is one reviewed
-`connectors.codexManagedAppAction` manifest for the intended personal Codex
-App/MCP connection.
 
 ## P0 corrective evidence
 

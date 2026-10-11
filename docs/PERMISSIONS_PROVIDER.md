@@ -182,3 +182,9 @@ npm run typecheck
 ```
 
 Los tests usan únicamente instalaciones, usuarios, proyectos y políticas sintéticos dentro de directorios temporales. Cubren precedencia completa, fingerprint, aislamiento entre instalaciones, `usersRoot` con nombre white-label arbitrario, auditoría durable antes de ejecutar y sin contenido/paths, `policyVersion` por fuente, cambio de hash al cambiar policy, binding instalación+usuario+proyecto+turn, traversal, symlinks, formatos desconocidos/ambiguos, metadata incoherente, fichero escribible, ausencia, tamaño, UTF-8 y fallo cerrado del audit sink.
+
+## Native tool enforcement (2026-10-10)
+
+Native commands may execute inside their sandbox without issuing an approval request. Before starting a model turn, the server therefore requires explicit `documents.read/consult` and `tools.execute/execute` allows and rejects any effective `consult`, `execute` or `respond` deny. A restricted user receives `PERMISSION_POLICY_DENIED`; the model is not started and no memory context is read. A deny cannot be overridden by a human approval. This intentionally blocks unsupported partial-access turns until capability-specific native isolation exists; Markdown instructions alone cannot enforce path-specific restrictions. Existing per-tool checks still apply to connectors, documents and sensitive browser effects, including publication.
+
+Every native thread/turn receives a named private filesystem profile, `approvalPolicy: never`, and only the exact project workspace as a writable workspace root. Thread start/resume must attest the selected profile, cwd and approval policy; a warm thread is reusable only after attestation. Native permission escalation requests are declined. Private runtime stores and transport journals remain denied regardless of whether usage quotas exist. See [SECURITY_REMEDIATION.md](SECURITY_REMEDIATION.md).

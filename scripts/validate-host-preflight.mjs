@@ -266,7 +266,37 @@ if (!CHANNEL_TOKEN.test(required(alertPolicy, "AIBRAIN_ALERT_WEBHOOK_TOKEN"))) {
 }
 const replicaPolicy = parseEnv(readFileSync(replicaEnv, "utf8"));
 const resticRepository = required(replicaPolicy, "AIBRAIN_RESTIC_REPOSITORY");
-if (!/^(?:s3:https:\/\/|rest:https:\/\/|b2:|azure:|gs:)/u.test(resticRepository)) {
+if (resticRepository.startsWith("rclone:")) {
+  // A single named HTTPS S3 remote, never local/alias/exec backends or inline options.
+  if (!/^rclone:backup:[a-z0-9][a-z0-9.-]{1,61}[a-z0-9](?:\/[a-zA-Z0-9_-]+)*$/u.test(resticRepository)) {
+    fail("rclone repository must name the approved backup S3 remote and bucket");
+  }
+  const fixed = {
+    RCLONE_CONFIG_BACKUP_TYPE: "s3",
+    RCLONE_CONFIG_BACKUP_PROVIDER: "Other",
+    RCLONE_CONFIG_BACKUP_FORCE_PATH_STYLE: "true",
+    RCLONE_CONFIG_BACKUP_NO_CHECK_BUCKET: "true",
+  };
+  for (const [key, value] of Object.entries(fixed)) {
+    if (required(replicaPolicy, key) !== value) fail("rclone transport policy is invalid");
+  }
+  required(replicaPolicy, "RCLONE_CONFIG_BACKUP_ACCESS_KEY_ID");
+  required(replicaPolicy, "RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY");
+  required(replicaPolicy, "RCLONE_CONFIG_BACKUP_REGION");
+  let endpoint;
+  try { endpoint = new URL(required(replicaPolicy, "RCLONE_CONFIG_BACKUP_ENDPOINT")); }
+  catch { fail("rclone S3 endpoint is invalid"); }
+  if (endpoint.protocol !== "https:" || endpoint.username || endpoint.password || endpoint.search || endpoint.hash
+    || net.isIP(endpoint.hostname) || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{1,62}$/u.test(endpoint.hostname)
+    || /(?:^|\.)(?:localhost|local|internal)$/u.test(endpoint.hostname)) {
+    fail("rclone S3 endpoint must be an external credential-free HTTPS origin or path");
+  }
+  const allowed = new Set([...Object.keys(fixed), "RCLONE_CONFIG_BACKUP_ACCESS_KEY_ID",
+    "RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY", "RCLONE_CONFIG_BACKUP_REGION", "RCLONE_CONFIG_BACKUP_ENDPOINT"]);
+  if ([...replicaPolicy.keys()].some(key => key.startsWith("RCLONE_") && !allowed.has(key))) {
+    fail("unapproved rclone configuration override");
+  }
+} else if (!/^(?:s3:https:\/\/|rest:https:\/\/|b2:|azure:|gs:)/u.test(resticRepository)) {
   fail("Restic repository must use an approved off-host encrypted backend");
 }
 
@@ -300,10 +330,6 @@ for (let left = 0; left < isolatedRoots.length; left += 1) {
       fail("source, publish and replica state roots must not overlap");
     }
   }
-}
-
-for (const target of [envFileReal, runtimeEnv, egressEnv, alertsEnv, replicaEnv, resticPassword, configRoot, hostRoot, sourceRoot, publishRoot, replicaStateRoot]) {
-  if (/(?:^|[\\/])bgreenly(?:[\\/]|$)/iu.test(target)) fail("an AiBrain path must never address BGreenly");
 }
 
 const portText = required(env, "AIBRAIN_HTTP_PORT");

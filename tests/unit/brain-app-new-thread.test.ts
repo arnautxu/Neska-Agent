@@ -9,7 +9,7 @@ import { STANDALONE_PROJECT_SLUG, type WorkbenchProject } from "@/workbench/type
 function project(id: string, slug: string): WorkbenchProject {
   return {
     id,
-    name: slug === STANDALONE_PROJECT_SLUG ? "Conversaciones" : "Operaciones Arnall",
+    name: slug === STANDALONE_PROJECT_SLUG ? "Conversaciones" : "Operaciones Example Company",
     slug,
     status: "active",
     pinned: false,
@@ -25,11 +25,11 @@ function project(id: string, slug: string): WorkbenchProject {
 
 describe("new conversation destination", () => {
   const standalone = project("standalone", STANDALONE_PROJECT_SLUG);
-  const arnall = project("arnall", "operaciones-arnall");
+  const exampleCompany = project("example-company", "operaciones-example-company");
 
   it("uses the requested project for its next thread and reserves no-id for Sin proyecto", () => {
-    expect(newThreadDestination([standalone, arnall], arnall.id)?.id).toBe(arnall.id);
-    expect(newThreadDestination([standalone, arnall])?.id).toBe(standalone.id);
+    expect(newThreadDestination([standalone, exampleCompany], exampleCompany.id)?.id).toBe(exampleCompany.id);
+    expect(newThreadDestination([standalone, exampleCompany])?.id).toBe(standalone.id);
   });
 
   it("keeps bounded drafts isolated by project and thread", () => {

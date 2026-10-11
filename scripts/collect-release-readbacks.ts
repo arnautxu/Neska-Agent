@@ -113,7 +113,7 @@ async function readJsonSource(pathname: string, label: string): Promise<{ value:
 
 function parseRun(
   value: unknown,
-  workflow: "Backend CI" | "Publish GHCR images" | "Deploy Arnall",
+  workflow: "Backend CI" | "Publish GHCR images" | "Deploy Neska",
   candidateSha: string,
   conclusionRequired: boolean,
 ): string {
@@ -144,7 +144,7 @@ function parsePipelineReadback(value: unknown, candidateSha: string): PipelineId
   }
   const backendCiRunId = parseRun(value.backendCi, "Backend CI", candidateSha, true);
   const publishRunId = parseRun(value.publish, "Publish GHCR images", candidateSha, true);
-  const deployRunId = parseRun(value.deploy, "Deploy Arnall", candidateSha, false);
+  const deployRunId = parseRun(value.deploy, "Deploy Neska", candidateSha, false);
   if (new Set([backendCiRunId, publishRunId, deployRunId]).size !== 3) {
     throw new Error("Backend CI, Publish and Deploy must have distinct GitHub Actions run IDs.");
   }

@@ -4,6 +4,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypt
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { stopOwnedWorkerProcess } from "./owned-process";
 import { createServer, type Server as HttpServer } from "node:http";
+import type { Socket } from "node:net";
 import { createInterface, type Interface } from "node:readline";
 import path from "node:path";
 import { stat } from "node:fs/promises";
@@ -367,6 +368,7 @@ export class PrivateWorkerGateway {
   private readonly events: FileTransportEventJournal;
   private readonly requests: GatewayRequestLedger;
   private server: HttpServer | null = null;
+  private readonly connections = new Set<Socket>();
   private sockets: WebSocketServer | null = null;
   private activeSocket: WebSocket | null = null;
   private child: ChildProcessWithoutNullStreams | null = null;
@@ -492,8 +494,20 @@ export class PrivateWorkerGateway {
         response.writeHead(404, { "Content-Type": "text/plain", "Cache-Control": "no-store" });
         response.end("Not found");
       });
+      this.server.on("connection", (socket) => {
+        if (this.retired || this.stopping) {
+          socket.destroy();
+          return;
+        }
+        this.connections.add(socket);
+        socket.once("close", () => this.connections.delete(socket));
+      });
       this.sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
       this.server.on("upgrade", (request, socket, head) => {
+        if (this.retired || this.stopping || !this.sockets) {
+          socket.destroy();
+          return;
+        }
         const expected = `Bearer ${this.token}`;
         const received = request.headers.authorization ?? "";
         const requestPath = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
@@ -624,20 +638,25 @@ export class PrivateWorkerGateway {
     // Node can still bind after close() if listen is pending. Drain that owned
     // side effect before closing the server and releasing process ownership.
     await this.listenPromise?.catch(() => undefined);
+    // Stop accepting before draining WebSockets. A reconnect can already own
+    // TCP without completing its upgrade, so it is absent from sockets.clients.
+    const serverClosed = new Promise<void>((resolve) => {
+      if (!this.server) return resolve();
+      this.server.close(() => resolve());
+    });
     this.activeSocket?.terminate();
     this.activeSocket = null;
     // The durable cursor owns replay. Do not wait for a disconnected client
     // to finish a WebSocket close handshake before stopping our process.
     for (const client of this.sockets?.clients ?? []) client.terminate();
+    for (const connection of this.connections) connection.destroy();
     await new Promise<void>((resolve) => {
       if (!this.sockets) return resolve();
       this.sockets.close(() => resolve());
     });
     this.sockets = null;
-    await new Promise<void>((resolve) => {
-      if (!this.server) return resolve();
-      this.server.close(() => resolve());
-    });
+    await serverClosed;
+    this.connections.clear();
     this.server = null;
     this.lines?.close();
     this.lines = null;
@@ -1060,6 +1079,7 @@ class DeferredAppServerTransport implements AppServerTransport {
 export type LocalGatewayWorkerRuntimeFactoryOptions = {
   sharedAuth?: SharedAuthProvider;
   processFactory?: PrivateWorkerGatewayOptions["processFactory"];
+  /** @deprecated Privacy is mandatory; this option cannot disable it. */
   quotaToolPrivacy?: boolean;
   now?: () => number;
   maxRetainedCompletedRequests?: number;
@@ -1089,12 +1109,10 @@ class LocalGatewayManagedRuntime implements ManagedWorkerRuntime {
     if (this.gateway) return;
     // Profile identity uses the employee's base roots, shared by every service
     // role. App Server must retain these definitions across settings updates.
-    const configOverrides = this.options.quotaToolPrivacy
-      ? quotaToolPermissionConfigOverrides({
-        codexHome: this.context.environment.CODEX_HOME,
-        transportAudit: this.context.transportAudit,
-      })
-      : undefined;
+    const configOverrides = quotaToolPermissionConfigOverrides({
+      codexHome: this.context.environment.CODEX_HOME,
+      transportAudit: this.context.transportAudit,
+    });
     // The web app and the detached automation worker deliberately run
     // independent Codex App Server processes.  Their replay/ledger journals
     // must therefore be durable per service role, never shared: otherwise one

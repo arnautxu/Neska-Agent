@@ -21,7 +21,7 @@ describe("planThreadArchive", () => {
     const values = Array.from({ length: 100 }, (_, index) => thread(index));
     values[0] = thread(0, { pinned: true });
     values[1] = thread(1, { updatedAt: "2026-09-04T00:00:00.000Z" });
-    values[2] = thread(2, { title: "Cliente Arnall propuesta", messages: Array.from({ length: 6 }, (_, index) => ({ id: crypto.randomUUID(), role: index % 2 ? "assistant" : "user", content: "important", createdAt: "2026-01-01T00:00:00.000Z", status: "complete", activity: [], plan: [], approvals: [], diff: "", attachments: [], artifacts: [] })) });
+    values[2] = thread(2, { title: "Cliente Example Company propuesta", messages: Array.from({ length: 6 }, (_, index) => ({ id: crypto.randomUUID(), role: index % 2 ? "assistant" : "user", content: "important", createdAt: "2026-01-01T00:00:00.000Z", status: "complete", activity: [], plan: [], approvals: [], diff: "", attachments: [], artifacts: [] })) });
     const plan = planThreadArchive(values, { now: Date.parse("2026-09-05T00:00:00.000Z") });
     expect(plan.totals.archive).toBe(90);
     expect(plan.items.slice(0, 3).every((item) => item.decision === "preserve")).toBe(true);

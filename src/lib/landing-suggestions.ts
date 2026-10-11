@@ -2,7 +2,7 @@ import { spanishUiText, type UiText } from "@/i18n/messages";
 import { type WorkbenchProject } from "@/workbench/types";
 
 export type LandingSuggestion = {
-  id: "presentation" | "spreadsheets" | "schedule" | "presentation-image" | "illustration" | "diagram";
+  id: "presentation" | "spreadsheets" | "knowledge" | "presentation-image" | "illustration" | "diagram";
   label: string;
   prompt: string;
   iconPath?: string;
@@ -29,10 +29,10 @@ export function scheduledPromptTemplates(companyName: string, t: UiText = spanis
   return [
     { id: "presentation", iconPath: "/branding/microsoft/powerpoint.svg", label: t("Prepárame una presentación"), prompt: t("Prepárame una presentación sobre…") },
     { id: "spreadsheets", iconPath: "/branding/microsoft/excel.svg", label: t("Trabajemos con estos Excels"), prompt: t("Trabajemos con estos Excels. Quiero…") },
-    { id: "schedule", iconPath: companyName.trim().toLocaleLowerCase() === "arnall" ? "/branding/arnall/logo.jpg?v=d09bb6bb7e8a" : undefined, label: t("Trabajemos en los horarios del equipo de {company}", { company: companyName }), prompt: "", children: [
-      { id: "whatsapp", label: t("Enviar los WhatsApps a los trabajadores"), prompt: t("Preparemos los WhatsApps con los horarios para los trabajadores de {company}. Quiero revisar los destinatarios y los mensajes antes de enviarlos.", { company: companyName }) },
-      { id: "prepared", label: t("Dame los horarios preparados"), prompt: t("Dame los horarios preparados del equipo de {company} para…", { company: companyName }) },
-      { id: "changes", label: t("Revisar cambios de horarios"), prompt: t("Revisemos los cambios de horarios del equipo de {company} para…", { company: companyName }) },
+    { id: "knowledge", label: t("Trabajemos con la información de {company}", { company: companyName }), prompt: "", children: [
+      { id: "summary", label: t("Preparar un resumen"), prompt: t("Resume la información disponible de {company} sobre… Cita las fuentes y señala lo que falta.", { company: companyName }) },
+      { id: "search", label: t("Buscar información"), prompt: t("Busca en los documentos autorizados de {company} información sobre…", { company: companyName }) },
+      { id: "changes", label: t("Comparar documentos"), prompt: t("Compara estos documentos de {company} y explica las diferencias…", { company: companyName }) },
     ] },
   ];
 }

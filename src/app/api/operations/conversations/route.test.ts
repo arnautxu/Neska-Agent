@@ -3,7 +3,7 @@ const mocks = vi.hoisted(() => ({ read: vi.fn() }));
 vi.mock("@/operations/conversations", () => ({ operatorConversations: mocks.read }));
 import { GET } from "./route";
 const secret = "conversation-dashboard-secret-with-32-bytes";
-const url = "https://arnall.test/api/operations/conversations?userId=target&threadId=thread";
+const url = "https://example-company.test/api/operations/conversations?userId=target&threadId=thread";
 beforeEach(() => { vi.unstubAllEnvs(); vi.stubEnv("AIBRAIN_USAGE_DASHBOARD_SECRET", secret); mocks.read.mockReset().mockResolvedValue({ thread: { messages: [] } }); });
 describe("operator conversation route", () => {
   it("denies missing, wrong and unconfigured bearer before content reads", async () => {

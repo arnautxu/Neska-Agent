@@ -212,8 +212,8 @@ Trabajo:
 
 Aceptación:
 
-- Arnau conecta una cuenta;
-- David no puede verla ni utilizarla;
+- Usuario A conecta una cuenta;
+- Usuario B no puede verla ni utilizarla;
 - al desconectar desaparecen las tools;
 - ningún token aparece en respuestas, logs o archivos del workspace.
 
@@ -330,6 +330,6 @@ El MVP estará terminado cuando:
 
 ## Catálogo y edición compartidos (candidato 2026-09-07)
 
-[Contrato de catálogo, OAuth al conectar y composer inline](CONNECTOR_CATALOG_20260907.md).
+the current product runbook.
 La ampliación del catálogo se configura por instalación; el código UI y su
 corrección de login son compartidos. No se heredan cuentas entre clientes.

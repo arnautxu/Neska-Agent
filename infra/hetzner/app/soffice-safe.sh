@@ -34,9 +34,11 @@ if [ "$preflight" = entrypoint-boundary-v1 ]; then
   [ "$#" -eq 1 ] && [ "$1" = --aibrain-preflight ] || fail "preflight invocation is invalid"
   hidden=${AIBRAIN_DOCUMENT_PREFLIGHT_HIDDEN:-}
   publish_marker=${AIBRAIN_DOCUMENT_PREFLIGHT_PUBLISH:-}
+  restore_marker=${AIBRAIN_DOCUMENT_PREFLIGHT_RESTORE:-}
   case "$hidden" in /var/lib/aibrain/data/.aibrain-document-hidden.*) ;; *) fail "hidden preflight marker is invalid" ;; esac
   case "$publish_marker" in /srv/aibrain/publish-rw/.aibrain-document-publish.*) ;; *) fail "publish preflight marker is invalid" ;; esac
-  command=(/bin/sh -c '[ ! -e "$1" ] && [ ! -e "$2" ] && : > "/work/preflight-$3-ok" && ! /bin/sh -c '\'' : >"$1" '\'' sh "$2"' sh "$hidden" "$publish_marker" "$launcher")
+  case "$restore_marker" in /var/lib/aibrain-restores/.aibrain-document-hidden.*) ;; *) fail "restore preflight marker is invalid" ;; esac
+  command=(/bin/sh -c '[ ! -e "$1" ] && [ ! -e "$2" ] && [ ! -e "$4" ] && : > "/work/preflight-$3-ok" && ! /bin/sh -c '\'' : >"$1" '\'' sh "$2"' sh "$hidden" "$publish_marker" "$launcher" "$restore_marker")
 else
   rewritten=()
   has_headless=0
@@ -119,6 +121,8 @@ exec /usr/bin/bwrap \
   --remount-ro /proc \
   --tmpfs /tmp \
   --tmpfs /run \
+  --tmpfs /var/lib/aibrain-restores \
+  --remount-ro /var/lib/aibrain-restores \
   --tmpfs /etc/aibrain \
   --remount-ro /etc/aibrain \
   --tmpfs /var/lib/aibrain/data \

@@ -1,12 +1,12 @@
 # AiBrain acceptance threat model
 
 Scope: evidence used to decide whether one immutable AiBrain release is accepted on
-`https://arnall.graphikai.com`. Localhost, preview environments, CI, mocks and demo
+`https://brain.example.invalid`. Localhost, preview environments, CI, mocks and demo
 runtime are outside the final trust boundary and can only be prefilters.
 
 ## Assets and trust boundaries
 
-- User and tenant isolation: David and Arnau must have distinct authenticated
+- User and tenant isolation: Example Employee and Example Member must have distinct authenticated
   identities, workspaces, runtime state, files, browser state and audit records.
 - Action authority: an approval must bind the exact user, thread, turn, tool call,
   arguments and release; execution must have a post-action readback.

@@ -14,18 +14,18 @@ import type { InstallationConfig } from "@/config/installation-schema";
 const userId = "b2e0c2e8-0c4c-4db7-aeb7-f65c383b4690";
 const installation: InstallationConfig = {
   schemaVersion: 1,
-  installationId: "arnall",
-  companyName: "Arnall",
-  companySlug: "arnall",
-  publicUrl: "https://arnall.example.test",
-  branding: { productName: "Arnall", logoPath: "/logo.svg", faviconPath: "/favicon.ico", accentColor: "#123456" },
+  installationId: "example-company",
+  companyName: "Example Company",
+  companySlug: "example-company",
+  publicUrl: "https://example-company.example.test",
+  branding: { productName: "Example Company", logoPath: "/logo.svg", faviconPath: "/favicon.ico", accentColor: "#123456" },
   paths: {
-    dataRoot: "/var/lib/aibrain/arnall",
-    companyContextRoot: "/var/lib/aibrain/arnall/company",
-    usersRoot: "/var/lib/aibrain/arnall/users",
-    sourceReadRoot: "/var/lib/aibrain/arnall/source",
-    publishWriteRoot: "/var/lib/aibrain/arnall/publish",
-    backupsRoot: "/var/lib/aibrain/arnall/backups",
+    dataRoot: "/var/lib/aibrain/example-company",
+    companyContextRoot: "/var/lib/aibrain/example-company/company",
+    usersRoot: "/var/lib/aibrain/example-company/users",
+    sourceReadRoot: "/var/lib/aibrain/example-company/source",
+    publishWriteRoot: "/var/lib/aibrain/example-company/publish",
+    backupsRoot: "/var/lib/aibrain/example-company/backups",
   },
   connectors: {
     codexManagedAppAction: {

@@ -1,9 +1,5 @@
 # AiBrain fleet releases
 
-AiBrain is one product codebase and many isolated installations. Arnall is the
-first installation, not a fork. A customer-specific server contains only
-configuration, secrets, Supabase Auth settings, company context and durable
-data; it does not contain customer-specific application code.
 
 ## Unit of release
 
@@ -37,21 +33,7 @@ into the image.
 
 ## Promotion policy
 
-1. Build once from a tested main commit and address images by digest.
-2. Promote to an internal synthetic installation.
-3. Promote to Arnall as the first canary.
-4. Verify login, real Codex turn, streaming, usage, browser, documents,
-   persistence, alerts and backup/restore.
-5. Promote in bounded waves to the remaining customers.
-6. Stop the wave automatically on any failed readiness or acceptance check.
-7. Roll only the failed installation back to its previously recorded digests
-   and config. Never roll customer data back implicitly.
 
-The fleet controller may hold server addresses and release status, but never
-customer application secrets. Deployment identities should accept only a
-restricted `deploy <immutable-sha>` command, as the Arnall gateway already
-does. A change reaches every customer by promoting the same tested release
-through these waves—not by allowing every server to follow `main` blindly.
 
 ## Compatibility rule
 

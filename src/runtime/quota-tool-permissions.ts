@@ -56,7 +56,7 @@ export function createQuotaToolPermissions(roots: {
         },
         [workspaceWriteId]: {
           extends: readOnlyId,
-          // Quota-enabled turns supply only the exact legacy writable root
+          // All turns supply only the exact project writable root
           // as runtimeWorkspaceRoots, never artifact/user metadata roots.
           filesystem: { ":workspace_roots": "write", ":tmpdir": "write", ":slash_tmp": "write" },
         },

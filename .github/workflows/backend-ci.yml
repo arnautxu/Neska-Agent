@@ -25,7 +25,11 @@ env:
 jobs:
   quality-build:
     name: Types, lint, contracts and build
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
     timeout-minutes: 35
     steps:
       - name: Checkout immutable revision
@@ -35,11 +39,13 @@ jobs:
       - name: Use pinned Node runtime
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24.18.1
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
         run: npm ci
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Verify generated Codex contracts
         run: npm run contracts:verify
       - name: Typecheck
@@ -60,20 +66,20 @@ jobs:
         run: npm run build:automation-worker
       - name: Production build
         run: npm run build
+      - name: Standalone HTTP security regressions
+        run: node --import ./scripts/register-server-only-stub.mjs --import tsx scripts/verify-security-http.ts "$RUNNER_TEMP/security-http.json"
       - name: Validate infrastructure contracts
         run: |
           npm run infra:validate
-          bash -n infra/hetzner/app/deploy-arnall-main.sh
-          bash -n infra/hetzner/app/horaria-release.sh
-          bash -n infra/hetzner/app/horaria-backup.sh
 
   quality-tests:
-    name: Tests (${{ matrix.shard }}/3)
-    runs-on: ubuntu-24.04
+    name: Tests (${{ matrix.runner }}, ${{ matrix.shard }}/3)
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
         shard: [1, 2, 3]
     steps:
       - name: Checkout immutable revision
@@ -83,7 +89,7 @@ jobs:
       - name: Use pinned Node runtime
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24.18.1
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
@@ -93,7 +99,7 @@ jobs:
 
   quality:
     name: Types, lint, contracts, tests and build
-    needs: [quality-build, quality-tests, horaria-tests]
+    needs: [quality-build, quality-tests]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2
@@ -102,36 +108,19 @@ jobs:
         env:
           BUILD_RESULT: ${{ needs.quality-build.result }}
           TESTS_RESULT: ${{ needs.quality-tests.result }}
-          HORARIA_RESULT: ${{ needs.horaria-tests.result }}
         run: |
           test "$BUILD_RESULT" = success
           test "$TESTS_RESULT" = success
-          test "$HORARIA_RESULT" = success
-
-  horaria-tests:
-    name: Horaria engine and authenticated chat service
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version: 24.18.1
-          cache: npm
-          cache-dependency-path: modules/horaria/backend/package-lock.json
-      - run: npm ci --ignore-scripts --prefix modules/horaria/backend
-      - run: npm run build --prefix modules/horaria/backend
-      - run: npm test --prefix modules/horaria/backend
 
   e2e-suites:
-    name: E2E (${{ matrix.suite }})
-    runs-on: ubuntu-24.04
+    name: E2E (${{ matrix.runner }}, ${{ matrix.suite }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+        suite: [backend, chromium-1, chromium-2]
         include:
           - suite: backend
             browser: ""
@@ -150,7 +139,7 @@ jobs:
       - name: Use pinned Node runtime
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24.18.1
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
@@ -170,7 +159,11 @@ jobs:
 
   webkit:
     name: E2E (webkit)
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
     timeout-minutes: 15
     steps:
       - name: Checkout immutable revision
@@ -180,7 +173,7 @@ jobs:
       - name: Use pinned Node runtime
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24.18.1
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
@@ -223,7 +216,11 @@ jobs:
 
   documents:
     name: Real Office, PDF, text and image matrix
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
     timeout-minutes: 20
     steps:
       - name: Checkout immutable revision
@@ -233,7 +230,7 @@ jobs:
       - name: Use pinned Node runtime
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24.18.1
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install native document toolchain
@@ -255,13 +252,23 @@ jobs:
 
   containers:
     name: Clean immutable container builds
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
     timeout-minutes: 35
     steps:
       - name: Checkout immutable revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - name: Verify native Linux architecture
+        env:
+          EXPECTED_ARCH: ${{ matrix.runner == 'ubuntu-24.04-arm' && 'aarch64' || 'x86_64' }}
+        run: |
+          test "$(uname -m)" = "$EXPECTED_ARCH"
+          docker info --format '{{.OSType}} {{.Architecture}}'
       - name: Validate Compose model without secrets
         env:
           AIBRAIN_RUNTIME_ENV_FILE: ci.env.placeholder
@@ -336,6 +343,32 @@ jobs:
             --entrypoint node \
             "aibrain-ci:${GITHUB_SHA}" \
             /usr/local/share/aibrain/container-app-server-acceptance.mjs
+      - name: Exercise the pinned browser through its production sandbox
+        run: |
+          docker run --rm \
+            --user 10001:10001 \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --security-opt apparmor=aibrain-container \
+            --security-opt systempaths=unconfined \
+            --security-opt seccomp=infra/hetzner/browser/seccomp_profile.json \
+            --pids-limit 768 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=512m,mode=1777 \
+            --tmpfs /run:rw,nosuid,nodev,noexec,size=16m,mode=0755 \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-installation.json,dst=/etc/aibrain/installation.json,readonly" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-data,dst=/var/lib/aibrain/data" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-source,dst=/srv/aibrain/source-ro,readonly" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-publish,dst=/srv/aibrain/publish-rw" \
+            --env NODE_ENV=production \
+            --env CODEX_BIN=/usr/local/bin/aibrain-codex-worker \
+            --env AIBRAIN_CODEX_EXPECTED_VERSION=0.153.4 \
+            --env AIBRAIN_INSTALLATION_CONFIG=/etc/aibrain/installation.json \
+            --env AIBRAIN_EGRESS_PROXY_URL=http://127.0.0.1:9 \
+            --env AIBRAIN_EGRESS_BROWSER_TOKEN=container_ci_browser_token_000000000000000000 \
+            --entrypoint node \
+            "aibrain-ci:${GITHUB_SHA}" \
+            /usr/local/share/aibrain/container-browser-acceptance.mjs
       - name: Convert a real presentation through the production document sandbox
         run: |
           docker run --rm \
@@ -393,3 +426,13 @@ jobs:
             --env AIBRAIN_SYNTHETIC_ACCEPTANCE=1 \
             --entrypoint node "aibrain-ci:${GITHUB_SHA}" \
             /usr/local/share/aibrain/container-xls-passive-acceptance.mjs
+      - name: Scan both native images without vulnerability exceptions
+        run: bash scripts/scan-container-images.sh "${GITHUB_SHA}" "${RUNNER_TEMP}/container-security"
+      - name: Retain native vulnerability reports and SBOMs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: container-security-${{ matrix.runner }}-${{ github.sha }}
+          path: ${{ runner.temp }}/container-security
+          if-no-files-found: warn
+          retention-days: 14

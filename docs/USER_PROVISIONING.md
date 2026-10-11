@@ -58,17 +58,6 @@ El command no crea el usuario remoto, no cambia suscripciones, no toca Supabase 
 
 ## Imagen de perfil aprobada
 
-`config/profile-artwork.json` contiene únicamente asignaciones visuales aprobadas
-por el usuario, por `companySlug` y email exacto normalizado. La resolución se
-realiza server-side sobre la identidad local ya autenticada y devuelve la ruta
-del asset aprobado en el mismo origen HTTPS de la instalación. No altera identidad, permisos,
-credenciales ni metadatos del proveedor. Sin coincidencia se conserva el avatar
-existente; si no hay imagen válida, se muestran las iniciales. El registro y su
-asset deben viajar juntos en la versión; añadirlos localmente no actualiza la
-instalación publicada. Los assets incluidos son públicos y no deben contener
-información privada. La asignación del porquet a `arnau@graphikai.com` se basa
-en el correo facilitado por el usuario, pendiente de verificación en su sesión
-real tras una futura publicación.
 
 ## Baja, reactivación y recuperación
 
@@ -100,7 +89,3 @@ npm run users:manage -- \
 ```
 
 No ejecutar el modo offline con la aplicación activa: no puede cerrar objetos de runtime que viven en otro proceso. La protección durable (`enabled:false` y revocación de sesiones) sigue evitando accesos nuevos, pero el endpoint host-local es el mecanismo correcto para una baja inmediata.
-
-## Arnall language
-
-Arnall onboarding uses Spanish for user-facing text, schedule previews, review explanations and generated schedule labels. The approved workbook retains its original sheet names, shift codes, formulas and layout so calculation references remain intact. Historical balances and inherited formula defects remain explicitly unverified.

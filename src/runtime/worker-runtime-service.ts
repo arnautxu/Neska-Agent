@@ -416,7 +416,6 @@ async function serviceState(): Promise<RuntimeServiceState> {
       registry: new WorkerRuntimeRegistry({
         config,
         factory: new LocalGatewayWorkerRuntimeFactory({
-          quotaToolPrivacy: Boolean(config.usageLimits),
           sharedAuth: sharedAuthProvider(config, process.env.AIBRAIN_CODEX_AUTH_SCOPE === "shared-qa" ? workerEgressEnvironment() : {}),
         }),
         maintenance,

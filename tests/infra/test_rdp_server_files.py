@@ -20,7 +20,7 @@ broker = module('server_broker', 'rdp-server-files-broker.py')
 
 class ServerFileTests(unittest.TestCase):
     def setUp(self):
-        self.manifest = {'connectionId': 'arnall', 'installationId': 'test',
+        self.manifest = {'connectionId': 'example-company', 'installationId': 'test',
                          'sourceRoots': [c + ':\\' for c in string.ascii_uppercase],
                          'publications': [{'scope': 'company', 'scopeId': None}]}
 
@@ -29,7 +29,7 @@ class ServerFileTests(unittest.TestCase):
         from types import SimpleNamespace
         import uuid
         request = {'schemaVersion': 1, 'operation': 'browse', 'requestId': str(uuid.uuid4()),
-                   'installationId': 'test', 'connectionId': 'arnall',
+                   'installationId': 'test', 'connectionId': 'example-company',
                    'input': {'query': 'server:/Y/', 'limit': 50}}
         self.assertTrue(broker.validate_request(request, self.manifest))
         self.assertFalse(broker.validate_request(dict(request, input={'query': 'invoice', 'limit': 50}), self.manifest))
@@ -46,8 +46,8 @@ class ServerFileTests(unittest.TestCase):
     def test_unsupported_reference_rejects_content_without_waiting_for_windows(self):
         import uuid
         request = {'schemaVersion': 1, 'operation': 'read', 'requestId': str(uuid.uuid4()),
-                   'installationId': 'test', 'connectionId': 'arnall',
-                   'input': {'path': 'server-arnall/C/Arnall/Vendes/PreusVenda.exe'}}
+                   'installationId': 'test', 'connectionId': 'example-company',
+                   'input': {'path': 'server-example-company/C/Example Company/Vendes/PreusVenda.exe'}}
         with patch.object(broker.sync, 'scope_directory') as scope, patch.object(broker, 'folder_module') as folder:
             result = broker.execute(self.manifest, request, cached_only=True)
         self.assertEqual(result['error'], 'SERVER_FORMAT_NOT_READABLE')
@@ -57,8 +57,8 @@ class ServerFileTests(unittest.TestCase):
 
     def test_all_drives_and_unlisted_folders_are_addressable(self):
         for source in ['C:\\Users\\Report.docx', 'Y:\\PRESSUPOSTOS\\2026\\Oferta À.pdf', 'Z:\\Other\\Sheet.xlsx']:
-            virtual = files.virtual_path('arnall', source)
-            self.assertEqual(files.source_path('arnall', virtual), (source, 1))
+            virtual = files.virtual_path('example-company', source)
+            self.assertEqual(files.source_path('example-company', virtual), (source, 1))
         self.assertEqual(files.query_request('server:/', 50)['mode'], 'drives')
         self.assertEqual(files.query_request('Y:/PRESSUPOSTOS', 50)['source'], 'Y:\\PRESSUPOSTOS')
 
@@ -66,9 +66,9 @@ class ServerFileTests(unittest.TestCase):
         for suffix in ['Y/../x', 'Y/%2e%2e/x', 'Y/a%2fb', 'Y/a%5cb', 'Y/secret.key',
                        'Y/.env', 'Y/abc:stream', 'Y/NUL.txt', 'Y/a?command=whoami']:
             with self.subTest(suffix=suffix), self.assertRaises(ValueError):
-                files.source_path('arnall', 'server-arnall/' + suffix)
+                files.source_path('example-company', 'server-example-company/' + suffix)
         with self.assertRaises(ValueError):
-            files.source_path('other', 'server-arnall/Y/file.txt')
+            files.source_path('other', 'server-example-company/Y/file.txt')
 
     def test_queries_are_data_and_fit_windows_command_limit(self):
         term = "quote'; Write-Output unexpected-command; '"
@@ -90,7 +90,7 @@ class ServerFileTests(unittest.TestCase):
                     'bytes': 42, 'modifiedUtc': '2026-09-02T00:00:00Z'}], 'nextOffset': 100,
                     'truncated': True, 'recordedAt': '2026-09-02T00:00:00Z'}
         result = files.search(self.manifest, 'server:/Y/PRESSUPOSTOS?offset=50', 50, run)
-        self.assertEqual(result['results'][0]['path'], 'server-arnall/Y/PRESSUPOSTOS/Oferta.pdf')
+        self.assertEqual(result['results'][0]['path'], 'server-example-company/Y/PRESSUPOSTOS/Oferta.pdf')
         self.assertTrue(result['limited'])
         self.assertEqual(result['nextQuery'], 'server:/Y/PRESSUPOSTOS?offset=100')
 
@@ -115,7 +115,7 @@ class ServerFileTests(unittest.TestCase):
         def never(*_, **__):
             self.fail('Remote call was not authorized')
         restricted = {**self.manifest, 'sourceRoots': ['Y:\\Approved']}
-        for path in ['server-arnall/Y/Other.txt', 'server-other/Y/Approved/a.txt', 'server-arnall/Y/Approved/a.exe']:
+        for path in ['server-example-company/Y/Other.txt', 'server-other/Y/Approved/a.txt', 'server-example-company/Y/Approved/a.exe']:
             with self.subTest(path=path), self.assertRaises(ValueError):
                 files.read(restricted, path, never)
 
@@ -134,7 +134,7 @@ class ServerFileTests(unittest.TestCase):
                 calls.append((operation, source, attempts))
                 return receipt
             extract = lambda *_: {'ok': True, 'text': 'x' * (120 * 1024 + 5)}
-            target = 'server-arnall/Y/PRESSUPOSTOS/Oferta.pdf'
+            target = 'server-example-company/Y/PRESSUPOSTOS/Oferta.pdf'
             first = files.read(manifest, target, copy, extract)
             second = files.read(manifest, first['nextPath'], copy, extract)
             self.assertEqual((first['parts'], second['part']), (2, 2))
@@ -147,21 +147,21 @@ class ServerFileTests(unittest.TestCase):
 
     def test_broker_validates_actor_binding_and_rejects_arbitrary_operations(self):
         valid = {'schemaVersion': 1, 'operation': 'search', 'requestId': '00000000-0000-4000-8000-000000000001',
-                 'installationId': 'test', 'connectionId': 'arnall', 'input': {'query': 'server:/Y/PRESSUPOSTOS', 'limit': 50}}
+                 'installationId': 'test', 'connectionId': 'example-company', 'input': {'query': 'server:/Y/PRESSUPOSTOS', 'limit': 50}}
         self.assertTrue(broker.validate_request(valid, self.manifest))
         for changed in [dict(valid, installationId='other'), dict(valid, connectionId='other'),
                         dict(valid, operation='write'), dict(valid, command='whoami'),
                         dict(valid, input={'query': 'server:/Y/../secret', 'limit': 50})]:
             self.assertFalse(broker.validate_request(changed, self.manifest))
-        count = dict(valid, operation='inventory', input={'path': 'server-arnall/Y/Offers', 'offset': 0})
+        count = dict(valid, operation='inventory', input={'path': 'server-example-company/Y/Offers', 'offset': 0})
         self.assertTrue(broker.validate_request(count, self.manifest))
-        for args in [{'path': 'server-other/Y/Offers', 'offset': 0}, {'path': 'server-arnall/Y/Offers', 'offset': True},
-                     {'path': 'server-arnall/Y/Offers?part=1', 'offset': 0}, {'path': 'server-arnall/Y/Offers', 'offset': -1}]:
+        for args in [{'path': 'server-other/Y/Offers', 'offset': 0}, {'path': 'server-example-company/Y/Offers', 'offset': True},
+                     {'path': 'server-example-company/Y/Offers?part=1', 'offset': 0}, {'path': 'server-example-company/Y/Offers', 'offset': -1}]:
             self.assertFalse(broker.validate_request(dict(count, input=args), self.manifest))
 
     def test_source_busy_and_specific_path_rejection_are_not_server_outages(self):
         value = {'schemaVersion': 1, 'operation': 'read', 'requestId': '00000000-0000-4000-8000-000000000001',
-                 'installationId': 'test', 'connectionId': 'arnall', 'input': {'path': 'server-arnall/Y/file.pdf'}}
+                 'installationId': 'test', 'connectionId': 'example-company', 'input': {'path': 'server-example-company/Y/file.pdf'}}
         from contextlib import nullcontext
         from types import SimpleNamespace
         for error, code in [(BlockingIOError(), 'SERVER_FILES_BUSY'), (ValueError('WINDOWS_PATH_UNAVAILABLE'), 'WINDOWS_PATH_UNAVAILABLE')]:
@@ -197,7 +197,7 @@ class ServerFileTests(unittest.TestCase):
 
     def test_cached_only_miss_never_contacts_windows(self):
         value = {'schemaVersion': 1, 'operation': 'search', 'requestId': '00000000-0000-4000-8000-000000000001',
-                 'installationId': 'test', 'connectionId': 'arnall', 'input': {'query': 'server:/Y/Unknown', 'limit': 50}}
+                 'installationId': 'test', 'connectionId': 'example-company', 'input': {'query': 'server:/Y/Unknown', 'limit': 50}}
         with patch.object(broker.sync, 'scope_directory'), patch.object(broker.server_map, 'cached_search', return_value=None), \
              patch.object(broker.files, 'search') as live:
             self.assertIsNone(broker.execute(self.manifest, value, cached_only=True))
@@ -205,20 +205,11 @@ class ServerFileTests(unittest.TestCase):
 
     def test_scope_revalidation_precedes_every_file_operation(self):
         value = {'schemaVersion': 1, 'operation': 'read', 'requestId': '00000000-0000-4000-8000-000000000001',
-                 'installationId': 'test', 'connectionId': 'arnall', 'input': {'path': 'server-arnall/Y/file.txt'}}
+                 'installationId': 'test', 'connectionId': 'example-company', 'input': {'path': 'server-example-company/Y/file.txt'}}
         with patch.object(broker.sync, 'scope_directory', side_effect=ValueError('SCOPE_BINDING_MISMATCH')), \
              patch.object(broker.files, 'read') as reader, self.assertRaisesRegex(ValueError, 'SCOPE_BINDING_MISMATCH'):
             broker.execute(self.manifest, value)
         reader.assert_not_called()
-
-    def test_read_only_service_does_not_expose_docker_or_windows_credentials(self):
-        unit = (INFRA / 'aibrain-arnall-server-files.service').read_text()
-        self.assertIn('ProtectSystem=strict', unit)
-        self.assertIn('KillMode=control-group', unit)
-        self.assertIn('RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK', unit)
-        self.assertNotIn('docker.sock', unit)
-        self.assertNotIn('credentials.env', unit)
-        self.assertNotIn('enterprise-documents', unit)
 
 class InteractiveAdmissionTests(unittest.TestCase):
     def test_busy_source_waits_then_executes_windows_exactly_once(self):
@@ -270,12 +261,12 @@ class InteractiveAdmissionTests(unittest.TestCase):
         import io, json, uuid
         from types import SimpleNamespace
         from unittest.mock import Mock
-        request = {'schemaVersion': 1, 'operation': 'browse', 'requestId': str(uuid.uuid4()), 'installationId': 'test', 'connectionId': 'arnall', 'input': {'query': 'server:/', 'limit': 50}}
+        request = {'schemaVersion': 1, 'operation': 'browse', 'requestId': str(uuid.uuid4()), 'installationId': 'test', 'connectionId': 'example-company', 'input': {'query': 'server:/', 'limit': 50}}
         handler = object.__new__(broker.Handler)
         handler.connection = SimpleNamespace(settimeout=Mock())
         handler.rfile = io.BytesIO((json.dumps(request)+'\n').encode())
         handler.wfile = SimpleNamespace(write=Mock(side_effect=BrokenPipeError()))
-        handler.server = SimpleNamespace(manifest={'installationId': 'test', 'connectionId': 'arnall'}, dispatch=Mock(return_value={'available': True, 'results': []}))
+        handler.server = SimpleNamespace(manifest={'installationId': 'test', 'connectionId': 'example-company'}, dispatch=Mock(return_value={'available': True, 'results': []}))
         with patch('builtins.print') as log:
             handler.handle()
         event = json.loads(log.call_args.args[0])
@@ -304,14 +295,14 @@ class InteractiveAdmissionTests(unittest.TestCase):
 class ServerNavigationTests(unittest.TestCase):
     def test_root_config_binds_shortcuts_to_existing_installation_connection_and_roots(self):
         import json
-        manifest = {'installationId': 'test', 'connectionId': 'arnall', 'sourceRoots': ['C:\\Arnall']}
-        value = {'schemaVersion': 1, 'installationId': 'test', 'connectionId': 'arnall', 'entryPoints': [{'label': 'Compres', 'path': 'server-arnall/C/Arnall/Compres'}]}
+        manifest = {'installationId': 'test', 'connectionId': 'example-company', 'sourceRoots': ['C:\\Example Company']}
+        value = {'schemaVersion': 1, 'installationId': 'test', 'connectionId': 'example-company', 'entryPoints': [{'label': 'Compres', 'path': 'server-example-company/C/Example Company/Compres'}]}
         with tempfile.TemporaryDirectory() as root:
             p = Path(root) / 'navigation.json'
             with patch.object(broker.files.rdp, 'private_file', return_value=p):
                 p.write_text(json.dumps(value))
                 self.assertEqual(broker.navigation_entries(p, manifest), value['entryPoints'])
-                for bad in [{**value, 'installationId': 'other'}, {**value, 'entryPoints': [{'label': 'Foreign', 'path': 'server-arnall/Y/Other'}]}, {**value, 'entryPoints': value['entryPoints'] * 2}]:
+                for bad in [{**value, 'installationId': 'other'}, {**value, 'entryPoints': [{'label': 'Foreign', 'path': 'server-example-company/Y/Other'}]}, {**value, 'entryPoints': value['entryPoints'] * 2}]:
                     p.write_text(json.dumps(bad))
                     with self.assertRaises(ValueError):
                         broker.navigation_entries(p, manifest)

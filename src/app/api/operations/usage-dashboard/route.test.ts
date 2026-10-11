@@ -5,7 +5,7 @@ vi.mock("@/usage/operator-dashboard", () => ({ operatorUsageDashboard: mocks.das
 
 import { GET } from "@/app/api/operations/usage-dashboard/route";
 
-const url = "https://arnall.example/api/operations/usage-dashboard";
+const url = "https://example-company.example/api/operations/usage-dashboard";
 const secret = "usage-dashboard-secret-with-at-least-32-bytes";
 
 beforeEach(() => {

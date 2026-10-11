@@ -93,6 +93,45 @@ async function run(envFile: string, installationId = "company-alpha") {
 }
 
 describe("Hetzner host preflight", () => {
+  const rclonePolicy = {
+    AIBRAIN_RESTIC_REPOSITORY: "rclone:backup:company-alpha/restic",
+    RCLONE_CONFIG_BACKUP_TYPE: "s3",
+    RCLONE_CONFIG_BACKUP_PROVIDER: "Other",
+    RCLONE_CONFIG_BACKUP_ENDPOINT: "https://storage.example.test/storage/v1/s3",
+    RCLONE_CONFIG_BACKUP_REGION: "eu-west-1",
+    RCLONE_CONFIG_BACKUP_ACCESS_KEY_ID: "synthetic-access",
+    RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY: "synthetic-secret",
+    RCLONE_CONFIG_BACKUP_FORCE_PATH_STYLE: "true",
+    RCLONE_CONFIG_BACKUP_NO_CHECK_BUCKET: "true",
+  };
+
+  it("accepts the bounded HTTPS S3 rclone transport without exposing credentials", async () => {
+    const input = await fixture();
+    await writeFile(path.join(input.configRoot, "replica.env"), Object.entries(rclonePolicy).map(([key, value]) => `${key}=${value}`).join("\n"));
+    const result = await run(input.envFile);
+    expect(result.stdout).toContain("AiBrain host preflight: PASS");
+    expect(`${result.stdout}${result.stderr}`).not.toContain("synthetic-secret");
+  });
+
+  it.each([
+    { AIBRAIN_RESTIC_REPOSITORY: "rclone:local:/tmp/backups" },
+    { AIBRAIN_RESTIC_REPOSITORY: "rclone:backup:company-alpha/../other" },
+    { RCLONE_CONFIG_BACKUP_TYPE: "local" },
+    { RCLONE_CONFIG_BACKUP_ENDPOINT: "http://storage.example.test" },
+    { RCLONE_CONFIG_BACKUP_ENDPOINT: "https://127.0.0.1" },
+    { RCLONE_CONFIG_BACKUP_ENDPOINT: "https://[::ffff:127.0.0.1]" },
+    { RCLONE_CONFIG_BACKUP_ENDPOINT: "https://host.internal" },
+    { RCLONE_CONFIG_BACKUP_ENDPOINT: "https://user:secret@storage.example.test" },
+    { RCLONE_CONFIG_BACKUP_ENDPOINT: "https://storage.example.test/?secret=foo" },
+    { RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY: "" },
+    { RCLONE_CONFIG: "/tmp/uncontrolled.conf" },
+    { RCLONE_CONFIG_PASS: "external-hook" },
+  ])("rejects unsafe rclone policy %j", async (override) => {
+    const input = await fixture();
+    await writeFile(path.join(input.configRoot, "replica.env"), Object.entries({ ...rclonePolicy, ...override }).map(([key, value]) => `${key}=${value}`).join("\n"));
+    await expect(run(input.envFile)).rejects.toThrow();
+  });
+
   it("accepts an enabled company mailbox with its exact allowlist and encryption key without exposing the key", async () => {
     const input = await fixture();
     const key = Buffer.alloc(32, 7).toString("base64");
@@ -129,7 +168,7 @@ describe("Hetzner host preflight", () => {
     expect(result.stdout).toContain("AiBrain host preflight: PASS (company-alpha)");
   });
 
-  it("rejects mismatched ownership, overlapping paths, symlinks and BGreenly paths", async () => {
+  it("rejects mismatched ownership, overlapping paths, symlinks and foreign installation paths", async () => {
     const ownership = await fixture();
     await writeFile(path.join(ownership.hostRoot, ".aibrain-owner.json"), JSON.stringify({ schemaVersion: 1, product: "aibrain", installationId: "someone-else" }));
     await expect(run(ownership.envFile)).rejects.toThrow();
@@ -141,8 +180,12 @@ describe("Hetzner host preflight", () => {
     await writeFile(symlinked.envFile, await envWithLink);
     await expect(run(symlinked.envFile)).rejects.toThrow();
 
-    const bgreenly = await fixture("bgreenly");
-    await expect(run(bgreenly.envFile, "bgreenly")).rejects.toThrow();
+    const owned = await fixture();
+    const foreign = await fixture("another-company");
+    const envWithForeignSource = (await import("node:fs/promises")).readFile(owned.envFile, "utf8")
+      .then((text) => text.replace(`AIBRAIN_SOURCE_HOST_PATH=${owned.sourceRoot}`, `AIBRAIN_SOURCE_HOST_PATH=${foreign.sourceRoot}`));
+    await writeFile(owned.envFile, await envWithForeignSource);
+    await expect(run(owned.envFile)).rejects.toThrow(/roots must be children of the owned host root/);
   });
 
   it("rejects exposed secrets and hard-linked policy files", async () => {

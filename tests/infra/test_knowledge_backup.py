@@ -54,7 +54,7 @@ class BackupTests(unittest.TestCase):
         spec=importlib.util.spec_from_file_location("retrieval",Path(backup.__file__).with_name("knowledge-retrieval.py"))
         retrieval=importlib.util.module_from_spec(spec)
         spec.loader.exec_module(retrieval)
-        reader=retrieval.Retrieval(destination,"test","arnall",self.bindings,lambda _:True)
+        reader=retrieval.Retrieval(destination,"test","example-company",self.bindings,lambda _:True)
         with self.assertRaisesRegex(ValueError,"RESTORE_RECONCILIATION_REQUIRED"):
             reader.search(COMPANY,"contrato")
 

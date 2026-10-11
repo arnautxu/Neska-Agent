@@ -722,7 +722,6 @@ AiBrain no envía invitaciones ni publica un control plane remoto. El panel de p
 
 Las automatizaciones programadas son locales y explícitas: `GET/POST /api/automations` lista y crea tareas visibles para el empleado; `PATCH/DELETE /api/automations/{taskId}` exige permiso de gestión; `GET /api/automations/{taskId}/runs` exige acceso actual a resultados; y `POST /api/automations/{taskId}/run` encola una ejecución manual idempotente mediante `clientRequestId`. El runner documentado en `docs/AUTOMATIONS.md` ejecuta los prompts en el servidor mientras ese proceso está vivo, incluso con el navegador del usuario cerrado. La API y la UI muestran la señal real del worker; no prometen ejecución cloud, no envían mensajes externos por sí solas y conservan las aprobaciones normales del runtime.
 
-La creación desde chat usa una propuesta durable ligada al tenant, usuario, conversación y turno. Acción, horario, zona horaria, proyecto o `Sin proyecto` y audiencia deben estar completos antes de proponerla. La tarea solo se crea después de una confirmación explícita en un mensaje posterior. En cada ejecución el backend fuerza web en vivo y vuelve a resolver las skills y conectores que sigan autorizados; el contenido del prompt nunca concede permisos ni conserva una autorización revocada.
 
 ### Centro de administración del workspace
 
@@ -1516,74 +1515,6 @@ type UsageAggregate = {
 
 Respuesta personal:
 
-```json
-{
-  "schemaVersion": 1,
-  "scope": "personal",
-  "generatedAt": "2026-08-27T10:00:00.000Z",
-  "userId": "00000000-0000-4000-8000-000000000001",
-  "internal": {
-    "turns": 8,
-    "completedTurns": 7,
-    "errorTurns": 1,
-    "stoppedTurns": 0,
-    "activeDays": 2,
-    "averageDurationMs": 6220,
-    "p95DurationMs": 8900,
-    "averageFirstTextMs": 1250,
-    "p95FirstTextMs": 2100,
-    "turnsWithTokenData": 7,
-    "tokens": {
-      "totalTokens": 4800,
-      "inputTokens": 3500,
-      "cachedInputTokens": 1200,
-      "cacheWriteInputTokens": 0,
-      "outputTokens": 1300,
-      "reasoningOutputTokens": 300
-    }
-  },
-  "sharedSubscription": {
-    "schemaVersion": 1,
-    "installationId": "arnall",
-    "observedAt": "2026-08-27T10:00:00.000Z",
-    "scope": "shared_chatgpt_account",
-    "planType": "team",
-    "rateLimitsAvailable": true,
-    "accountTokenUsageAvailable": true,
-    "rateLimits": [
-      {
-        "limitId": "codex",
-        "limitName": "Codex",
-        "planType": "team",
-        "primary": {
-          "usedPercent": 32,
-          "windowDurationMins": 300,
-          "resetsAt": 1777000000
-        },
-        "secondary": null,
-        "credits": null,
-        "individualLimit": null,
-        "spendControlReached": false,
-        "rateLimitReachedType": null
-      }
-    ],
-    "accountTokenUsage": {
-      "lifetimeTokens": "125000",
-      "peakDailyTokens": "22000",
-      "longestRunningTurnSec": "98",
-      "currentStreakDays": "4",
-      "longestStreakDays": "9",
-      "dailyUsageBuckets": [
-        { "startDate": "2026-08-27", "tokens": "12000" }
-      ]
-    }
-  },
-  "notices": [
-    "Les mètriques internes per empleat provenen només dels torns d’aquesta instal·lació.",
-    "El percentatge i l’ús del proveïdor pertanyen al compte ChatGPT compartit; no s’atribueixen a cap empleat."
-  ]
-}
-```
 
 La respuesta de empresa cambia `scope` a `company`, añade `installationId` y
 `members: Array<{ userId, displayName, email, usage }>` y mantiene un único

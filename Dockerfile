@@ -1,11 +1,48 @@
-ARG NODE_IMAGE=node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7
+ARG NODE_IMAGE=node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+ARG OS_IMAGE=ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
 
-FROM ${NODE_IMAGE} AS egress-gateway
+FROM ${NODE_IMAGE} AS node-toolchain
+FROM ${OS_IMAGE} AS patched-base
+ARG UBUNTU_SNAPSHOT=20261011T000000Z
+
+# Bootstrap only the trust store from Ubuntu's signed default archive; the
+# snapshot redirects HTTP to HTTPS. Runtime packages use the dated snapshot.
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN printf '%s\n' \
+    "deb https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/ noble main universe" \
+    "deb https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/ noble-updates main universe" \
+    "deb https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/ noble-security main universe" \
+    > /etc/apt/sources.list \
+  && rm -f /etc/apt/sources.list.d/ubuntu.sources \
+  && printf '%s\n' \
+    'Acquire::Check-Valid-Until "false";' \
+    'Acquire::Retries "3";' \
+    'Acquire::https::Timeout "30";' \
+    > /etc/apt/apt.conf.d/99snapshot \
+  && apt-get update \
+  && export DEBIAN_FRONTEND=noninteractive \
+  && apt-get upgrade -y \
+  && apt-get install -y --no-install-recommends ca-certificates libstdc++6 \
+  && rm -rf /var/lib/apt/lists/*
+
+# Use the exact official Node build on Ubuntu's newer, compatible glibc. Neither
+# Debian OS packages nor third-party distribution repositories are imported.
+COPY --from=node-toolchain /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-toolchain /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+  && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+  && node --version | grep -Fx v24.21.0
+
+FROM patched-base AS egress-gateway
 
 ARG AIBRAIN_EGRESS_UID=10002
 ARG AIBRAIN_EGRESS_GID=10002
 
-RUN groupadd --system --gid "${AIBRAIN_EGRESS_GID}" aibrain-egress \
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+  && groupadd --system --gid "${AIBRAIN_EGRESS_GID}" aibrain-egress \
   && useradd --system --uid "${AIBRAIN_EGRESS_UID}" --gid aibrain-egress \
     --home-dir /nonexistent --no-create-home aibrain-egress \
   && install -d -m 0755 -o root -g root /usr/local/share/aibrain
@@ -23,31 +60,21 @@ USER aibrain-egress:aibrain-egress
 EXPOSE 8080
 ENTRYPOINT ["node", "/usr/local/share/aibrain/egress-gateway.mts"]
 
-FROM ${NODE_IMAGE} AS dependencies
+FROM patched-base AS dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM ${NODE_IMAGE} AS horaria-dependencies
-# The slim build base may detect OpenSSL 1.1, while the final runtime uses 3.0.
-ENV PRISMA_CLI_BINARY_TARGETS=debian-openssl-3.0.x
-WORKDIR /horaria
-COPY modules/horaria/backend/package.json modules/horaria/backend/package-lock.json ./
-COPY modules/horaria/backend/prisma ./prisma
-RUN npm ci --ignore-scripts && npm run build \
-  && test -x node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x
-
-FROM ${NODE_IMAGE} AS builder
+FROM patched-base AS builder
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
-RUN npm run build && npm run build:automation-worker && npm run build:weekly-token-budget && npm run build:container-app-server-acceptance && npm run build:presentation-runtime && node scripts/build-container-presentation-tool-acceptance.mjs && node scripts/build-container-xls-passive-acceptance.mjs
+RUN npm run build && npm run build:automation-worker && npm run build:weekly-token-budget && npm run build:container-app-server-acceptance && npm run build:presentation-runtime && node scripts/build-container-presentation-tool-acceptance.mjs && node scripts/build-container-xls-passive-acceptance.mjs && node scripts/build-container-browser-acceptance.mjs
 
-FROM ${NODE_IMAGE} AS runtime
+FROM patched-base AS runtime
 
 ARG AIBRAIN_UID=10001
 ARG AIBRAIN_GID=10001
-ARG DEBIAN_SNAPSHOT=20260820T000000Z
 
 ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
@@ -74,33 +101,11 @@ ENV NODE_ENV=production \
     XDG_DATA_HOME=/var/lib/aibrain/data/server/xdg/data \
     XDG_STATE_HOME=/var/lib/aibrain/data/server/xdg/state
 
-# The pinned slim base does not contain a system trust store. Bootstrap only
-# ca-certificates from the base image's signed Debian sources before switching
-# every runtime/tool package to the immutable snapshot below.
 RUN apt-get update \
   && export DEBIAN_FRONTEND=noninteractive \
-  && apt-get install -y --no-install-recommends ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
-
-RUN printf '%s\n' \
-    "deb https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}/ bookworm main" \
-    "deb https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}/ bookworm-updates main" \
-    "deb https://snapshot.debian.org/archive/debian-security/${DEBIAN_SNAPSHOT}/ bookworm-security main" \
-    > /etc/apt/sources.list \
-  && rm -f /etc/apt/sources.list.d/debian.sources \
-  && printf '%s\n' \
-    'Acquire::Check-Valid-Until "false";' \
-    'Acquire::Retries "3";' \
-    'Acquire::https::Timeout "30";' \
-    > /etc/apt/apt.conf.d/99snapshot \
-  && apt-get update \
-  && export DEBIAN_FRONTEND=noninteractive \
-  && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends \
     bubblewrap \
     ca-certificates \
-    chromium \
-    chromium-sandbox \
     file \
     fonts-dejavu-core \
     fonts-liberation \
@@ -111,13 +116,12 @@ RUN printf '%s\n' \
     poppler-utils \
     python3 \
     python3-openpyxl \
-    python3-pil \
     python3-venv \
     qpdf \
     restic \
     tini \
   && rm -rf /var/lib/apt/lists/* \
-  && npm install --global --omit=dev "@openai/codex@0.153.4" "tsx@4.20.6" \
+  && npm install --global --omit=dev "@openai/codex@0.153.4" "tsx@4.23.15" \
   && mv /usr/local/bin/codex /usr/local/bin/codex-real \
   && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
   && groupadd --system --gid "${AIBRAIN_GID}" aibrain \
@@ -135,7 +139,26 @@ RUN printf '%s\n' \
   && install -d -m 0555 -o root -g root /srv/aibrain/source-ro \
   && install -d -m 0755 -o root -g root /etc/aibrain /usr/local/share/aibrain
 
-RUN /usr/bin/python3 -c "import openpyxl; from PIL import Image"
+RUN dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libxml2)" ge '2.9.14+dfsg-1.3ubuntu3.8' \
+  && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libglib2.0-0t64)" ge '2.80.0-6ubuntu3.9' \
+  && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libsqlite3-0)" ge '3.45.1'
+
+# Use fixed upstream Pillow wheels with both native architecture hashes.
+COPY --chown=root:root infra/hetzner/python-runtime-requirements.txt /tmp/python-runtime-requirements.txt
+RUN /usr/bin/python3 -m venv /tmp/python-installer \
+  && /tmp/python-installer/bin/pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps \
+    --target /usr/local/lib/python3.12/dist-packages -r /tmp/python-runtime-requirements.txt \
+  && rm -rf /tmp/python-installer /tmp/python-runtime-requirements.txt \
+  && /usr/bin/python3 -c "import openpyxl; import PIL; assert PIL.__version__ == '12.3.0'"
+
+COPY --chown=root:root scripts/install-container-chrome.py /tmp/install-container-chrome.py
+RUN /usr/bin/python3 /tmp/install-container-chrome.py \
+  && rm /tmp/install-container-chrome.py \
+  && ln -s /usr/bin/google-chrome-stable /usr/bin/chromium \
+  && /usr/bin/chromium --version | grep -F '155.0.8059.39'
+
+COPY --chown=root:root scripts/install-container-rclone.py /tmp/install-container-rclone.py
+RUN /usr/bin/python3 /tmp/install-container-rclone.py && rm /tmp/install-container-rclone.py
 COPY --chown=root:root infra/hetzner/knowledge-test-requirements.txt /usr/local/share/aibrain/passive-xls-requirements.txt
 RUN /usr/bin/python3 -m venv /opt/aibrain-passive-xls \
   && /opt/aibrain-passive-xls/bin/python -m pip install --no-cache-dir --require-hashes --only-binary=:all: -r /usr/local/share/aibrain/passive-xls-requirements.txt \
@@ -154,9 +177,6 @@ COPY --chown=root:root docs/PRESENTATION_AUTHORING.md /usr/local/share/aibrain/p
 
 WORKDIR /app
 COPY --from=builder --chown=aibrain:aibrain /app/.next/standalone ./
-COPY --from=horaria-dependencies --chown=root:root /horaria /opt/aibrain-horaria
-COPY --chown=root:root modules/horaria/backend/src /opt/aibrain-horaria/src
-RUN /opt/aibrain-horaria/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x --version
 COPY --from=builder --chown=aibrain:aibrain /app/.next/static ./.next/static
 COPY --from=builder --chown=aibrain:aibrain /app/public ./public
 COPY --from=builder --chown=root:root /app/config/internal-agent-context /usr/local/share/aibrain/internal-agent-context
@@ -165,6 +185,7 @@ COPY --from=builder --chown=root:root /app/dist/initialize-weekly-token-budget.m
 COPY --from=builder --chown=root:root /app/dist/container-app-server-acceptance.mjs /usr/local/share/aibrain/container-app-server-acceptance.mjs
 COPY --from=builder --chown=root:root /app/dist/container-presentation-tool-acceptance.mjs /usr/local/share/aibrain/container-presentation-tool-acceptance.mjs
 COPY --from=builder --chown=root:root /app/dist/container-xls-passive-acceptance.mjs /usr/local/share/aibrain/container-xls-passive-acceptance.mjs
+COPY --from=builder --chown=root:root /app/dist/container-browser-acceptance.mjs /usr/local/share/aibrain/container-browser-acceptance.mjs
 COPY --chown=root:root tests/fixtures/legacy-passive-links-macros.xls tests/fixtures/legacy-autofilter.xls /usr/local/share/aibrain/
 # The scheduler is an explicit server-conditioned ESM bundle. Unlike the app,
 # it does not depend on Next's standalone file tracer, tsx, source mounts, or a

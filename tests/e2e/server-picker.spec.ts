@@ -8,7 +8,7 @@ for (const width of [1440, 390]) {
       headers: { "Content-Type": "application/x-ndjson; charset=utf-8" },
       body: `${JSON.stringify({ type: "delta", value: "Referencia recibida." })}\n${JSON.stringify({ type: "done" })}\n`,
     }));
-    const folder = { path: "server-arnall/Y/QA", name: "QA", kind: "directory", size: 0, modifiedAt: null };
+    const folder = { path: "server-example-company/Y/QA", name: "QA", kind: "directory", size: 0, modifiedAt: null };
     await page.route("**/api/server-files?**", async route => {
       const query = new URL(route.request().url()).searchParams.get("query");
       if (query === "home") {
@@ -17,7 +17,7 @@ for (const width of [1440, 390]) {
       }
       const root = query === "server:/";
       await route.fulfill({ json: { available: true, sourceChecked: true, checkedAt: new Date().toISOString(), nextQuery: null,
-        results: root ? [folder] : [{ ...folder, path: `server-arnall/Y/QA/Version${version}.txt`, name: `Version${version}.txt`, kind: "file", size: version }] } });
+        results: root ? [folder] : [{ ...folder, path: `server-example-company/Y/QA/Version${version}.txt`, name: `Version${version}.txt`, kind: "file", size: version }] } });
     });
     await page.goto("/login");
     await page.getByRole("button", { name: /Alex/ }).click();
@@ -51,7 +51,7 @@ for (const width of [1440, 390]) {
     const request = page.waitForRequest(req => req.url().endsWith("/api/chat") && req.method() === "POST");
     await page.getByRole("button", { name: "Enviar mensaje", exact: true }).click();
     const body = (await request).postDataJSON();
-    expect(body.options.serverReferences).toEqual([{ ...folder, path: "server-arnall/Y/QA/Version2.txt", name: "Version2.txt", kind: "file", size: 2 }]);
+    expect(body.options.serverReferences).toEqual([{ ...folder, path: "server-example-company/Y/QA/Version2.txt", name: "Version2.txt", kind: "file", size: 2 }]);
     await expect(page.getByText("Archivo del servidor · Version2.txt", { exact: true })).toBeVisible();
   });
 }

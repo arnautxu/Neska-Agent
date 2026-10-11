@@ -29,7 +29,7 @@ original late-response promise and clears its timeout receipt.
 On 2026-09-21, production revision `7f89f20` recorded a creation timeout at
 11:58:40 UTC, followed by two attempts with the same conversation-wide creation
 key. The original response reached the journal at 12:00:31 UTC. A concurrent
-horarIA calculation produced more than 1,300 streamed deltas, with the original
+nested calculation produced more than 1,300 streamed deltas, with the original
 tool event still undelivered. This evidence motivates bounded late-response
 recovery; it does not establish that journal throughput or cancellation of a
 nested calculation is fixed. The new recovery and request-key behavior require

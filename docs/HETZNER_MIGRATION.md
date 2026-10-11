@@ -111,7 +111,7 @@ npm run infra:preflight -- \
 
 No continúes si falla. En particular, el preflight rechaza symlinks, roots
 solapados, nombres fuera de convención, ownership ajeno y cualquier ruta que
-apunte a BGreenly.
+apunte a otra instalación.
 
 Desde el release:
 
@@ -139,11 +139,11 @@ docker run --rm --entrypoint /usr/bin/chromium \
   aibrain-<installation>:<git-sha> --version
 ```
 
-Escribe solo los cuatro componentes numéricos en `AIBRAIN_CHROME_EXPECTED_VERSION` de `runtime.env`, vuelve a ejecutar `config --quiet` y conserva como evidencia el tag, digest local, commit, versión Codex `0.149.1` y versión Chromium.
+Escribe solo los cuatro componentes numéricos en `AIBRAIN_CHROME_EXPECTED_VERSION` de `runtime.env`, vuelve a ejecutar `config --quiet` y conserva como evidencia el tag, digest local, commit, versión Codex `0.153.4` y versión Chromium.
 
-El snapshot Debian fija el índice de paquetes aceptado al construir y el
+El snapshot firmado de Ubuntu 24.04 LTS fija el índice de paquetes aceptado al construir y el
 entrypoint fija la versión de Chromium aceptada al arrancar. Registra también
-`dpkg-query -W chromium chromium-sandbox libreoffice-core poppler-utils qpdf`
+`dpkg-query -W google-chrome-stable libxml2 libglib2.0-0t64 libsqlite3-0 libreoffice-core poppler-utils qpdf`
 dentro de la imagen, sus checksums y la SBOM. Conserva además los dos digests de
 imagen promovidos para que la reconstrucción no sea el mecanismo de rollback.
 
@@ -269,9 +269,18 @@ node /usr/local/lib/aibrain/orchestrate-backup.mjs backup \
   --origin https://<public-host>
 ```
 
+Después del drain del proceso web, el controlador detiene `app`,
+`automation-worker` y `alert-dispatcher`: los tres escriben datos de la
+instalación. Un heartbeat o una automatización fuera del proceso web no quedan
+congelados por su admission gate. No se crea el snapshot si falla ese stop.
+La recuperación vuelve a iniciar los tres servicios y comprueba todos sus
+healthchecks antes de reabrir admisión o emitir un receipt correcto.
+
 El controlador persiste `prepared → drained → app-stopped → snapshot-created →
 snapshot-verified → app-restarted → admission-resumed`, verifica identidad del
-snapshot y solo entonces emite un receipt `verified`. Cualquier error ejecuta
+snapshot y solo entonces emite un receipt `verified`. La fase histórica
+`app-stopped` conserva su nombre para leer journals anteriores; en el nuevo
+controlador significa que los tres writers están detenidos. Cualquier error ejecuta
 recovery antes de salir y deja receipt `aborted` si no existe snapshot
 verificado. Tras `SIGKILL` o reboot, la unidad systemd revalida el journal,
 verifica un snapshot creado, arranca app, espera health y reabre admisión. Nunca
@@ -364,7 +373,7 @@ No borres imágenes, releases, volúmenes ni backups. Si el release migró datos
 - El canal CDP heredado y el sidecar de egress ya tienen gates locales. Deben
   repetirse en la imagen QA con dos empleados para obtener evidencia del
   aislamiento Docker, pinning DNS y bloqueo privado/metadata en el host real.
-- La base, el snapshot Debian y los paquetes Node están fijados. Falta ejecutar build limpio, SBOM y scan sobre la imagen resultante en el host QA antes de considerarla promovible.
+- La base Ubuntu LTS, su snapshot firmado, Chrome estable y los paquetes Node están fijados. Falta ejecutar build limpio, SBOM y scan sobre la imagen resultante en el host QA antes de considerarla promovible.
 - Faltan credenciales reales de Supabase Auth y login de una suscripción Codex dedicada.
 - La réplica cifrada fuera del servidor y el webhook de alertas deben configurarse con credenciales reales y probarse contra sus proveedores.
 - DNS, TLS público, NAS/documental real y cutover requieren autorización separada.

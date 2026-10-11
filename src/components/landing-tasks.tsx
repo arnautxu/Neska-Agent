@@ -4,7 +4,7 @@ import { useUiText } from "@/i18n/provider";
 import { ConnectorPopover } from "@/components/connector-popover";
 import Image from "next/image";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { CalendarBlank, CaretRight, Presentation, Table } from "@phosphor-icons/react";
+import { Files, CaretRight, Presentation, Table } from "@phosphor-icons/react";
 import type { LandingSuggestion } from "@/lib/landing-suggestions";
 import { useMenuKeyboardNavigation } from "@/ui/use-menu-keyboard-navigation";
 
@@ -38,7 +38,7 @@ export function LandingTasks({ tasks, disabled, onSelect }: {
     onSelect(text);
   };
   const items = tasks.map((task) => {
-    const Icon = task.id === "schedule" ? CalendarBlank : task.id === "spreadsheets" ? Table : Presentation;
+    const Icon = task.id === "knowledge" ? Files : task.id === "spreadsheets" ? Table : Presentation;
     return <button key={task.id} type="button" disabled={disabled}
       className="landing-task-item" aria-haspopup={task.children ? "menu" : undefined}
       aria-expanded={task.children ? schedule?.id === task.id : undefined}

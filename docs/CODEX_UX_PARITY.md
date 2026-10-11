@@ -47,4 +47,4 @@ y pruebas.
 - Terminal/Git/PR general como superficie para trabajadores no técnicos.
 
 El contrato exacto para la rama UI está en `UI_BACKEND_CONTRACT.md`; el estado
-de validación está en `AIBRAIN_BACKEND_PROGRESS.md`.
+de validación está en `OPERATING_TRUTH.md`.

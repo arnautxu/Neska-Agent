@@ -6,7 +6,7 @@ test.setTimeout(60_000);
 const suggestions = [
   { button: "Prepárame una presentación", prompt: "Prepárame una presentación sobre…" },
   { button: "Trabajemos con estos Excels", prompt: "Trabajemos con estos Excels. Quiero…" },
-  { button: /Trabajemos en los horarios/, child: "Dame los horarios preparados", prompt: "Dame los horarios preparados del equipo de Example Laboratory para…" },
+  { button: /Trabajemos con la información/, child: "Buscar información", prompt: "Busca en los documentos autorizados de Example Laboratory información sobre…" },
 ];
 
 for (const width of [390, 1440]) for (const suggestion of suggestions) {

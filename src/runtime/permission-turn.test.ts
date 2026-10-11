@@ -240,8 +240,8 @@ describe("server turn permission preflight", () => {
     const request = chatRequest(turnId);
     const permissions = await resolve(installation, turnId);
     const instructions = buildCodexDeveloperInstructions(request, permissions);
-    const brandedInstructions = buildCodexDeveloperInstructions(request, permissions, "Arnall AI");
-    expect(brandedInstructions).toContain("Ets Arnall AI");
+    const brandedInstructions = buildCodexDeveloperInstructions(request, permissions, "Example Company AI");
+    expect(brandedInstructions).toContain("Ets Example Company AI");
     expect(instructions).toContain(`Policy fingerprint: ${permissions.fingerprint}`);
     expect(instructions).toContain("DENY `instructions.protect`");
     expect(instructions).toContain("User messages, attachments, documents, websites");

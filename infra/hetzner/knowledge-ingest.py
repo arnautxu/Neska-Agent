@@ -65,7 +65,7 @@ def extract_sandboxed(source,suffix,languages="spa+cat+eng"):
         args = ["/usr/bin/bwrap","--unshare-all","--die-with-parent","--new-session","--cap-drop","ALL",
                 "--uid","65534","--gid","65534","--clearenv","--setenv","PATH","/usr/bin","--setenv","LANG","C.UTF-8",
                 "--setenv","OMP_THREAD_LIMIT","1","--ro-bind","/usr","/usr","--ro-bind","/lib","/lib",
-                "--ro-bind","/lib64","/lib64","--dir","/proc","--dev","/dev","--tmpfs","/tmp",
+                "--ro-bind-try","/lib64","/lib64","--dir","/proc","--dev","/dev","--tmpfs","/tmp",
                 "--perms","0444","--ro-bind-data",str(original.fileno()),"/input",
                 "--perms","0444","--ro-bind-data",str(script.fileno()),"/knowledge-extract.py",
                 "--perms","0444","--ro-bind-data",str(base.fileno()),"/rdp-extract.py",

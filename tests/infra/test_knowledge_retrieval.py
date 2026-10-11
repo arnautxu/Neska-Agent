@@ -25,7 +25,7 @@ class RetrievalTests(unittest.TestCase):
         store.close()
         self.bindings={"schemaVersion":1,"installationId":"test","rules":[{"sourceRoot":"Y:\\","audience":COMPANY}]}
         retrieval.publication.publish(self.root,"test",self.bindings,lambda _:None)
-        self.reader=retrieval.Retrieval(self.root,"test","arnall",self.bindings,lambda a:a==COMPANY)
+        self.reader=retrieval.Retrieval(self.root,"test","example-company",self.bindings,lambda a:a==COMPANY)
 
     def tearDown(self):
         self.temp.cleanup()
@@ -83,7 +83,7 @@ class RetrievalTests(unittest.TestCase):
         store.close()
         result=self.reader.search(COMPANY,"contrato")
         self.assertEqual(result["knowledgeRecords"][0]["status"],"proposed")
-        self.assertIn("knowledge-arnall",result["knowledgeRecords"][0]["citations"][0]["path"])
+        self.assertIn("knowledge-example-company",result["knowledgeRecords"][0]["citations"][0]["path"])
         self.bindings["rules"]=[{"sourceRoot":"Y:\\report.txt","audience":None}]
         self.assertEqual(self.reader.search(COMPANY,"contrato")["knowledgeRecords"],[])
 
