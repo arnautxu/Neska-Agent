@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
+import { designPreviewsEnabled } from "../previews";
 import { IconsPreview } from "./preview";
 
 export default function Page() {
-  if (process.env.NODE_ENV !== "development") notFound();
+  if (!designPreviewsEnabled()) notFound();
   return <IconsPreview />;
 }
