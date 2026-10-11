@@ -278,7 +278,8 @@ requireMatch(releaseManager, /\/usr\/bin\/flock/u, "release manager lacks OS adv
 requireMatch(releaseManager, /\/usr\/bin\/lockf/u, "release manager lacks OS advisory locking on macOS QA");
 requireMatch(backupOrchestrator, /snapshot-created[\s\S]*snapshot-verified[\s\S]*app-restarted[\s\S]*admission-resumed/u, "backup orchestrator lacks durable recovery phases");
 requireMatch(backupOrchestrator, /AIBRAIN_MAINTENANCE_SECRET/u, "backup orchestrator does not read the private maintenance secret");
-requireMatch(backupOrchestrator, /"stop", "app"[\s\S]*createSnapshot[\s\S]*verifySnapshot/u, "backup orchestrator does not stop app and verify the snapshot");
+requireMatch(backupOrchestrator, /DATA_WRITERS = Object\.freeze\(\["app", "automation-worker", "alert-dispatcher"\]\)/u, "backup orchestrator does not include all durable data writers");
+requireMatch(backupOrchestrator, /"stop", \.\.\.DATA_WRITERS[\s\S]*createSnapshot[\s\S]*verifySnapshot/u, "backup orchestrator does not stop all writers and verify the snapshot");
 requireMatch(backupOrchestrator, /\/usr\/bin\/flock/u, "backup orchestrator lacks Linux OS advisory locking");
 requireMatch(backupOrchestrator, /\/usr\/bin\/lockf/u, "backup orchestrator lacks macOS OS advisory locking");
 requireMatch(backupRecoveryUnit, /After=docker\.service[\s\S]*orchestrate-backup\.mjs recover[\s\S]*NoNewPrivileges=true/u, "systemd does not recover interrupted backups after Docker startup");

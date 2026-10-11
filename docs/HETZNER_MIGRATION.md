@@ -269,9 +269,18 @@ node /usr/local/lib/aibrain/orchestrate-backup.mjs backup \
   --origin https://<public-host>
 ```
 
+Después del drain del proceso web, el controlador detiene `app`,
+`automation-worker` y `alert-dispatcher`: los tres escriben datos de la
+instalación. Un heartbeat o una automatización fuera del proceso web no quedan
+congelados por su admission gate. No se crea el snapshot si falla ese stop.
+La recuperación vuelve a iniciar los tres servicios y comprueba todos sus
+healthchecks antes de reabrir admisión o emitir un receipt correcto.
+
 El controlador persiste `prepared → drained → app-stopped → snapshot-created →
 snapshot-verified → app-restarted → admission-resumed`, verifica identidad del
-snapshot y solo entonces emite un receipt `verified`. Cualquier error ejecuta
+snapshot y solo entonces emite un receipt `verified`. La fase histórica
+`app-stopped` conserva su nombre para leer journals anteriores; en el nuevo
+controlador significa que los tres writers están detenidos. Cualquier error ejecuta
 recovery antes de salir y deja receipt `aborted` si no existe snapshot
 verificado. Tras `SIGKILL` o reboot, la unidad systemd revalida el journal,
 verifica un snapshot creado, arranca app, espera health y reabre admisión. Nunca

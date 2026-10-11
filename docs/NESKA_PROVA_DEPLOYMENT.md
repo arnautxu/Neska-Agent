@@ -181,3 +181,14 @@ issues that remain deferred in Debian without changing product UI. The host
 remains Ubuntu 24.04 ARM. DNS and TLS are verified; app deployment, user/model
 sign-in and application recovery remain separate pending gates. Never deploy
 the preceding vulnerable images merely because their functional CI passed.
+
+## Consistent backup writer boundary
+
+The operator review found that the web maintenance gate is process-local while
+the automation worker and alert dispatcher also mutate the data volume. The
+backup controller now stops all three data writers after web drain, and waits
+for all three to become healthy during normal recovery or journal recovery.
+It refuses a success receipt while any required writer is unhealthy. The
+integration fixture leaves an independent writer active unless it is explicitly
+stopped; it fails against the previous controller. Native CI and actual host
+application backup/replication/isolated restore remain required for this change.
