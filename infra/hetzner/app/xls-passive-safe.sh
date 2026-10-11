@@ -18,9 +18,10 @@ ulimit -f 81920
 ulimit -v 786432
 # A fresh root exposes only immutable program libraries and this one input/output.
 # No application directory, customer data, auth, home, sockets or host /proc.
+# Debian ARM uses /lib; the additional x86 /lib64 loader directory is optional.
 exec /usr/bin/bwrap \
   --die-with-parent --new-session --unshare-all --cap-drop ALL \
-  --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 \
+  --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind-try /lib64 /lib64 \
   --ro-bind /opt/aibrain-passive-xls /opt/aibrain-passive-xls \
   --dev /dev --tmpfs /tmp --dir /work --dir /work/output \
   --ro-bind "$work/source.biff" /work/source.biff \

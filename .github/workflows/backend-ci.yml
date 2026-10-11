@@ -25,7 +25,11 @@ env:
 jobs:
   quality-build:
     name: Types, lint, contracts and build
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
     timeout-minutes: 35
     steps:
       - name: Checkout immutable revision
@@ -69,12 +73,13 @@ jobs:
           npm run infra:validate
 
   quality-tests:
-    name: Tests (${{ matrix.shard }}/3)
-    runs-on: ubuntu-24.04
+    name: Tests (${{ matrix.runner }}, ${{ matrix.shard }}/3)
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
         shard: [1, 2, 3]
     steps:
       - name: Checkout immutable revision
@@ -108,12 +113,14 @@ jobs:
           test "$TESTS_RESULT" = success
 
   e2e-suites:
-    name: E2E (${{ matrix.suite }})
-    runs-on: ubuntu-24.04
+    name: E2E (${{ matrix.runner }}, ${{ matrix.suite }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+        suite: [backend, chromium-1, chromium-2]
         include:
           - suite: backend
             browser: ""
@@ -152,7 +159,11 @@ jobs:
 
   webkit:
     name: E2E (webkit)
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
     timeout-minutes: 15
     steps:
       - name: Checkout immutable revision
@@ -205,7 +216,11 @@ jobs:
 
   documents:
     name: Real Office, PDF, text and image matrix
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
     timeout-minutes: 20
     steps:
       - name: Checkout immutable revision
@@ -237,13 +252,23 @@ jobs:
 
   containers:
     name: Clean immutable container builds
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
     timeout-minutes: 35
     steps:
       - name: Checkout immutable revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - name: Verify native Linux architecture
+        env:
+          EXPECTED_ARCH: ${{ matrix.runner == 'ubuntu-24.04-arm' && 'aarch64' || 'x86_64' }}
+        run: |
+          test "$(uname -m)" = "$EXPECTED_ARCH"
+          docker info --format '{{.OSType}} {{.Architecture}}'
       - name: Validate Compose model without secrets
         env:
           AIBRAIN_RUNTIME_ENV_FILE: ci.env.placeholder
