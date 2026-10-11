@@ -1,6 +1,7 @@
 import { isAutomationSchedule } from "@/automations/contracts";
 import { describe, expect, it } from "vitest";
-import { localMinuteToInstant, nextScheduledInstant } from "@/automations/schedule";
+import { describeSchedule, localMinuteToInstant, nextScheduledInstant } from "@/automations/schedule";
+import { translate } from "@/i18n/messages";
 
 describe("automation schedules", () => {
   it("keeps two-hour UTC cadence across DST, chooses future anchors and validates strict interval inputs", () => {
@@ -31,5 +32,19 @@ describe("automation schedules", () => {
       "Europe/Madrid",
       new Date("2026-03-27T12:00:00.000Z"),
     )).toBe("2026-03-30T07:00:00.000Z");
+  });
+
+  it("describes saved schedules in the interface language", () => {
+    const weekly = { kind: "weekly" as const, weekdays: [1, 3], hour: 9, minute: 5 };
+    const daily = { kind: "daily" as const, hour: 18, minute: 0 };
+    const interval = { kind: "interval" as const, minutes: 120, anchorAt: "2026-10-25T00:00:00.000Z" };
+    expect(describeSchedule(weekly, "Europe/Madrid")).toBe("lun, mié · 09:05");
+    expect(describeSchedule(daily, "Europe/Madrid")).toBe("Cada día · 18:00");
+    const catalan = (source: string, values?: Record<string, string | number>) => translate("ca", source, values);
+    expect(describeSchedule(daily, "Europe/Madrid", "ca", catalan)).toBe("Cada dia · 18:00");
+    expect(describeSchedule(interval, "Europe/Madrid", "ca", catalan)).toBe("Cada 2 hores");
+    expect(describeSchedule(weekly, "Europe/Madrid", "ca", catalan)).toBe("dl., dc. · 09:05");
+    const english = (source: string, values?: Record<string, string | number>) => translate("en", source, values);
+    expect(describeSchedule(weekly, "Europe/Madrid", "en", english)).toBe("Mon, Wed · 09:05");
   });
 });

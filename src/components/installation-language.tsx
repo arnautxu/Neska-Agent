@@ -1,16 +1,17 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useUiLocale } from "@/i18n/provider";
+import { useUiLocale, useUiText } from "@/i18n/provider";
 import { isUiLocale } from "@/i18n/locale";
 export function InstallationLanguage() {
   const locale = useUiLocale();
+  const t = useUiText();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   return <section className="rounded-2xl border border-[var(--border)] p-4">
-    <label htmlFor="installation-language" className="block text-body-semibold">{locale === "es" ? "Idioma de la empresa" : "Company interface language"}</label>
-    <p className="my-2 text-caption-1-regular text-[var(--text-muted)]">{locale === "es" ? "Se aplica al acceso y a la interfaz de todas las personas de esta empresa. Los documentos y las conversaciones conservan su idioma." : "Applies to sign-in and the interface for everyone in this company. Documents and conversations keep their original language."}</p>
+    <label htmlFor="installation-language" className="block text-body-semibold">{t("Idioma de la empresa")}</label>
+    <p className="my-2 text-caption-1-regular text-[var(--text-muted)]">{t("Se aplica al acceso y a la interfaz de todas las personas de esta empresa. Los documentos y las conversaciones conservan su idioma.")}</p>
     <select id="installation-language" value={locale} disabled={busy} className="min-h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[16px]" onChange={async event => {
       const next = event.target.value;
       if (!isUiLocale(next)) return;
@@ -21,8 +22,8 @@ export function InstallationLanguage() {
         if (!response.ok || !result || typeof result !== "object" || !("locale" in result) || result.locale !== next) throw new Error("Language save failed");
         router.refresh();
       } catch { setError(true); } finally { setBusy(false); }
-    }}><option value="en">English</option><option value="es">Español</option></select>
-    {busy ? <p role="status">{locale === "es" ? "Guardando…" : "Saving…"}</p> : null}
-    {error ? <p role="alert" className="mt-2 text-[var(--danger)]">{locale === "es" ? "No se ha podido guardar el idioma. Vuelve a intentarlo." : "Could not save the language. Please try again."}</p> : null}
+    }}><option value="en">English</option><option value="es">Español</option><option value="ca">Català</option></select>
+    {busy ? <p role="status">{t("Guardando…")}</p> : null}
+    {error ? <p role="alert" className="mt-2 text-[var(--danger)]">{t("No se ha podido guardar el idioma. Vuelve a intentarlo.")}</p> : null}
   </section>;
 }

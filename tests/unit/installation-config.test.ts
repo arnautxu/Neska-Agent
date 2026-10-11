@@ -51,6 +51,16 @@ describe("InstallationConfig", () => {
       expect(() => parseInstallationConfig({ ...fixture, usageLimits: invalid })).toThrow(InstallationConfigValidationError);
     }
   });
+  it("keeps the base theme unless an installation opts into a known visual theme", async () => {
+    const fixture = await readFixture();
+    const branding = fixture.branding as Record<string, unknown>;
+    expect(parseInstallationConfig(fixture).branding.visualTheme).toBeUndefined();
+    expect(parseInstallationConfig({ ...fixture, branding: { ...branding, visualTheme: "neska" } }).branding.visualTheme).toBe("neska");
+    for (const invalid of ["", "Neska", "dark", 1, null]) {
+      expect(() => parseInstallationConfig({ ...fixture, branding: { ...branding, visualTheme: invalid } })).toThrow(InstallationConfigValidationError);
+    }
+  });
+
   it("loads two genuinely different white-label installations", async () => {
     const development = await loadInstallationConfigFromFile(developmentFixture);
     const qa = await loadInstallationConfigFromFile(qaFixture);

@@ -1,4 +1,5 @@
 "use client";
+import type { UiLocale } from "@/i18n/locale";
 import { translate } from "@/i18n/messages";
 import { useUiLocale } from "@/i18n/provider";
 import { useUiText } from "@/i18n/provider";
@@ -130,7 +131,7 @@ function ProjectActivitySignal({ activities }: { activities: ThreadActivity[] })
   );
 }
 
-function relativeDate(date: string, locale: "en" | "es" = "es") {
+function relativeDate(date: string, locale: UiLocale = "es") {
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return "";
   const difference = Date.now() - parsed.getTime();

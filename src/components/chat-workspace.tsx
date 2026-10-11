@@ -37,6 +37,9 @@ import { useComposerFileDrop } from "@/ui/use-composer-file-drop";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { DaySeparator } from "@/components/assistant-ui/elements/day-separator";
 import { MarkdownMessage } from "@/components/markdown-message";
+import { AgentStatusPanel, TaskStatusChip } from "@/components/agent-status-panel";
+import { isMultiStepTask, taskProgress } from "@/ui/task-progress";
+import { TaskPlan } from "@/components/task-plan";
 import { type LiveAnswerStore, useLiveAnswer } from '@/ui/live-answer-store';
 import { StreamingResponse } from "@/components/agents/streaming-response";
 import { MessageQueue, type QueuedMessage } from "@/components/assistant-ui/elements/message-queue";
@@ -344,6 +347,9 @@ function AssistantMessage({
     <article className="message-enter group">
       {showActivity || managedAppAction || message.approvals.some((approval) => managedAppApprovalKeys.includes(managedAppActionKey({ ...approval, approvalId: approval.id }))) ? (
         <TurnActivity message={message} recoveryPaused={recoveryPaused} projectId={projectId} readOnly={readOnly} onResolveApproval={onResolveApproval} onOpenReview={() => onOpenReview(message.id)} onOpenBrowser={onOpenBrowser} managedAppAction={readOnly ? null : managedAppAction} managedAppApprovalKeys={managedAppApprovalKeys} />
+      ) : message.plan.length ? (
+        // Hiding the activity log never hides the task's plan.
+        <div className="mt-4"><TaskPlan progress={taskProgress(message)} /></div>
       ) : null}
 
       {streaming && !content && !hasExecution ? (
@@ -582,6 +588,27 @@ export function ChatWorkspace({
   };
   const standaloneConversation = Boolean(project && isStandaloneProject(project));
   const latestAssistantMessageId = thread?.messages.filter((message) => message.role === "assistant").at(-1)?.id ?? null;
+  const latestAssistantIndex = thread ? thread.messages.findLastIndex((message) => message.role === "assistant") : -1;
+  const latestAssistant = latestAssistantIndex >= 0 ? thread?.messages[latestAssistantIndex] : undefined;
+  const latestRequest = latestAssistantIndex > 0 && thread?.messages[latestAssistantIndex - 1]?.role === "user" ? thread.messages[latestAssistantIndex - 1] : undefined;
+  const latestProgress = latestAssistant ? taskProgress(latestAssistant) : null;
+  const multiStepTask = latestProgress !== null && isMultiStepTask(latestProgress);
+  // The agent panel only opens for long work with steps, unless the employee
+  // asks for it. Their choice applies to the current task (assistant turn).
+  const [agentPanelChoice, setAgentPanelChoice] = useState<{ messageId: string; open: boolean } | null>(null);
+  const agentPanelTriggerRef = useRef<HTMLButtonElement>(null);
+  const agentPanelCloseRef = useRef<HTMLButtonElement>(null);
+  // Opening or closing swaps the focused control out of the DOM, so focus
+  // follows the employee into the panel and back to the trigger.
+  const agentPanelFocusRef = useRef<"panel" | "trigger" | null>(null);
+  const agentPanelOpen = Boolean(thread && latestAssistant && latestProgress && latestProgress.total > 0) &&
+    (agentPanelChoice && agentPanelChoice.messageId === latestAssistant?.id ? agentPanelChoice.open : multiStepTask);
+  useEffect(() => {
+    const target = agentPanelFocusRef.current;
+    if (!target) return;
+    agentPanelFocusRef.current = null;
+    (target === "panel" ? agentPanelCloseRef : agentPanelTriggerRef).current?.focus();
+  }, [agentPanelOpen]);
   const closeComposerMenuAndRestore = useCallback(() => {
     setComposerMenuOpen(false);
     requestAnimationFrame(() => composerAddButtonRef.current?.focus());
@@ -893,7 +920,7 @@ export function ChatWorkspace({
   };
 
   return (
-    <main {...dropProps} aria-busy={!hydrated} data-section="chat" data-read-only={readOnly ? "true" : "false"} className="workbench-main relative flex min-w-0 flex-1 flex-col bg-[var(--surface)]">
+    <main {...dropProps} aria-busy={!hydrated} data-section="chat" data-read-only={readOnly ? "true" : "false"} className={`workbench-main relative flex min-w-0 flex-1 flex-col bg-[var(--surface)]${agentPanelOpen ? " xl:pr-[300px]" : ""}`}>
       <header data-testid="mobile-app-header" className="mobile-app-header workbench-navigation shrink-0 items-center px-2 md:px-3">
         <div className="workbench-navigation-context flex min-w-0 items-center gap-2">
           <button aria-label={t("Mostrar u ocultar la barra lateral")} aria-expanded={sidebarOpen} className="touch-target rounded-lg p-2 text-[var(--text-subtle)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)] md:hidden" onClick={(event) => onToggleSidebar(event.currentTarget)}>
@@ -904,7 +931,12 @@ export function ChatWorkspace({
             {thread ? <h1 className="max-w-[calc(100vw-5.5rem)] truncate text-[13px] font-semibold leading-4 text-[var(--text)] sm:max-w-72">{thread.title}</h1> : null}
           </div>
         </div>
-        <div aria-hidden="true" className="workbench-navigation-balance" />
+        {thread && latestAssistant && latestProgress && latestProgress.total > 0 ? (
+          <div className="workbench-navigation-balance col-start-3 flex items-center justify-end gap-2 pr-2">
+            <TaskStatusChip progress={latestProgress} />
+            {!agentPanelOpen ? <button type="button" className="neska-px hidden min-h-9 border-2 border-[var(--neska-ink)] px-3 text-[11px] text-[var(--text)] hover:bg-[var(--surface-hover)] xl:inline-flex xl:items-center" ref={agentPanelTriggerRef} onClick={() => { agentPanelFocusRef.current = "panel"; setAgentPanelChoice({ messageId: latestAssistant.id, open: true }); }}>{t("Estado del agente")}</button> : null}
+          </div>
+        ) : <div aria-hidden="true" className="workbench-navigation-balance" />}
       </header>
 
 
@@ -1165,7 +1197,7 @@ export function ChatWorkspace({
                 <VoiceDictationControl
                   value={prompt}
                   disabled={!project || sending || documentUploading}
-                  language={locale === "en" ? "en-US" : "es-ES"}
+                  language={locale === "en" ? "en-US" : locale === "ca" ? "ca-ES" : "es-ES"}
                   onChange={onPromptChange}
                   onNotice={onComposerNotice}
                 />
@@ -1218,6 +1250,9 @@ export function ChatWorkspace({
           </div> : null}
         </div>
       </div>}
+      {agentPanelOpen && thread && latestAssistant && latestProgress ? (
+        <AgentStatusPanel progress={latestProgress} message={latestAssistant} request={latestRequest} closeButtonRef={agentPanelCloseRef} onClose={() => { agentPanelFocusRef.current = "trigger"; setAgentPanelChoice({ messageId: latestAssistant.id, open: false }); }} />
+      ) : null}
     </main>
   );
 }

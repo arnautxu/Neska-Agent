@@ -283,6 +283,8 @@ const INSTALLATION_ROOT_KEYS = [
 ];
 const INSTALLATION_OPTIONAL_ROOT_KEYS = ["catalog", "connectors", "usageLimits"];
 const INSTALLATION_BRANDING_KEYS = ["productName", "logoPath", "faviconPath", "accentColor"];
+const INSTALLATION_OPTIONAL_BRANDING_KEYS = ["visualTheme"];
+const INSTALLATION_VISUAL_THEMES = ["neska"];
 const INSTALLATION_PATHS = Object.freeze({
   dataRoot: "/var/lib/aibrain/data",
   companyContextRoot: "/var/lib/aibrain/data/company-context",
@@ -295,6 +297,14 @@ const INSTALLATION_PATHS = Object.freeze({
 function exactObjectKeys(value, keys) {
   return value && typeof value === "object" && !Array.isArray(value)
     && Object.keys(value).sort().join("\0") === [...keys].sort().join("\0");
+}
+
+function installationBrandingKeysAreValid(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const actual = Object.keys(value);
+  return INSTALLATION_BRANDING_KEYS.every((key) => actual.includes(key))
+    && actual.every((key) => INSTALLATION_BRANDING_KEYS.includes(key) || INSTALLATION_OPTIONAL_BRANDING_KEYS.includes(key))
+    && (value.visualTheme === undefined || INSTALLATION_VISUAL_THEMES.includes(value.visualTheme));
 }
 
 function installationRootKeysAreValid(value) {
@@ -404,7 +414,7 @@ function validateVersionedInstallationConfig(contents, installationId) {
   const paths = value?.paths;
   if (!installationRootKeysAreValid(value)
     || value.schemaVersion !== 1 || value.installationId !== installationId
-    || !exactObjectKeys(branding, INSTALLATION_BRANDING_KEYS)
+    || !installationBrandingKeysAreValid(branding)
     || !exactObjectKeys(paths, Object.keys(INSTALLATION_PATHS))
     || !validConfigString(value.companyName, 120)
     || !validConfigString(value.companySlug, 63)

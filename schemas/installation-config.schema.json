@@ -32,7 +32,8 @@
         "productName": { "type": "string", "minLength": 1, "maxLength": 80 },
         "logoPath": { "$ref": "#/$defs/publicAssetPath" },
         "faviconPath": { "$ref": "#/$defs/publicAssetPath" },
-        "accentColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+        "accentColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "visualTheme": { "enum": ["neska"] }
       }
     },
     "paths": {

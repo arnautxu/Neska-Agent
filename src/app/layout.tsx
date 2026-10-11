@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono } from "next/font/google";
+import { Geist_Mono, Rubik } from "next/font/google";
+import { GeistPixelSquare } from "geist/font/pixel";
 import Script from "next/script";
 import type { CSSProperties } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -10,10 +11,18 @@ import { translate } from "@/i18n/messages";
 import { installationUiLocale } from "@/i18n/server";
 import { UiLocaleProvider } from "@/i18n/provider";
 import "./globals.css";
+import "../styles/neska.css";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+// Neska: Rubik for reading, Geist Pixel only for short uppercase labels.
+const rubik = Rubik({
+  variable: "--font-rubik",
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600"],
 });
 
 export const dynamic = "force-dynamic";
@@ -45,14 +54,17 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const locale = await installationUiLocale();
-  const branding = publicInstallationBranding(await loadInstallationConfig());
+  const installation = await loadInstallationConfig();
+  const branding = publicInstallationBranding(installation);
   const installationStyle = { "--installation-accent": branding.accentColor } as CSSProperties;
 
   return (
     <html
       lang={locale}
       data-installation={branding.installationId}
+      data-visual-theme={installation.branding.visualTheme}
       data-theme="light"
+      className={`${rubik.variable} ${GeistPixelSquare.variable}`}
       suppressHydrationWarning
       style={installationStyle}
     >

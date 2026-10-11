@@ -217,3 +217,16 @@ does not open an upstream connection after that client has retired. A replacemen
 authorized request must still succeed. DNS, authentication, address pinning and
 port restrictions are unchanged. This failed candidate must not be deployed;
 the corrected revision requires its own complete CI/publication gates.
+
+## Neska visual theme
+
+The Neska UI redesign (PR #1) is opt-in per installation through
+`branding.visualTheme: "neska"` in the operator's InstallationConfig. The
+release manager and `schemas/installation-config.schema.json` accept that one
+optional key and value; any other branding key still blocks promotion. To
+apply it on `prova`, add the key to `/etc/neska/prova`'s installation JSON and
+promote a revision that contains PR #1 with a verified backup. The Neska logo
+and favicon ship as `/branding/neska/logo.svg` and `/branding/neska/favicon.svg`.
+The change is visual only: no API, permission, storage or isolation behaviour
+changes. CI, publication, deployment and authenticated acceptance remain
+separate gates for that revision.

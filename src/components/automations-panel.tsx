@@ -1,4 +1,5 @@
 "use client";
+import type { UiLocale } from "@/i18n/locale";
 import { useUiLocale } from "@/i18n/provider";
 import { useUiText } from "@/i18n/provider";
 
@@ -42,7 +43,7 @@ function draftSignature(draft: AutomationDraft) {
   return JSON.stringify(draft);
 }
 
-function dateLabel(value: string | null, timeZone: string, locale: "en" | "es" = "es") {
+function dateLabel(value: string | null, timeZone: string, locale: UiLocale = "es") {
   if (!value) return "—";
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone }).format(new Date(value));
 }
@@ -82,7 +83,7 @@ export function AutomationsPanel({ open, projects, onOpenThread, onToggleSidebar
   onBlockingSurfaceChange?: (open: boolean) => void;
 }) {
   const locale = useUiLocale();
-  const weekdays = locale === "en" ? ["S", "M", "T", "W", "T", "F", "S"] : ["D", "L", "M", "X", "J", "V", "S"];
+  const weekdays = locale === "en" ? ["S", "M", "T", "W", "T", "F", "S"] : locale === "ca" ? ["Dg", "Dl", "Dt", "Dc", "Dj", "Dv", "Ds"] : ["D", "L", "M", "X", "J", "V", "S"];
   const t = useUiText();
   const availableProjects = useMemo(() => projects.filter((project) => project.status === "active"), [projects]);
   const [tasks, setTasks] = useState<AutomationTaskView[]>([]);
@@ -432,7 +433,7 @@ export function AutomationsPanel({ open, projects, onOpenThread, onToggleSidebar
       <div inert={formOpen || deleteTarget ? true : undefined} aria-hidden={formOpen || deleteTarget ? true : undefined} className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-5 py-5">
         {error ? <p role="alert" className="rounded-lg bg-[var(--danger-soft)] px-3 py-2 text-[11px] text-[var(--danger)]">{t(error)}</p> : null}
         {loading ? <div className="flex min-h-44 items-center justify-center gap-2 text-[11px] text-[var(--text-subtle)]"><SpinnerGap size={15} className="motion-safe:animate-spin" />{t("Cargando automatizaciones…")}</div> : tasks.length ? <div className="space-y-2.5">{tasks.map((task) => <article key={task.id} className="rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-4">
-          <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[var(--surface-muted)] text-[var(--text-secondary)]"><Clock size={16} /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate text-[13px] font-semibold text-[var(--text)]">{task.name}</h3><span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${task.state === "active" ? "bg-[var(--positive-soft)] text-[var(--positive)]" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"}`}>{task.state === "active" ? t("Activa") : task.state === "paused" ? t("En pausa") : t("Completada")}</span>{task.lease || task.manualRun ? <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[9px] font-semibold text-[var(--brain-accent-on-soft)]">{task.lease ? t("En curso") : t("Ejecución en cola")}</span> : null}</div><p className="mt-1 truncate text-[10px] text-[var(--text-subtle)]">{taskProjectLabel(task)} · {describeSchedule(task.schedule, task.timeZone)} · {task.timeZone}</p></div></div>
+          <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[var(--surface-muted)] text-[var(--text-secondary)]"><Clock size={16} /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate text-[13px] font-semibold text-[var(--text)]">{task.name}</h3><span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${task.state === "active" ? "bg-[var(--positive-soft)] text-[var(--positive)]" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"}`}>{task.state === "active" ? t("Activa") : task.state === "paused" ? t("En pausa") : t("Completada")}</span>{task.lease || task.manualRun ? <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[9px] font-semibold text-[var(--brain-accent-on-soft)]">{task.lease ? t("En curso") : t("Ejecución en cola")}</span> : null}</div><p className="mt-1 truncate text-[10px] text-[var(--text-subtle)]">{taskProjectLabel(task)} · {describeSchedule(task.schedule, task.timeZone, locale, t)} · {task.timeZone}</p></div></div>
           <p className="mt-3 line-clamp-2 text-[11px] leading-5 text-[var(--text-muted)]">{task.prompt}</p>
           <p className="mt-2 text-[10px] leading-4 text-[var(--text-subtle)]">{t("Propietario:")}{" "}{task.owner.name} {" "}{t("· Destinatarios:")}{" "}{audienceLabel(task, audienceDirectory)}</p>
           <dl className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-[var(--surface-muted)] px-3 py-2.5 text-[10px]"><div><dt className="text-[var(--text-subtle)]">{t("Próxima")}</dt><dd className="mt-0.5 font-medium text-[var(--text)]">{dateLabel(task.nextRunAt, task.timeZone, locale)}</dd></div><div><dt className="text-[var(--text-subtle)]">{t("Última")}</dt><dd className={`mt-0.5 font-medium ${task.lastRunStatus === "failed" ? "text-[var(--danger)]" : "text-[var(--text)]"}`}>{task.lastRunAt ? `${dateLabel(task.lastRunAt, task.timeZone, locale)}${task.lastRunStatus === "failed" ? t(" · Falló") : ""}` : t("Aún no ejecutada")}</dd></div></dl>

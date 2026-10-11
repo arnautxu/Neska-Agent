@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Development uses `config/installations/neska-agent.development.json`, loopback port 3102 and isolated temporary data paths. Provision synthetic data as described in the user provisioning runbook. Real model and identity credentials must be configured independently; demo operation is not production acceptance.
+Development uses `config/installations/neska-agent.development.json` unless `AIBRAIN_INSTALLATION_CONFIG` is already set (Playwright sets its synthetic installation), loopback port 3102 and isolated temporary data paths. Provision synthetic data as described in the user provisioning runbook. Real model and identity credentials must be configured independently; demo operation is not production acceptance.
 
 ```sh
 npm run typecheck

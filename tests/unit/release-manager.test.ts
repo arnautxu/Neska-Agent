@@ -630,6 +630,30 @@ describe("immutable release manager", { timeout: 20_000 }, () => {
     expect(await readFile(files.activeConfigFile, "utf8")).toBe(previous);
   }, 20_000);
 
+  it("promotes an installation that opts into the Neska visual theme", async () => {
+    const files = await fixture();
+    const candidate = JSON.parse(installationConfigInput("Neska"));
+    candidate.branding.visualTheme = "neska";
+    const contents = `${JSON.stringify(candidate, null, 2)}\n`;
+    await writeFile(files.installationConfig, contents);
+    await execFileAsync(process.execPath, commandArgs(files, "promote"), { env: environment(files) });
+    expect(await readFile(files.activeConfigFile, "utf8")).toBe(contents);
+  }, 20_000);
+
+  it.each([
+    ["unknown visual theme", { visualTheme: "midnight" }],
+    ["unknown branding key", { theme: "neska" }],
+  ])("rejects %s before container mutation", async (_label, extra) => {
+    const files = await fixture();
+    const candidate = JSON.parse(installationConfigInput("Unsafe branding"));
+    Object.assign(candidate.branding, extra);
+    await writeFile(files.installationConfig, `${JSON.stringify(candidate)}\n`);
+    await expect(execFileAsync(process.execPath, commandArgs(files, "promote"), { env: environment(files) }))
+      .rejects.toMatchObject({ stderr: expect.stringContaining("RELEASE_INSTALLATION_CONFIG_INVALID") });
+    const calls = (await readFile(files.logFile, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+    expect(calls.some(args => args.includes("up"))).toBe(false);
+  });
+
   it.each([
     null,
     { enabled: "true", host: "mail.example.invalid", emailDomain: "example.invalid" },

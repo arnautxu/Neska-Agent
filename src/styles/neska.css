@@ -1,0 +1,290 @@
+/* Neska visual layer (UX plan, phase 0 + 1).
+ *
+ * Two parts:
+ * 1. `--neska-*` tokens and a few component classes that the shared task
+ *    components (plan, approval card, status chip, agent panel) use in every
+ *    installation. By default the tokens follow the active theme and the
+ *    installation accent, so other installations and dark mode stay coherent.
+ * 2. The Neska look itself, applied only when the installation config sets
+ *    `branding.visualTheme: "neska"` and the theme is light: white canvas,
+ *    #161616 ink, brown #6B3A1E only as an accent, Rubik for reading, Geist
+ *    Pixel for short uppercase labels, hard 2px borders and an unblurred
+ *    offset shadow on what asks for action. Dark mode is redesigned in
+ *    phase 3; until then it keeps the base theme. */
+
+:root {
+  --neska-ink: var(--text);
+  --neska-ink-2: var(--text-secondary);
+  --neska-paper: var(--surface);
+  /* The primary-action pair from the base theme keeps button text legible
+     whatever accent color an installation configures. */
+  --neska-accent: var(--send-button);
+  --neska-accent-text: var(--send-button-text);
+  --neska-line: var(--border);
+  --neska-line-soft: var(--border-subtle);
+  --neska-offset: 4px 4px 0 var(--neska-ink);
+  --neska-offset-sm: 3px 3px 0 var(--neska-ink);
+  --font-pixel: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+.neska-px {
+  font-family: var(--font-pixel);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+/* ---------- agent status panel ---------- */
+
+/* Overlays the right edge of the chat (which reserves the space) so the
+   conversation keeps its own scroll container as a direct child of main. */
+.workbench-main > .agent-status-panel {
+  position: absolute;
+  z-index: 2;
+}
+
+/* Neska artwork only renders (and loads) for installations that opt into
+   the theme; other installations keep just the state caption. */
+.neska-state-art {
+  display: none;
+}
+
+:root[data-visual-theme="neska"] .neska-state-art {
+  display: block;
+  background-image: url("/neska/estatua-ample.png");
+}
+
+/* ---------- task status chip ---------- */
+
+.neska-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 4px 12px 4px 6px;
+  border: 2px solid var(--neska-ink);
+  background: var(--neska-paper);
+  color: var(--neska-ink);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.neska-status-chip-bar {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 2px solid var(--neska-ink);
+}
+
+.neska-status-chip-bar > span {
+  width: 6px;
+  height: 12px;
+  background: transparent;
+}
+
+.neska-status-chip-bar > span[data-done="true"] {
+  background: var(--neska-accent);
+}
+
+/* ---------- duotone textures and motion ---------- */
+
+.neska-dots {
+  background-image: radial-gradient(var(--neska-accent) 1.2px, transparent 1.5px);
+  background-size: 6px 6px;
+}
+
+@keyframes neska-blink {
+  0%, 92%, 100% { opacity: 1; }
+  95% { opacity: 0.2; }
+}
+
+@keyframes neska-cursor {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.neska-blink { animation: neska-blink 4s steps(1) infinite; }
+.neska-cursor { animation: neska-cursor 1s steps(1) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .neska-blink,
+  .neska-cursor { animation: none !important; }
+}
+
+/* ======================================================================
+ * Neska installation, light theme only.
+ * ====================================================================== */
+
+:root[data-visual-theme="neska"]:not([data-theme="dark"]) {
+  --neska-ink: #161616;
+  --neska-ink-2: #5c5c5c;
+  --neska-paper: #ffffff;
+  --neska-accent: #6b3a1e;
+  --neska-accent-text: #ffffff;
+  --neska-line: rgba(22, 22, 22, 0.22);
+  --neska-line-soft: rgba(22, 22, 22, 0.12);
+  /* next/font sets --font-rubik and --font-geist-pixel-square on <html>. */
+  --font-pixel: var(--font-geist-pixel-square), ui-monospace, monospace;
+  --font-sans: var(--font-rubik), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-reading: 1rem;
+  --font-body: 0.9375rem;
+  --font-secondary: 0.875rem;
+
+  --mineral-black: var(--neska-ink);
+  --mineral-secondary: var(--neska-ink-2);
+  --mineral-soft: #f7f6f4;
+  --text: var(--neska-ink);
+  --text-secondary: var(--neska-ink-2);
+  --text-muted: var(--neska-ink-2);
+  --text-subtle: var(--neska-ink-2);
+  --sidebar: var(--neska-paper);
+  --user-message: var(--neska-paper);
+  --border: var(--neska-line);
+  --border-subtle: var(--neska-line-soft);
+  --border-strong: var(--neska-ink);
+  --send-button: var(--neska-accent);
+  --send-button-text: var(--neska-accent-text);
+  --notification-accent: var(--neska-accent);
+  --focus: var(--neska-accent);
+
+  & body {
+    font-family: var(--font-sans);
+    letter-spacing: 0;
+    font-size: var(--font-secondary);
+  }
+
+  /* ---------- conversation ---------- */
+
+  & .workbench-main h1 {
+    letter-spacing: -0.01em;
+  }
+
+  /* Reading text at 16px (was 13px). */
+  & .workbench-main .message-enter [class*="font-reading"] {
+    font-size: var(--font-reading);
+    line-height: 26px;
+  }
+
+  /* User request: a framed card, like the brief handed to Neska. */
+  & .workbench-main .message-enter .rounded-\[22px\] {
+    border: 2px solid var(--neska-ink);
+    border-radius: 0;
+    box-shadow: var(--neska-offset);
+    padding: 14px 18px;
+  }
+
+  /* ---------- composer ---------- */
+
+  & .composer-shadow,
+  & .composer-shadow:focus-within {
+    border: 2px solid var(--neska-ink) !important;
+    border-radius: 0;
+    box-shadow: var(--neska-offset);
+  }
+
+  & .composer-shadow:focus-within {
+    box-shadow: 4px 4px 0 var(--neska-accent);
+  }
+
+  & .composer-submit,
+  & .composer-submit:disabled {
+    border-radius: 0 !important;
+    border: 2px solid var(--neska-ink);
+    background: var(--neska-accent) !important;
+    color: var(--neska-accent-text) !important;
+    box-shadow: var(--neska-offset-sm);
+  }
+
+  & .composer-submit:disabled {
+    opacity: 0.35;
+    box-shadow: none;
+  }
+
+  /* The landing send button keeps its RadialGlowButton markup; Neska shows it
+     as the same flat brown square. */
+  & .rg-button.composer-submit {
+    text-shadow: none;
+  }
+
+  & .rg-button.composer-submit::before,
+  & .rg-button.composer-submit .rg-bg,
+  & .rg-button.composer-submit .rg-shine {
+    display: none;
+  }
+
+  & .landing-band {
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+
+  & .landing-band-item,
+  & .composer-destination {
+    font-family: var(--font-pixel);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px !important;
+  }
+
+  /* ---------- approvals ---------- */
+
+  & [data-slot="permission-grant"] {
+    border: 2px solid var(--neska-ink) !important;
+    border-radius: 0 !important;
+    box-shadow: var(--neska-offset);
+    background: var(--neska-paper) !important;
+  }
+
+  /* ---------- task header ---------- */
+
+  & .workbench-main[data-section="chat"] > .workbench-navigation {
+    border-bottom: 2px solid var(--neska-ink);
+  }
+
+  & [data-testid="project-breadcrumb"] > span {
+    font-family: var(--font-pixel);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+  }
+
+  @media (min-width: 768px) {
+    & [data-testid="project-breadcrumb"] h1 {
+      max-width: 42vw;
+      margin-top: 2px;
+      font-size: 18px;
+      line-height: 24px;
+      font-weight: 600;
+    }
+  }
+
+  /* ---------- results ---------- */
+
+  & .markdown-body h2,
+  & .markdown-body h3,
+  & .markdown-body h4 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  & .markdown-table-wrap {
+    border: 2px solid var(--neska-ink);
+    border-radius: 0;
+  }
+
+  & .markdown-body th {
+    background: transparent;
+    border-bottom: 2px solid var(--neska-ink);
+    color: var(--text-secondary);
+    font-family: var(--font-pixel);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  & .markdown-body :not(pre) > code {
+    border-radius: 0;
+    background: transparent;
+    border-color: var(--neska-line);
+  }
+}

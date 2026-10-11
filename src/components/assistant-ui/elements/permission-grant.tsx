@@ -1,7 +1,7 @@
 "use client";
 import { useUiText } from "@/i18n/provider";
 
-import { ShieldCheck } from "@phosphor-icons/react";
+import { LockSimple } from "@phosphor-icons/react";
 import type { ApprovalItem, ApprovalDecision } from "@/lib/chat-contract";
 import { publicActivityText, publicCommandTitle } from "@/ui/public-activity";
 
@@ -32,38 +32,38 @@ export function PermissionGrant({
       ? t("La siguiente acción del navegador necesita tu permiso antes de continuar.")
       : t("Este comando necesita tu permiso. Puedes permitirlo una vez, durante esta tarea o rechazarlo.");
 
+  const button = "neska-px min-h-11 max-sm:w-full border-2 border-[var(--neska-ink)] px-4 py-2 text-[12px] transition active:translate-x-[2px] active:translate-y-[2px]";
+
   return (
-    <div data-slot="permission-grant" className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]" role="group" aria-label={t("Aprobación: {p0}", { p0: title })}>
-      <div className="flex items-start gap-3 px-3 py-2.5">
-        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-[var(--surface-muted)] text-[var(--text)]">
-          <ShieldCheck size={15} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold text-[var(--text)]">{title}</p>
-          <p className="mt-1 text-[10px] leading-4 text-[var(--text)]">{explanation}</p>
-          <details className="mt-2">
-            <summary className="w-fit cursor-pointer text-[9px] font-medium text-[var(--text)]">{t("Ver por qué necesita permiso")}</summary>
-            <div className="mt-2 rounded-lg bg-[var(--surface-muted)] px-3 py-2 text-[9px] leading-4 text-[var(--text)]">
-              <p>{publicActivityText(approval.detail, 1_000) ?? t("Esta acción necesita confirmación.")}</p>
-              {approval.command ? <p className="mt-2 text-[9px] font-medium text-[var(--text-secondary)]">{publicCommandTitle(approval.command)}</p> : null}
-            </div>
-          </details>
-        </div>
+    <div data-slot="permission-grant" data-pending={pending ? "true" : "false"} className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]" role="group" aria-label={t("Aprobación: {p0}", { p0: title })}>
+      <div className="px-4 pb-3 pt-3.5">
+        <p className={`neska-px flex items-center gap-2 text-[11px] ${pending ? "text-[var(--neska-accent)]" : "text-[var(--text-secondary)]"}`}>
+          <LockSimple size={14} weight="bold" aria-hidden="true" />{pending ? t("Aprobación pendiente") : t("Aprobación")}
+        </p>
+        <p className="mt-2 text-[16px] font-medium leading-6 text-[var(--text)]">{title}</p>
+        <p className="mt-1 text-[14px] leading-[22px] text-[var(--text-secondary)]">{explanation}</p>
+        <details className="mt-2">
+          <summary className="w-fit cursor-pointer text-[13px] font-medium text-[var(--text)] underline decoration-[var(--neska-line)] underline-offset-4">{t("Ver por qué necesita permiso")}</summary>
+          <div className="mt-2 border-l-2 border-[var(--neska-accent)] py-1 pl-3 text-[14px] leading-[22px] text-[var(--text)]">
+            <p>{publicActivityText(approval.detail, 1_000) ?? t("Esta acción necesita confirmación.")}</p>
+            {approval.command ? <p className="mt-2 font-mono text-[12px] text-[var(--text-secondary)]">{publicCommandTitle(approval.command)}</p> : null}
+          </div>
+        </details>
       </div>
 
       {pending && readOnly ? (
-        <div className="border-t border-[var(--border-subtle)] px-3.5 py-2 text-[9px] font-medium text-[var(--text-secondary)]">
+        <div className="border-t-2 border-[var(--neska-line)] px-4 py-2.5 text-[13px] font-medium text-[var(--text-secondary)]">
           {" "}{t("Esperando la decisión de un editor del proyecto")}{" "}</div>
       ) : pending ? (
-        <div className="flex flex-wrap justify-end gap-1.5 border-t border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-2">
-          <button type="button" className="min-h-9 rounded-lg px-2.5 py-1.5 text-[10px] font-medium text-[var(--text)] hover:bg-[var(--surface-muted)]" onClick={() => onResolve("decline")}>{t("Rechazar")}</button>
+        <div className="flex flex-wrap items-center gap-2.5 border-t-2 border-[var(--neska-line)] px-4 py-3">
+          <button type="button" className={`${button} bg-[var(--neska-accent)] text-[var(--neska-accent-text)] shadow-[var(--neska-offset-sm)] hover:bg-[color-mix(in_srgb,var(--neska-accent)_88%,black)]`} onClick={() => onResolve("accept")}>{t("Permitir")}</button>
           {approval.kind === "command" && !connectorApproval ? (
-            <button type="button" className="min-h-9 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[10px] font-medium text-[var(--text)] hover:bg-[var(--surface-muted)]" onClick={() => onResolve("acceptForSession")}>{t("Durante esta tarea")}</button>
+            <button type="button" className={`${button} bg-[var(--surface)] text-[var(--text)] shadow-[var(--neska-offset-sm)] hover:bg-[var(--surface-hover)]`} onClick={() => onResolve("acceptForSession")}>{t("Durante esta tarea")}</button>
           ) : null}
-          <button type="button" className="min-h-9 rounded-lg bg-[var(--brain-accent-strong)] px-2.5 py-1.5 text-[10px] font-semibold text-[var(--brain-contrast)]" onClick={() => onResolve("accept")}>{t("Permitir")}</button>
+          <button type="button" className={`${button} sm:ml-auto border-transparent bg-transparent text-[var(--text)] hover:border-[var(--neska-ink)]`} onClick={() => onResolve("decline")}>{t("Rechazar")}</button>
         </div>
       ) : (
-        <div className="border-t border-[var(--border-subtle)] px-3.5 py-2 text-[9px] font-medium text-[var(--text)]" role="status">{result}</div>
+        <div className="border-t-2 border-[var(--neska-line)] px-4 py-2.5 text-[13px] font-medium text-[var(--text)]" role="status">{result}</div>
       )}
     </div>
   );

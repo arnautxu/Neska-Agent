@@ -1,4 +1,5 @@
 "use client";
+import type { UiLocale } from "@/i18n/locale";
 import { translate } from "@/i18n/messages";
 import { useUiLocale } from "@/i18n/provider";
 import { useUiText } from "@/i18n/provider";
@@ -46,7 +47,7 @@ function statusIcon(status: TaskCenterItem["status"]) {
   return <WarningCircle size={17} weight="fill" />;
 }
 
-function timeLabel(value: string, locale: "en" | "es" = "es") {
+function timeLabel(value: string, locale: UiLocale = "es") {
   const date = new Date(value);
   const elapsed = Date.now() - date.getTime();
   if (Number.isNaN(elapsed)) return "";
