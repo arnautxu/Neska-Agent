@@ -48,3 +48,13 @@ Neska installations default to Catalan only when no language preference exists;
 other installations and saved preferences retain their previous behavior. Mobile
 approvals reuse the ordinary server decision route and exact approval IDs.
 Protected design routes remain separate from real data and live acceptance.
+
+## Container CI speed (2026-10-11)
+
+Backend CI now reuses input-addressed native ARM64 Docker dependency layers via
+separate GitHub Actions v2 caches, with loaded full-SHA/OCI revision readback.
+All existing container acceptance and fresh vulnerability scans remain required.
+Manual `clean_build=true` retains a no-cache diagnostic path. This changes CI
+construction only; GHCR publication, deployment and authenticated acceptance
+remain independent and unproven by a cache hit. See the release runbook for
+cache scope, timeouts and evidence boundaries.
