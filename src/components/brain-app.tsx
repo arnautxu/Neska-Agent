@@ -2468,6 +2468,7 @@ export function BrainApp({
 
       {inspectorEnabled && preferences.showInspector && activeSideWindow === "inspector" ? (
         <DetailsPanel
+          projectId={activeProject?.id}
           readOnly={!workbenchThreadAccess(activeThread, activeProject).canEdit}
           message={selectedMessage}
           performance={selectedMessage ? clientTurnReadbacks[selectedMessage.id] ?? null : null}

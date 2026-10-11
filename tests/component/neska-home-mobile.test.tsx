@@ -7,8 +7,8 @@ import { NeskaCurrentTasks, NeskaHomeHeader } from "@/components/neska-home";
 import type { TaskCenterItem } from "@/task-center/contracts";
 const approval = { id: "exact-id", threadId: "thread", turnId: "turn", itemId: "item", kind: "connector" as const, title: "Enviar correu", detail: "Revisa l’enviament", status: "pending" as const };
 const task: TaskCenterItem = { id: "task", threadId: "thread", projectId: "project", threadTitle: "Factures", projectName: null, status: "running", title: "", detail: "", createdAt: "2026-10-11T09:00:00.000Z", updatedAt: "2026-10-11T09:01:00.000Z", unread: false };
-function mobile() { vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))); }
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+function mobile() { document.documentElement.dataset.visualTheme = "neska"; vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))); }
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); delete document.documentElement.dataset.visualTheme; });
 describe("Neska home and mobile use published facts", () => {
   it("hides unknown work and completed tasks instead of inventing a current task", () => {
     render(<UiLocaleProvider locale="ca"><NeskaHomeHeader userName="Arnau" tasks={[]} /><NeskaCurrentTasks tasks={[{ ...task, status: "completed" }]} /></UiLocaleProvider>);
@@ -39,6 +39,12 @@ describe("Neska home and mobile use published facts", () => {
     fireEvent.click(screen.getByRole("button", { name: "Revisa el permís pendent" }));
     fireEvent.click(screen.getByRole("button", { name: "Permet" }));
     expect(resolve).toHaveBeenCalledExactlyOnceWith("accept");
+  });
+  it("keeps the permission inline for other visual themes on mobile", () => {
+    mobile(); document.documentElement.dataset.visualTheme = "brain";
+    render(<UiLocaleProvider locale="ca"><MobilePermission approval={approval} sheetAllowed onResolve={vi.fn()} /></UiLocaleProvider>);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "Permet" })).toBeInTheDocument();
   });
   it("offers no decision buttons to a read-only viewer", () => {
     mobile();

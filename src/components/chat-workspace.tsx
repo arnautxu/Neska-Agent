@@ -364,7 +364,7 @@ function AssistantMessage({
       {taskTitle ? <div className="mb-6"><div className="md:hidden"><TaskStatusChip progress={taskProgress(message)} /></div><h2 className="mt-2 text-[30px] font-medium leading-tight max-sm:text-[22px]">{taskTitle}</h2></div> : null}
       {message.status === "streaming" || message.planProposal?.status === "proposed" || message.approvals.some(approval => approval.status === "pending") ? <TaskCycle message={message} threadId={threadId} readOnly={readOnly} onResolveApproval={onResolveApproval} onOpenReview={() => onOpenReview(message.id)} onMessageChange={onTaskMessageChange ? saved => onTaskMessageChange(threadId, saved) : undefined} onExecutePlan={onExecutePlan} /> : null}
       {managedAppAction && !readOnly ? <ManagedAppActionControl enabled={managedAppAction.enabled} threadId={threadId} message={message} onPrepared={managedAppAction.onPrepared} /> : null}
-      {message.diff ? <button type="button" className="mt-4 min-h-11 text-sm underline underline-offset-4" onClick={() => onOpenReview(message.id)}>{t("Revisa els canvis")}</button> : null}
+      {message.diff || message.toolResults?.length || message.activity.some(item => item.files?.length) ? <button type="button" className="mt-4 min-h-11 text-sm underline underline-offset-4" onClick={() => onOpenReview(message.id)}>{t(message.diff ? "Revisa els canvis" : "Veure els resultats")}</button> : null}
 
       {streaming && !content && !hasExecution ? (
         <div className="flex items-center gap-2 py-1 text-[15px] leading-5 text-[var(--text-muted)]" role="status">
@@ -984,7 +984,7 @@ export function ChatWorkspace({
                       liveAnswers={liveAnswers}
                       threadId={thread.id}
                       message={message}
-                      taskTitle={message.id === latestAssistantMessageId && (message.plan.length > 0 || message.approvals.length > 0 || message.incidents?.length) ? thread.title : undefined}
+                      taskTitle={branding?.visualTheme === "neska" && message.id === latestAssistantMessageId && (message.plan.length > 0 || message.approvals.length > 0 || message.incidents?.length) ? thread.title : undefined}
                       recoveryPaused={streamRecovery?.paused === true && message.status === "streaming" && message.id === latestAssistantMessageId}
                       assistantName={assistantName}
                       onTaskMessageChange={onTaskMessageChange}

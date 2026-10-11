@@ -24,10 +24,12 @@ export function MobilePermission(props: ComponentProps<typeof PermissionGrant> &
   </>;
 }
 
-function mobileSnapshot() { return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 767px)").matches; }
+function mobileSnapshot() { return document.documentElement.dataset.visualTheme === "neska" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 767px)").matches; }
 function subscribeMobile(callback: () => void) {
   if (typeof window.matchMedia !== "function") return () => {};
   const media = window.matchMedia("(max-width: 767px)");
   media.addEventListener("change", callback);
-  return () => media.removeEventListener("change", callback);
+  const observer = new MutationObserver(callback);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-visual-theme"] });
+  return () => { media.removeEventListener("change", callback); observer.disconnect(); };
 }
