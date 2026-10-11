@@ -219,9 +219,9 @@ async function installReadRoutesAndMutationGuard(page: Page) {
 async function verifyReadableHistoryAndArtifact(page: Page) {
   await expect(page.getByText("Consulta histórica compartida que debe seguir visible.")).toBeVisible();
   await expect(page.getByText("La respuesta histórica y su documento siguen disponibles.")).toBeVisible();
-  await expect(page.getByText("Pendiente de confirmación segura")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Permiso: Aplicar cambio compartido" })).toBeVisible();
 
-  const downloadLink = page.getByRole("link", { name: `Descargar ${documentName}` });
+  const downloadLink = page.getByRole("link", { name: `Descarga ${documentName}` });
   await expect(downloadLink).toHaveAttribute("href", downloadUrl);
   const downloaded = await page.evaluate(async (url) => {
     const response = await fetch(url, { cache: "no-store", credentials: "same-origin" });
@@ -263,7 +263,7 @@ async function verifyViewerSurface(page: Page, mobile: boolean) {
   await expect(page.getByTestId("composer")).toHaveCount(0);
   await expect(page.getByRole("button", { name: `Nueva conversación en ${projectName}` })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Editar mensaje y crear una rama" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /^(?:Permitir|Durante esta tarea|Rechazar|Publicar|Preparar publicación)$/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^(?:Permite|Permite durante esta tarea|Ahora no|Publicar|Preparar publicación)$/ })).toHaveCount(0);
 
   const menu = await openSharedProjectMenu(page, mobile);
   await expect(menu.getByRole("menuitem", { name: "Renombrar" })).toHaveCount(0);

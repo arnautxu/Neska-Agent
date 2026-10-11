@@ -354,7 +354,7 @@ function AssistantMessage({
     <article className="message-enter group">
       {message.status === "streaming" || message.planProposal?.status === "proposed" || message.approvals.some(approval => approval.status === "pending") ? <TaskCycle message={message} threadId={threadId} readOnly={readOnly} onResolveApproval={onResolveApproval} onOpenReview={() => onOpenReview(message.id)} onMessageChange={onTaskMessageChange ? saved => onTaskMessageChange(threadId, saved) : undefined} onExecutePlan={onExecutePlan} /> : null}
       {managedAppAction && !readOnly ? <ManagedAppActionControl enabled={managedAppAction.enabled} threadId={threadId} message={message} onPrepared={managedAppAction.onPrepared} /> : null}
-      {message.diff ? <button type="button" className="mt-4 min-h-11 text-sm underline underline-offset-4" onClick={() => onOpenReview(message.id)}>{t("Revisa els canvis")}</button> : null}
+      {message.diff || message.toolResults?.length || message.activity.some(item => item.files?.length) ? <button type="button" className="mt-4 min-h-11 text-sm underline underline-offset-4" onClick={() => onOpenReview(message.id)}>{t(message.diff ? "Revisa els canvis" : "Veure els resultats")}</button> : null}
 
       {streaming && !content && !hasExecution ? (
         <div className="flex items-center gap-2 py-1 text-[15px] leading-5 text-[var(--text-muted)]" role="status">

@@ -50,9 +50,14 @@ for (const [name, viewport] of Object.entries({ desktop: { width: 1440, height: 
     await expect(page.locator('[data-slot="stars-background"]')).toHaveCount(0);
     await expect(page.locator(".rg-button")).toHaveCount(0);
     await expect(page.locator('[data-slot="day-separator"]')).toBeVisible();
-    await page.getByRole("button", { name: "Mostrar el proceso de trabajo" }).click();
-    await page.getByText("Fuentes", { exact: true }).click();
-    for (const slot of ["tool-timeline", "tool-call", "permission-grant", "web-search", "document-reference"]) await expect(page.locator(`[data-slot="${slot}"]`)).toBeVisible();
+    await page.getByRole("button", { name: "Ver los resultados", exact: true }).click();
+    const review = page.locator('aside[aria-label="Cambios y resultados del turno"]');
+    await review.getByRole("button", { name: /^Actividad/ }).click();
+    await review.getByRole("button", { name: "Mostrar el proceso de trabajo" }).click();
+    for (const slot of ["tool-timeline", "tool-call"]) await expect(review.locator(`[data-slot="${slot}"]`)).toBeVisible();
+    await review.getByRole("button", { name: "Cerrar cambios y resultados" }).click();
+    await page.locator("article").getByText("Fuentes", { exact: true }).click();
+    for (const slot of ["permission-grant", "web-search", "document-reference"]) await expect(page.locator(`[data-slot="${slot}"]`)).toBeVisible();
     await expect(page.locator('[data-slot="memory-chips"]')).toHaveCount(0);
     await page.locator(".workbench-main > .scrollbar-thin").evaluate((element) => { element.scrollTop = 0; });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
@@ -80,7 +85,7 @@ for (const [name, viewport] of Object.entries({ desktop: { width: 1440, height: 
     await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
     // Primary surfaces invert in dark mode; a literal text-white would
     // make the governed action unreadable even though its handler still works.
-    const approvalColors = await page.getByRole("button", { name: "Permitir", exact: true }).evaluate((element) => {
+    const approvalColors = await page.getByRole("button", { name: "Permite", exact: true }).evaluate((element) => {
       const style = getComputedStyle(element);
       return { foreground: style.color, background: style.backgroundColor };
     });

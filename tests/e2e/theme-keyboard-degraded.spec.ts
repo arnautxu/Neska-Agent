@@ -182,7 +182,7 @@ test("resizing a desktop review beside a palette leaves a single modal owner", a
   await page.getByRole("textbox", { name: "Mensaje" }).fill("Prepara una revisión para redimensionar.");
   await page.getByRole("button", { name: "Enviar mensaje" }).click();
   await expect(page.getByRole("heading", { name: "Resultado para redimensionar" })).toBeVisible();
-  await page.getByRole("button", { name: "Abrir cambios y resultados" }).click();
+  await page.getByRole("button", { name: "Revisa los cambios" }).click();
   const review = page.locator('aside[aria-label="Cambios y resultados del turno"]');
   await expect(review).toBeVisible();
   await page.keyboard.press("Meta+K");

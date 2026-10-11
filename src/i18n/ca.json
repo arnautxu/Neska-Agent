@@ -1405,5 +1405,7 @@
   "A la cua": "A la cua",
   "No s’ha pogut guardar el canvi. Torna a carregar la tasca.": "No s’ha pogut guardar el canvi. Torna a carregar la tasca.",
   "Vista prèvia de {name}": "Vista prèvia de {name}",
-  "Descarrega {name}": "Descarrega {name}"
+  "Descarrega {name}": "Descarrega {name}",
+  "Veure els resultats": "Veure els resultats",
+  "Previsualitza {name}": "Previsualitza {name}"
 }

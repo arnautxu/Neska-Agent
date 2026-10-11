@@ -29,7 +29,7 @@ describe("TurnArtifactCard", () => {
     const onPreview = vi.fn();
     render(<TurnArtifactCard artifact={documentArtifact} onPreviewDocument={onPreview} />);
     expect(screen.getByRole("heading", { name: "informe.pdf" })).toBeInTheDocument();
-    screen.getByRole("button", { name: "Vista previa de informe.pdf" }).click();
+    screen.getByRole("button", { name: "Previsualizar informe.pdf" }).click();
     expect(onPreview).toHaveBeenCalledWith(documentArtifact);
     expect(screen.getByRole("button", { name: "Revisar antes de descargar" })).toBeInTheDocument();
     expect(screen.getByText("Pendiente de confirmación segura")).toBeInTheDocument();
