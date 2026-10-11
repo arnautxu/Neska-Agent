@@ -46,7 +46,9 @@ for (const viewport of viewports) {
       const controlsEnd = await page.locator('[data-testid="composer-controls"] .composer-controls-end').boundingBox();
       expect(controlsStart).not.toBeNull();
       expect(controlsEnd).not.toBeNull();
-      expect(controlsStart!.x + controlsStart!.width).toBeLessThanOrEqual(controlsEnd!.x);
+      // Narrow composers may put the second control group on a new row.
+      const separateRow = controlsEnd!.y >= controlsStart!.y + controlsStart!.height;
+      expect(separateRow || controlsStart!.x + controlsStart!.width <= controlsEnd!.x).toBe(true);
     }
 
     await page.getByRole("button", { name: "Añadir al mensaje" }).click();

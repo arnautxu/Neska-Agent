@@ -22,6 +22,7 @@ import { DownloadIcon } from "@/components/ui/download";
 
 type DetailsPanelProps = {
   message: ChatMessage | null;
+  projectId?: string;
   performance?: ClientTurnPerformanceReadback | null;
   open: boolean;
   onClose: () => void;
@@ -82,7 +83,7 @@ function DiffCode({ content }: { content: string }) {
   );
 }
 
-export function DetailsPanel({ message, performance = null, open, onClose, onResolveApproval, readOnly = false }: DetailsPanelProps) {
+export function DetailsPanel({ message, projectId, performance = null, open, onClose, onResolveApproval, readOnly = false }: DetailsPanelProps) {
   const t = useUiText();
   const files = useMemo(() => parseDiff(message?.diff ?? ""), [message?.diff]);
   const [tab, setTab] = useState<"changes" | "activity" | "sources" | "performance">("changes");
@@ -232,7 +233,7 @@ export function DetailsPanel({ message, performance = null, open, onClose, onRes
         )
       ) : (
         <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-4 py-5">
-          <TurnActivity message={message} compact showDiff={false} onResolveApproval={onResolveApproval} readOnly={readOnly} />
+          <TurnActivity message={{ ...message, approvals: [] }} projectId={projectId} compact showDiff={false} onResolveApproval={onResolveApproval} readOnly={readOnly} />
         </div>
       )}
     </aside>

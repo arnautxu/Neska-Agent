@@ -269,7 +269,7 @@ describe("turn activity and Review", () => {
     render(<DetailsPanel message={message} open readOnly onClose={vi.fn()} onResolveApproval={onResolve} />);
 
     fireEvent.click(screen.getByRole("button", { name: /Actividad/ }));
-    expect(screen.getByText("Esperando la decisión de un editor del proyecto")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Permiso:/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Permite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rechazar" })).not.toBeInTheDocument();
     expect(onResolve).not.toHaveBeenCalled();
