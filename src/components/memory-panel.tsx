@@ -4,7 +4,7 @@ import { useUiLocale } from "@/i18n/provider";
 import { useUiText } from "@/i18n/provider";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpenText, Check, ClockCounterClockwise, Plus, Trash, X } from "@phosphor-icons/react";
+import { BookOpenText, Check, X } from "@phosphor-icons/react";
 import type { MemoryKind, MemoryRecord } from "@/memory/types";
 import type { GovernedMemoryRecord, MemoryProposal, MemoryScope } from "@/memory/proposal-store";
 import {
@@ -20,6 +20,10 @@ import {
 } from "@/ui/memory-ui-adapter";
 import { useModalFocus } from "@/ui/use-modal-focus";
 import { KnowledgeReviewPanel } from "@/components/knowledge-review-panel";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { DeleteIcon } from "@/components/ui/delete";
+import { HistoryIcon } from "@/components/ui/history";
+import { PlusIcon } from "@/components/ui/plus";
 
 function memoryDate(value: string, locale: UiLocale = "es") {
   const date = new Date(value);
@@ -213,7 +217,7 @@ export function MemoryPanel({ open, projectId, productName, onClose, embedded = 
               </div>
               <label className="sr-only" htmlFor="memory-content">{t("Memoria a guardar")}</label>
               <textarea id="memory-content" value={content} maxLength={32_000} rows={4} placeholder={t("Por ejemplo: el horario de atención se confirma siempre antes de publicar.")} onChange={(event) => setContent(event.target.value)} className="mt-3 w-full resize-y rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-raised)] px-3 py-2.5 text-[12px] leading-5 text-[var(--text)] outline-none focus:border-[var(--brain-accent)]" />
-              <div className="mt-3 flex items-center justify-between gap-3"><span className="text-[10px] text-[var(--text-subtle)]">{t("También puedes añadir un recuerdo manual.")}</span><button type="button" disabled={saving || !content.trim()} onClick={() => void save()} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[var(--brain-accent)] px-3 text-[11px] font-semibold text-[var(--brain-contrast)] disabled:opacity-40"><Plus size={13} />{saving ? t("Guardando…") : t("Guardar")}</button></div>
+              <div className="mt-3 flex items-center justify-between gap-3"><span className="text-[10px] text-[var(--text-subtle)]">{t("También puedes añadir un recuerdo manual.")}</span><button type="button" disabled={saving || !content.trim()} onClick={() => void save()} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[var(--brain-accent)] px-3 text-[11px] font-semibold text-[var(--brain-contrast)] disabled:opacity-40"><TriggerIcon icon={PlusIcon} size={13} />{saving ? t("Guardando…") : t("Guardar")}</button></div>
             </div>
           </section>
 
@@ -227,7 +231,7 @@ export function MemoryPanel({ open, projectId, productName, onClose, embedded = 
           {revokedMemories.length ? <section className="mt-7"><div className="flex items-center justify-between"><h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-subtle)]">{t("Revocadas")}</h3><span className="text-[10px] tabular-nums text-[var(--text-subtle)]">{revokedMemories.length}</span></div><div className="mt-3 space-y-2 opacity-70">{revokedMemories.map((memory) => <MemoryCard key={memory.memoryId} memory={memory} />)}</div></section> : null}
         </div>
 
-        {revokeTarget ? <footer className={`${embedded ? "mt-4 rounded-[var(--brain-radius)] border" : "border-t"} border-[var(--border-subtle)] bg-[var(--surface)] p-4`}><p className="text-[12px] font-semibold text-[var(--text)]">{t("¿Revocar esta memoria?")}</p><label className="sr-only" htmlFor="revoke-reason">{t("Motivo de la revocación")}</label><input id="revoke-reason" value={revokeReason} maxLength={2_000} placeholder={t("Motivo de la revocación")} onChange={(event) => setRevokeReason(event.target.value)} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-2 text-[12px] text-[var(--text)] outline-none focus:border-[var(--brain-accent)]" /><div className="mt-3 flex justify-end gap-2"><button type="button" onClick={() => setRevokeTarget(null)} className="min-h-9 rounded-lg px-3 text-[11px] font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]">{t("Cancelar")}</button><button type="button" disabled={saving || !revokeReason.trim()} onClick={() => void revoke()} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[var(--danger)] px-3 text-[11px] font-semibold text-white disabled:opacity-40"><Trash size={13} />{saving ? t("Revocando…") : t("Revocar")}</button></div></footer> : null}
+        {revokeTarget ? <footer className={`${embedded ? "mt-4 rounded-[var(--brain-radius)] border" : "border-t"} border-[var(--border-subtle)] bg-[var(--surface)] p-4`}><p className="text-[12px] font-semibold text-[var(--text)]">{t("¿Revocar esta memoria?")}</p><label className="sr-only" htmlFor="revoke-reason">{t("Motivo de la revocación")}</label><input id="revoke-reason" value={revokeReason} maxLength={2_000} placeholder={t("Motivo de la revocación")} onChange={(event) => setRevokeReason(event.target.value)} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-2 text-[12px] text-[var(--text)] outline-none focus:border-[var(--brain-accent)]" /><div className="mt-3 flex justify-end gap-2"><button type="button" onClick={() => setRevokeTarget(null)} className="min-h-9 rounded-lg px-3 text-[11px] font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]">{t("Cancelar")}</button><button type="button" disabled={saving || !revokeReason.trim()} onClick={() => void revoke()} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[var(--danger)] px-3 text-[11px] font-semibold text-white disabled:opacity-40"><TriggerIcon icon={DeleteIcon} size={13} />{saving ? t("Revocando…") : t("Revocar")}</button></div></footer> : null}
       </aside>
     </div>
   );
@@ -262,5 +266,5 @@ function EmptyState() {
 function MemoryCard({ memory, onRevoke }: { memory: MemoryRecord; onRevoke?: () => void }) {
   const locale = useUiLocale();
   const t = useUiText();
-  return <article className="rounded-[var(--brain-radius)] border border-[var(--border)] bg-[var(--surface)] p-3"><div className="flex items-start gap-2"><span className="mt-0.5 rounded-md bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--text-secondary)]">{t(kindLabel(memory.kind) ?? "")}</span><p className="min-w-0 flex-1 whitespace-pre-wrap text-[12px] leading-5 text-[var(--text)]">{memory.content}</p>{onRevoke ? <button type="button" aria-label={t("Revocar memoria")} onClick={onRevoke} className="rounded-md p-1 text-[var(--text-subtle)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"><Trash size={14} /></button> : null}</div><p className="mt-2 flex items-center gap-1 text-[10px] text-[var(--text-subtle)]"><ClockCounterClockwise size={11} />{memory.status === "revoked" ? t("Revocada") : t("Guardada")} {memoryDate(memory.status === "revoked" ? memory.revokedAt ?? memory.createdAt : memory.createdAt, locale)}</p></article>;
+  return <article className="rounded-[var(--brain-radius)] border border-[var(--border)] bg-[var(--surface)] p-3"><div className="flex items-start gap-2"><span className="mt-0.5 rounded-md bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--text-secondary)]">{t(kindLabel(memory.kind) ?? "")}</span><p className="min-w-0 flex-1 whitespace-pre-wrap text-[12px] leading-5 text-[var(--text)]">{memory.content}</p>{onRevoke ? <button type="button" aria-label={t("Revocar memoria")} onClick={onRevoke} className="rounded-md p-1 text-[var(--text-subtle)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"><TriggerIcon icon={DeleteIcon} size={14} /></button> : null}</div><p className="mt-2 flex items-center gap-1 text-[10px] text-[var(--text-subtle)]"><TriggerIcon icon={HistoryIcon} size={11} />{memory.status === "revoked" ? t("Revocada") : t("Guardada")} {memoryDate(memory.status === "revoked" ? memory.revokedAt ?? memory.createdAt : memory.createdAt, locale)}</p></article>;
 }

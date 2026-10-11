@@ -4,8 +4,6 @@ import { useUiText } from "@/i18n/provider";
 import { useEffect, useMemo, useState } from "react";
 import {
   Check,
-  Copy,
-  DownloadSimple,
   FileCode,
   GitDiff,
   ListChecks,
@@ -18,6 +16,9 @@ import { isRelevantProcessActivity, TurnActivity } from "@/components/turn-activ
 import { useModalFocus } from "@/ui/use-modal-focus";
 import { TurnSourceList } from "@/components/turn-sources";
 import type { ClientTurnPerformanceReadback } from "@/ui/client-turn-performance";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { CopyIcon } from "@/components/ui/copy";
+import { DownloadIcon } from "@/components/ui/download";
 
 type DetailsPanelProps = {
   message: ChatMessage | null;
@@ -174,7 +175,7 @@ export function DetailsPanel({ message, performance = null, open, onClose, onRes
         </div>
       ) : tab === "performance" && performance ? (
         <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-4 py-5 text-[12px] text-[var(--text)]">
-          <div className="flex items-center justify-between gap-3"><div><p className="font-semibold">{t("Métricas de pintura del cliente")}</p><p className="mt-1 text-[12px] leading-5 text-[var(--text-muted)]">{t("Sin texto, prompts, tokens, IDs ni errores.")}</p></div><button type="button" aria-label={t("Descargar métricas del cliente")} title={t("Descargar métricas del cliente")} className="touch-target rounded-md p-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)]" onClick={downloadPerformance}><DownloadSimple size={15} /></button></div>
+          <div className="flex items-center justify-between gap-3"><div><p className="font-semibold">{t("Métricas de pintura del cliente")}</p><p className="mt-1 text-[12px] leading-5 text-[var(--text-muted)]">{t("Sin texto, prompts, tokens, IDs ni errores.")}</p></div><button type="button" aria-label={t("Descargar métricas del cliente")} title={t("Descargar métricas del cliente")} className="touch-target rounded-md p-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)]" onClick={downloadPerformance}><TriggerIcon icon={DownloadIcon} size={15} /></button></div>
           <dl className="mt-5 grid grid-cols-[1fr_auto] gap-x-4 gap-y-3 text-[12px]">
             <dt className="text-[var(--text-muted)]">{t("Intento → primer delta pintado")}</dt><dd className="font-medium tabular-nums">{milliseconds(performance.sendIntentToFirstDeltaPaintMs)}</dd>
             <dt className="text-[var(--text-muted)]">{t("Cadencia p50 / p95 / máxima")}</dt><dd className="font-medium tabular-nums">{milliseconds(performance.interPaintP50Ms)} / {milliseconds(performance.interPaintP95Ms)} / {milliseconds(performance.interPaintMaxMs)}</dd>
@@ -200,7 +201,7 @@ export function DetailsPanel({ message, performance = null, open, onClose, onRes
                 <span className="text-[var(--text)]">{files.length} {files.length === 1 ? "archivo" : "archivos"}</span>
               </div>
               <button type="button" className="flex min-h-10 items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-[var(--text)] transition hover:bg-[var(--surface-muted)]" onClick={() => void copyDiff()}>
-                {copied ? <Check size={12} /> : <Copy size={12} />}{copied ? t("Copiado") : t("Copiar diff")}
+                {copied ? <Check size={12} /> : <TriggerIcon icon={CopyIcon} size={12} />}{copied ? t("Copiado") : t("Copiar diff")}
               </button>
             </div>
 

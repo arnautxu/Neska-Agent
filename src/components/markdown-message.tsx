@@ -2,9 +2,11 @@
 import { useUiText } from "@/i18n/provider";
 
 import { memo, useState } from "react";
-import { Check, Copy } from "@phosphor-icons/react";
+import { Check } from "@phosphor-icons/react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { CopyIcon } from "@/components/ui/copy";
 
 function CodeBlock({ language, value }: { language: string | null; value: string }) {
   const t = useUiText();
@@ -18,7 +20,7 @@ function CodeBlock({ language, value }: { language: string | null; value: string
     <figure className="markdown-code">
       <figcaption>
         <span>{language ?? "texto"}</span>
-        <button type="button" aria-label={t("Copiar bloque de código")} onClick={() => void copy()}>{copied ? <Check size={13} /> : <Copy size={13} />}{copied ? t("Copiado") : t("Copiar")}</button>
+        <button type="button" aria-label={t("Copiar bloque de código")} onClick={() => void copy()}>{copied ? <Check size={13} /> : <TriggerIcon icon={CopyIcon} size={13} />}{copied ? t("Copiado") : t("Copiar")}</button>
       </figcaption>
       <pre><code>{value}</code></pre>
     </figure>

@@ -2,10 +2,15 @@
 import { useUiText } from "@/i18n/provider";
 
 import NextImage from "next/image";
-import { ArrowClockwise, CaretRight, Check, Copy, DownloadSimple, Eye, FileCode, Trash, WarningCircle } from "@phosphor-icons/react";
+import { CaretRight, Check, Eye, FileCode, WarningCircle } from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 import type { ActivityFileChange } from "@/lib/chat-contract";
 import { AuthenticatedPdfPreview } from "@/components/authenticated-pdf-preview";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { CopyIcon } from "@/components/ui/copy";
+import { DownloadIcon } from "@/components/ui/download";
+import { DeleteIcon } from "@/components/ui/delete";
+import { RefreshCWIcon } from "@/components/ui/refresh-cw";
 
 type WorkspaceFile = {
   path: string;
@@ -106,7 +111,7 @@ export function WorkspaceFilePreview({ projectId, file }: { projectId: string; f
   if (file.change === "delete") {
     return (
       <div className="mt-1.5 flex min-w-0 items-center gap-2 rounded-md bg-[var(--surface-muted)] px-2.5 py-2 text-[11px] text-[var(--text-muted)]">
-        <Trash size={13} className="shrink-0" />
+        <TriggerIcon icon={DeleteIcon} size={13} className="shrink-0" />
         <span className="min-w-0 flex-1 truncate font-mono">{file.path}</span>
         <span className="shrink-0">{t("Eliminado")}</span>
       </div>
@@ -136,7 +141,7 @@ export function WorkspaceFilePreview({ projectId, file }: { projectId: string; f
             <div className="flex items-center gap-2 px-3 py-3 text-[11px] text-[var(--danger)]" role="alert">
               <WarningCircle size={14} className="shrink-0" />
               <span className="min-w-0 flex-1">{error}</span>
-              <button type="button" className="touch-target grid size-7 shrink-0 place-items-center rounded-md hover:bg-[var(--danger-soft)]" aria-label={t("Reintentar la vista previa de {p0}", { p0: file.path })} onClick={() => void loadPreview()}><ArrowClockwise size={13} /></button>
+              <button type="button" className="touch-target grid size-7 shrink-0 place-items-center rounded-md hover:bg-[var(--danger-soft)]" aria-label={t("Reintentar la vista previa de {p0}", { p0: file.path })} onClick={() => void loadPreview()}><TriggerIcon icon={RefreshCWIcon} size={13} /></button>
             </div>
           ) : preview ? (
             <>
@@ -146,10 +151,10 @@ export function WorkspaceFilePreview({ projectId, file }: { projectId: string; f
                 <span>{Math.max(1, Math.ceil(preview.size / 1024))} {" "}{t("KB")}</span>
                 <span className="flex-1" />
                 {preview.content !== null ? (
-                  <button type="button" className="touch-target flex min-h-7 items-center gap-1.5 rounded-md px-2 font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]" onClick={() => void copyContent()}>{copied ? <Check size={12} /> : <Copy size={12} />}{copied ? t("Copiado") : t("Copiar")}</button>
+                  <button type="button" className="touch-target flex min-h-7 items-center gap-1.5 rounded-md px-2 font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]" onClick={() => void copyContent()}>{copied ? <Check size={12} /> : <TriggerIcon icon={CopyIcon} size={12} />}{copied ? t("Copiado") : t("Copiar")}</button>
                 ) : null}
-                <a href={preview.downloadUrl} download={preview.name} className="touch-target grid size-7 place-items-center rounded-md text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]" aria-label={`Descargar ${preview.name}`} title={t("Descargar original para abrir o editar en escritorio")}><DownloadSimple size={13} /></a>
-                <button type="button" className="touch-target grid size-7 place-items-center rounded-md text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]" aria-label={t("Actualizar la vista previa de {p0}", { p0: file.path })} onClick={() => void loadPreview()}><ArrowClockwise size={13} /></button>
+                <a href={preview.downloadUrl} download={preview.name} className="touch-target grid size-7 place-items-center rounded-md text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]" aria-label={`Descargar ${preview.name}`} title={t("Descargar original para abrir o editar en escritorio")}><TriggerIcon icon={DownloadIcon} size={13} /></a>
+                <button type="button" className="touch-target grid size-7 place-items-center rounded-md text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]" aria-label={t("Actualizar la vista previa de {p0}", { p0: file.path })} onClick={() => void loadPreview()}><TriggerIcon icon={RefreshCWIcon} size={13} /></button>
               </header>
               {preview.kind === "text" && preview.content !== null ? (
                 <pre tabIndex={0} className="scrollbar-thin max-h-[420px] overflow-auto whitespace-pre p-4 font-mono text-[12px] leading-5 text-[var(--text)]"><code>{preview.content}</code></pre>

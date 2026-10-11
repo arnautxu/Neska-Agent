@@ -3,8 +3,11 @@ import { useUiText } from "@/i18n/provider";
 
 import { useState, type ComponentProps } from "react";
 import NextImage from "next/image";
-import { DownloadIcon, ExpandIcon, RefreshCwIcon } from "lucide-react";
+import { RefreshCwIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { DownloadIcon as AnimatedDownloadIcon } from "@/components/ui/download";
+import { ExpandIcon as AnimatedExpandIcon } from "@/components/ui/expand";
 
 const imageAction = "touch-target inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]";
 
@@ -100,8 +103,8 @@ export function ImageGeneration({
         <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{prompt}</p>
       </details>
       {ready ? <div className="flex min-w-0 flex-wrap gap-2">
-        <a href={src!} target="_blank" rel="noreferrer" aria-label={t("Ampliar imagen {p0} (nueva pestaña)", { p0: title })} className={imageAction}><ExpandIcon className="size-3.5" aria-hidden />{t("Ampliar")}</a>
-        {downloadUrl ? <a href={downloadUrl} download={downloadName} aria-label={downloadName ? `Descargar ${downloadName}` : t("Descargar imagen")} className={imageAction}><DownloadIcon className="size-3.5" aria-hidden />{t("Descargar PNG")}</a> : null}
+        <a href={src!} target="_blank" rel="noreferrer" aria-label={t("Ampliar imagen {p0} (nueva pestaña)", { p0: title })} className={imageAction}><TriggerIcon icon={AnimatedExpandIcon} size={14} />{t("Ampliar")}</a>
+        {downloadUrl ? <a href={downloadUrl} download={downloadName} aria-label={downloadName ? `Descargar ${downloadName}` : t("Descargar imagen")} className={imageAction}><TriggerIcon icon={AnimatedDownloadIcon} size={14} />{t("Descargar PNG")}</a> : null}
         {onRegenerate ? <button type="button" aria-label={t("Volver a generar la imagen")} onClick={onRegenerate} className={imageAction}><RefreshCwIcon className="size-3.5" aria-hidden />{t("Volver a generar")}</button> : null}
       </div> : null}
     </div>
