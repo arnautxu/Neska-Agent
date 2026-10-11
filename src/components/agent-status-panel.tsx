@@ -45,7 +45,8 @@ export function AgentStatusPanel({
   const t = useUiText();
   const files = [
     ...(request?.attachments ?? []).map((attachment) => ({ id: attachment.id, name: attachment.name, note: t("Adjunto") })),
-    ...message.artifacts.flatMap((artifact) => "name" in artifact && typeof artifact.name === "string"
+    // Only produced files: a browser session is not a file.
+    ...message.artifacts.flatMap((artifact) => artifact.type !== "browser" && typeof artifact.name === "string"
       ? [{ id: artifact.id, name: artifact.name, note: t("Nuevo") }]
       : []),
   ];
