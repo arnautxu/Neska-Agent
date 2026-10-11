@@ -1507,7 +1507,8 @@ export function BrainApp({
     }
   }, [t, liveAnswers]);
 
-  const sendMessage = useCallback(async (messageOverride?: string, displayMessageOverride?: string) => {
+  const sendMessage = useCallback(async (messageOverride?: string, displayMessageOverride?: string, taskIntent?: { mode: "plan" } | { proposal: ChatMessage }) => {
+    const proposal = taskIntent && "proposal" in taskIntent ? taskIntent.proposal : undefined;
     const visibleContent = (displayMessageOverride ?? messageOverride ?? prompt).trim();
     const runtimeContent = (messageOverride ?? (pendingRuntimeContext
       ? `${prompt.trim()}\n\n${pendingRuntimeContext}`
@@ -1534,7 +1535,7 @@ export function BrainApp({
     let assistantMessage: ChatMessage | null = null;
     let controller: AbortController | null = null;
     let clientTurnPerformance: ClientTurnPerformance | null = null;
-    let ownsVisibleComposer = true;
+    let ownsVisibleComposer = !proposal;
     let succeeded = false;
     try {
       if (!thread) {
@@ -1561,11 +1562,11 @@ export function BrainApp({
         "complete",
         startedAt.toISOString(),
       );
-      if (selectedConnectorMentionIds.length) userMessage.connectorMentions = selectedConnectorMentionIds;
-      if (selectedServerReferences.length) userMessage.serverReferences = selectedServerReferences;
-      const readyDocuments = documents.filter((document) => document.status === "ready");
+      if (!proposal && selectedConnectorMentionIds.length) userMessage.connectorMentions = selectedConnectorMentionIds;
+      if (!proposal && selectedServerReferences.length) userMessage.serverReferences = selectedServerReferences;
+      const readyDocuments = proposal ? [] : documents.filter((document) => document.status === "ready");
       userMessage.attachments = [
-        ...attachments.map(({ dataUrl: _dataUrl, ...attachment }) => attachment),
+        ...(proposal ? [] : attachments).map(({ dataUrl: _dataUrl, ...attachment }) => attachment),
         ...readyDocuments.map(({ uploadId: _uploadId, threadId: _threadId, kind: _kind, previewFiles: _previewFiles, pages: _pages, status: _status, error: _error, passive: _passive, processingUnavailable: _processingUnavailable, previewUnavailable: _previewUnavailable, ...attachment }) => attachment),
       ];
       assistantMessage = createMessage(
@@ -1601,7 +1602,7 @@ export function BrainApp({
           }
         : candidate));
       clientTurnPerformance.feedbackApplied("local");
-      setComposerDrafts((current) => {
+      if (!proposal) setComposerDrafts((current) => {
         const next = { ...current };
         // Consume only the exact draft that started this turn. If the user
         // left, came back and typed a newer draft while thread creation was
@@ -1612,7 +1613,7 @@ export function BrainApp({
         composerDraftsRef.current = next;
         return next;
       });
-      setServerDrafts(current => {
+      if (!proposal) setServerDrafts(current => {
         if (current[selectionDraftKey] !== selectedServerReferences) return current;
         const next = { ...current }; delete next[selectionDraftKey]; return next;
       });
@@ -1652,7 +1653,7 @@ export function BrainApp({
           showActivity: preferences.showActivityPanel,
         },
         options: {
-          mode: "agent",
+          mode: taskIntent && "mode" in taskIntent ? taskIntent.mode : "agent",
           experience: composerExperience,
           model: null,
           effort: null,
@@ -1660,12 +1661,22 @@ export function BrainApp({
           imageGeneration,
           skill: selectedSkill,
           ...(selectedConnectorMentionIds.length ? { connectorMentions: selectedConnectorMentionIds } : {}),
-          attachments,
-          ...(selectedServerReferences.length ? { serverReferences: selectedServerReferences } : {}),
+          attachments: proposal ? [] : attachments,
+          ...(!proposal && selectedServerReferences.length ? { serverReferences: selectedServerReferences } : {}),
           ...(readyDocuments.length ? { documentUploadIds: readyDocuments.map((document) => document.uploadId) } : {}),
         },
       });
-      await handleStream(createChatReattachRequest(chatRequest), threadId, assistantId, controller.signal, clientTurnPerformance, streamRequestedAt);
+      const requestBody = proposal ? JSON.stringify({ action: "execute", threadId, assistantMessageId: proposal.id, revision: proposal.planProposal?.revision, execution: JSON.parse(chatRequest) }) : chatRequest;
+      const fetcher: typeof fetch = proposal ? async (_url, init) => {
+        const response = await fetch("/api/runtime/plans", init);
+        if (response.ok) {
+          const saved = await getThreadRequest(threadId);
+          const accepted = saved.messages.find(message => message.id === proposal.id);
+          if (accepted) setThreads(current => updateThreadMessage(current, threadId, accepted.id, () => accepted));
+        }
+        return response;
+      } : fetch;
+      await handleStream(createChatReattachRequest(requestBody, fetcher), threadId, assistantId, controller.signal, clientTurnPerformance, streamRequestedAt);
       succeeded = true;
     } catch (error) {
       if (thread && assistantMessage) {
@@ -2407,6 +2418,9 @@ export function BrainApp({
         onDecidePublication={decidePublication}
         onComposerNotice={(message, kind = "warning") => setNotice(workbenchNotice(message, kind))}
         onSend={submitComposerMessage}
+        onPlanRequest={() => void sendMessage(undefined, undefined, { mode: "plan" })}
+        onExecutePlan={proposal => void sendMessage("Executa el pla revisat", "Executa el pla revisat", { proposal })}
+        onTaskMessageChange={applyStoredResponse}
         onStop={() => void stopActiveTurn()}
         onCancelQueuedMessage={(id) => setQueuedTurns((current) => current.filter((item) => item.id !== id))}
         sidebarOpen={desktopSidebarOpen || mobileSidebarOpen}

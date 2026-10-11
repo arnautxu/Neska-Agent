@@ -254,12 +254,10 @@ describe("chat workspace simplificado", () => {
       messages: [message],
     });
 
-    const activityTrigger = screen.getByRole("button", { name: "Mostrar el proceso de trabajo" });
-    expect(activityTrigger).toHaveAttribute("aria-expanded", "false");
-    expect(activityTrigger).toHaveTextContent("Ha trabajado durante 0m 3s");
+    expect(screen.queryByRole("button", { name: "Mostrar el proceso de trabajo" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("heading", { name: "Informe final" })).toHaveLength(1);
     expect(screen.getByText("Evidencia verificada").closest("li")).toBeInTheDocument();
-    expect(screen.getByText("He comprobado la fuente autorizada.")).not.toBeVisible();
+    expect(screen.queryByText("He comprobado la fuente autorizada.")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Informe final" }).closest(".markdown-body")?.parentElement).toHaveClass("text-[length:calc(var(--font-reading)-1px)]", "leading-[23px]");
     expect(screen.getByTestId("composer")).toHaveAttribute("data-layout", "conversation");
     expect(screen.getByTestId("composer")).toHaveClass("composer-compact");
@@ -285,7 +283,7 @@ describe("chat workspace simplificado", () => {
       messages: [message],
     }, project, { onOpenReview });
 
-    fireEvent.click(screen.getByRole("button", { name: "Abrir cambios y resultados" }));
+    fireEvent.click(screen.getByRole("button", { name: "Revisa los cambios" }));
     expect(onOpenReview).toHaveBeenCalledWith(message.id);
   });
 
@@ -770,8 +768,7 @@ describe("chat workspace simplificado", () => {
       plan: [{ step: "Revisar los importes", status: "in_progress" }] };
     const thread: WorkbenchThread = { id: "thread-paused-work", projectId: project.id, title: "Facturas", status: "active", pinned: false, createdAt: pending.createdAt, updatedAt: pending.createdAt, messages: [pending] };
     const { container } = renderWorkspace(thread, project, { sending: true, streamRecovery: { attempt: null, paused: true, onRetry: vi.fn() } });
-    expect(screen.getByRole("button", { name: "Mostrar el proceso de trabajo" })).toHaveTextContent("Recuperación de la respuesta en pausa");
-    fireEvent.click(screen.getByRole("button", { name: "Mostrar el proceso de trabajo" }));
+    expect(screen.getByTestId("task-plan")).toHaveTextContent("Revisar los importes");
     expect(container.querySelector(".motion-safe\\:animate-spin")).not.toBeInTheDocument();
     expect(container.querySelector(".activity-shimmer")).not.toBeInTheDocument();
     expect(pending.activity[0].status).toBe("running");
@@ -845,8 +842,8 @@ describe("chat workspace simplificado", () => {
     renderWorkspace(thread);
 
     expect(screen.getByRole("button", { name: "Copiar" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Aprobación: Confirmar cambio sensible" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Permitir" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Permiso: Confirmar cambio sensible" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Permite" })).toBeInTheDocument();
     for (const removed of ["Aprobar resultado", "Descargar resultado", "Leer en voz alta", "Regenerar respuesta", "Crear rama desde aquí", "Revisar resultados"]) {
       expect(screen.queryByLabelText(removed)).not.toBeInTheDocument();
     }

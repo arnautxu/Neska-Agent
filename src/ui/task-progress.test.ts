@@ -24,13 +24,13 @@ describe("taskProgress", () => {
     expect(taskProgress(turn({ approvals }))).toMatchObject({ state: "waiting", current: 1 });
   });
 
-  it("counts the in-progress step as done once the turn completes", () => {
-    expect(taskProgress(turn({ status: "complete" }))).toMatchObject({ state: "done", done: 2, current: -1 });
+  it("does not invent step completion when the turn completes", () => {
+    expect(taskProgress(turn({ status: "complete" }))).toMatchObject({ state: "done", done: 1, current: -1 });
   });
 
   it("does not mark a step current or finished when the turn stopped", () => {
     expect(taskProgress(turn({ status: "stopped" }))).toMatchObject({ state: "stopped", done: 1, current: -1 });
-    expect(taskProgress(turn({ status: "error" }))).toMatchObject({ state: "stopped" });
+    expect(taskProgress(turn({ status: "error" }))).toMatchObject({ state: "failed" });
     const approvals = [{ status: "pending" }] as ChatMessage["approvals"];
     expect(taskProgress(turn({ status: "stopped", approvals }))).toMatchObject({ state: "stopped", current: -1 });
   });

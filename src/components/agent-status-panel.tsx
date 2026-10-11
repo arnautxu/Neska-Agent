@@ -8,6 +8,9 @@ import { publicActivityText } from "@/ui/public-activity";
 import { isStepDone, type TaskProgress, type TaskState } from "@/ui/task-progress";
 
 const STATE_LABEL: Record<TaskState, string> = {
+  proposed: "Pla proposat",
+  queued: "A la cua",
+  failed: "Ha fallat",
   working: "Trabajando",
   waiting: "Esperando tu aprobación",
   done: "Lista",
