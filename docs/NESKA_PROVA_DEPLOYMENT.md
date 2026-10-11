@@ -13,9 +13,13 @@ complete ARM/x86 PR gates passed; see the first-host evidence below.
 
 The independent Hetzner project and Supabase Auth/SMTP configuration have been
 verified. The independent server is reachable by SSH. The `prova` A record and
-HTTPS certificate were verified on 2026-10-11; application deployment and
-ChatGPT sign-in remain pending. Container vulnerability remediation is a
-separate blocking gate; see `CONTAINER_SECURITY_REVIEW.md`.
+HTTPS certificate were verified on 2026-10-11. The deployed runtime is
+`8f305c072ada1ebaadafe91d117ef98895ea48a4`: Backend CI `38146286200`, GHCR
+publication `38147396788` and deployment `38147741900` attempt 5 passed as
+separate gates. Both raw critical image scans reported zero findings. ChatGPT
+Pro authentication survived a fresh worker, and an actual encrypted Supabase
+backup restored byte-identical files and reached readiness in independent QA
+volumes. Full multi-user and rollback acceptance remains separate and incomplete.
 The preceding main revision and its separate CI/publication evidence are recorded
 below; they do not accept a newer revision or its ARM runtime.
 
@@ -36,6 +40,32 @@ below; they do not accept a newer revision or its ARM runtime.
 - Sign in to Codex with the operator's ChatGPT account for their trial user.
   Verify `account/read` reports the intended ChatGPT mode before a real turn.
   Do not add an API key or enable paid API fallback. Plan limits still apply.
+
+## First-user bootstrap and private skills
+
+After provisioning the operator's identity, set the server-only
+`AIBRAIN_ADMIN_USER_IDS` to its approved, already-provisioned UUID and initialize
+`FileWorkspaceAdminStore` through the trusted operator path. Verify the durable
+assignment is `workspace-owner` before employee conversation acceptance. An
+identity provisioned only in Supabase or through `UserProvisioner` does not
+initialize this separate workspace state. Missing owner bootstrap correctly
+rejects turn permission resolution; it must never be bypassed or inferred from
+an employee request. Once initialized, later environment changes do not promote
+users. See `WORKSPACE_ADMIN.md`.
+
+Before skill synchronization, verify the approved user's real, owned
+`runtime/codex-home/skills` directory has mode `0700`. Codex first initialization
+can create that directory as `0755`; the catalog correctly rejects it. The
+trusted operator may tighten this exact owned directory to `0700` after
+checking its installation binding, canonical private path, owner and absence
+of symlinks. Do not relax the catalog check or recursively change other data.
+
+These two host provisioning omissions were reproduced during the first real
+conversation on 2026-10-11 and corrected without changing images, permissions
+policy, product UI or customer data. The subsequent actual ChatGPT turn
+completed in 8.337 seconds with zero reconnects. Its message and response
+remained visible after browser reload and reopening the saved conversation.
+This single-user evidence does not complete the full acceptance packet.
 
 ## Image publication
 
@@ -172,14 +202,15 @@ A wire-level partial-handshake regression fails on the preceding Linux ARM
 implementation. Full CI/publication/deployment gates must be rerun for the fix;
 no test timeout or acceptance requirement is relaxed.
 
-## Pending LTS security candidate
+## Historical LTS security candidate
 
 The runtime is being validated on a pinned Ubuntu 24.04 LTS snapshot with the
 exact official Node 24.21.0 build and hash-verified Chrome stable 155 for both
 native architectures. See `CONTAINER_SECURITY_REVIEW.md`. This fixes library
 issues that remain deferred in Debian without changing product UI. The host
-remains Ubuntu 24.04 ARM. DNS and TLS are verified; app deployment, user/model
-sign-in and application recovery remain separate pending gates. Never deploy
+remains Ubuntu 24.04 ARM. At that candidate stage, app deployment, user/model
+sign-in and application recovery were separate pending gates; the current
+evidence above supersedes that status. Never deploy
 the preceding vulnerable images merely because their functional CI passed.
 
 ## Consistent backup writer boundary
