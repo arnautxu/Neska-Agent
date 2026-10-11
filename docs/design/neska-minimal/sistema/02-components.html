@@ -1,0 +1,86 @@
+<!doctype html><html lang="ca"><head><meta charset="utf-8"><title>Neska · Components</title>
+<link rel="stylesheet" href="ds.css">
+<style>
+.sec .composer, .sec .menu { width: 100%; }
+.stgrid { display: grid; grid-template-columns: repeat(6, auto); gap: 18px 40px; justify-content: start; align-items: center; }
+.stgrid .s { display: flex; gap: 10px; align-items: center; font-size: 14px; }
+.stgrid .cap { grid-column: span 1; }
+.btngrid { display: grid; grid-template-columns: 110px repeat(5, auto); gap: 14px 20px; align-items: center; justify-content: start; }
+.btngrid .h { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+</style></head><body>
+<div class="sheet">
+  <div class="sheet-h"><h1>Components</h1><span class="lbl">Neska · sistema minimal · v0.1</span></div>
+
+  <div class="sec"><div class="about"><span class="lbl">01</span><h2>Estat</h2><p>Sis estats per a tasques i passos. Cada un té forma pròpia, perquè es distingeixin sense color.</p></div>
+    <div class="stgrid">
+      <span class="s"><span class="st plan"></span>Pla proposat</span>
+      <span class="s"><span class="st queued"></span>En cua</span>
+      <span class="s"><span class="st live"></span>En curs</span>
+      <span class="s"><span class="st wait"></span>T'espera</span>
+      <span class="s"><span class="st done"></span>Feta</span>
+      <span class="s"><span class="st fail"></span>Ha fallat</span>
+      <span class="cap">ratllat nogal</span><span class="cap">contorn gris</span><span class="cap">ple nogal · respira</span><span class="cap">contorn nogal</span><span class="cap">ple tinta</span><span class="cap">creu tinta</span>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">02</span><h2>Botons</h2><p>Primari, secundari i text. Només un primari per vista. Els atalls de teclat són discrets, a dins del botó.</p></div>
+    <div class="btngrid">
+      <span></span><span class="h">Normal</span><span class="h">Hover</span><span class="h">Focus</span><span class="h">Treballant</span><span class="h">Desactivat</span>
+      <span class="h">Primari</span><span class="btn pri">Permet <kbd>⏎</kbd></span><span class="btn pri is-hover">Permet <kbd>⏎</kbd></span><span class="btn pri is-focus">Permet <kbd>⏎</kbd></span><span class="btn pri">Enviant<span class="dots"></span></span><span class="btn pri is-off">Permet</span>
+      <span class="h">Secundari</span><span class="btn">Revisa el correu</span><span class="btn is-hover">Revisa el correu</span><span class="btn is-focus">Revisa el correu</span><span class="btn">Obrint<span class="dots"></span></span><span class="btn is-off">Revisa el correu</span>
+      <span class="h">Text</span><span class="btn ghost">Ara no</span><span class="btn ghost is-hover">Ara no</span><span class="btn ghost is-focus">Ara no</span><span></span><span class="btn ghost is-off" style="background:none">Ara no</span>
+      <span class="h">Icona</span><span class="iconbtn">↑</span><span class="iconbtn" style="background:#333">↑</span><span class="iconbtn" style="outline:2px solid var(--focus);outline-offset:2px">↑</span><span class="iconbtn">■</span><span class="iconbtn is-off">↑</span>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">03</span><h2>Compositor</h2><p>On parles amb Neska. Escriure "/" obre les ordres i "@" les eines, sense botons extra a la vista.</p></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px 32px;align-items:start">
+      <div class="cell"><span class="cap">Buit</span><div class="composer"><div class="in">Afegeix context o demana un canvi…</div><div class="ft"><span>+ Fitxer</span><span class="iconbtn is-off">↑</span></div></div></div>
+      <div class="cell"><span class="cap">Focus · escrivint</span><div class="composer is-focus"><div class="in typed">No reclamis res a <span class="tok">@Bricor</span>, ja ho parlo jo<span class="caret"></span></div><div class="ft"><span>+ Fitxer</span><span>⏎ envia · ⇧⏎ línia</span><span class="iconbtn">↑</span></div></div></div>
+      <div class="cell"><span class="cap">Ordres · "/"</span><div><div class="composer is-focus" style="border-bottom-color:var(--line)"><div class="in typed">/<span class="caret"></span></div></div>
+        <div class="menu"><div class="o on"><span class="mono">/pla</span><span style="color:var(--ink-2)">Mostra'm el pla abans de començar</span></div><div class="o"><span class="mono">/atura</span><span style="color:var(--ink-2)">Pausa la tasca</span></div><div class="o"><span class="mono">/recorda</span><span style="color:var(--ink-2)">Desa-ho a la memòria</span></div></div></div></div>
+      <div class="cell"><span class="cap">Neska treballant</span><div class="composer"><div class="in">Afegeix context mentre treballo…</div><div class="ft"><span>+ Fitxer</span><span class="iconbtn" title="Atura">■</span></div></div></div>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">04</span><h2>Element de llista</h2><p>Per a la barra lateral. El text es talla amb punts suspensius; l'estat va sempre a l'esquerra.</p></div>
+    <div class="row" style="gap:28px">
+      <div class="cell"><span class="cap">Normal</span><div class="item"><span class="st queued"></span>Informe vendes Q3<span class="m">dl</span></div></div>
+      <div class="cell"><span class="cap">Hover</span><div class="item is-hover"><span class="st done"></span>Nòmines setembre<span class="m">dv</span></div></div>
+      <div class="cell"><span class="cap">Seleccionat</span><div class="item on"><span class="st live"></span>Conciliació factures…<span class="m"></span></div></div>
+      <div class="cell"><span class="cap">Focus</span><div class="item is-focus"><span class="st wait"></span>Resposta a Ferreteria…</div></div>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">05</span><h2>Pas</h2><p>La unitat del pla. Una línia per pas; només el pas viu creix amb el detall del que fa ara.</p></div>
+    <div class="steps">
+      <div class="step edit"><span class="n">01</span><span class="t">Proposat · llegir les factures d'octubre</span><span class="tag">Proposat</span></div>
+      <div class="step todo"><span class="n">02</span><span class="t">En cua · generar l'informe de diferències</span><span class="r"></span></div>
+      <div class="step run"><span class="n">03</span><span class="t">En curs · creuar imports, dates i NIF</span><span class="r">29 / 38</span><div class="sub">Llegint F-2026-0932.pdf<span class="caret"></span></div><div class="bar"><i style="width:76%"></i></div></div>
+      <div class="step todo"><span class="n">04</span><span class="t">Amb permís · enviar correus als proveïdors</span><span class="tag">Amb permís</span></div>
+      <div class="step done"><span class="n">05</span><span class="t">Feta · normalitzar l'extracte bancari</span><span class="r">0:12</span></div>
+      <div class="step fail"><span class="n">06</span><span class="t">Ha fallat · llegir F-2026-0940.pdf</span><span class="r">✕</span><div class="sub txt">El PDF està protegit amb contrasenya. He continuat amb la resta.</div><div class="acts"><span class="btn sm">Puja'l sense contrasenya</span><span class="btn sm ghost">Salta aquesta factura</span></div></div>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">06</span><h2>Permís</h2><p>L'únic bloc amb vora de tinta, perquè és l'única cosa que et toca fer. Diu què, per què i què passarà. Quan el resols, es redueix a una línia.</p></div>
+    <div class="stack" style="gap:24px">
+      <div class="perm"><div class="lbl">Necessito el teu permís</div><h3>Enviar un correu a Ferreteria Puig</h3><p>La factura F-2026-0931 és de 1.240,00 € i el banc en mostra 1.204,00 €. Els reclamo la diferència de 36,00 €.</p>
+        <div class="ctas"><span class="btn pri">Permet <kbd>⏎</kbd></span><span class="btn">Revisa el correu</span><span class="btn ghost">Ara no</span><span class="later">Continuo amb la resta mentrestant</span></div></div>
+      <div class="perm"><div class="lbl">Necessito el teu permís</div><h3>Enviar un correu a Ferreteria Puig</h3>
+        <div class="mail"><div class="hd"><span>Per a</span><b>admin@ferreteriapuig.cat</b><span>Assumpte</span><b>Factura F-2026-0931 · diferència d'import</b></div>
+          <div class="bd">Bon dia,<br>Hem rebut la factura F-2026-0931 per 1.240,00 €, però el càrrec al banc és de 1.204,00 €. Ens podeu confirmar l'import correcte?</div></div>
+        <div class="ctas"><span class="btn pri">Envia <kbd>⏎</kbd></span><span class="btn">Edita</span><span class="btn ghost">Ara no</span></div></div>
+      <div class="perm resolved"><span class="st done"></span>Correu enviat a Ferreteria Puig · 19:45<span class="undo">Desfés · 10 s</span></div>
+    </div></div>
+
+  <div class="sec"><div class="about"><span class="lbl">07</span><h2>Fitxer</h2><p>Els resultats apareixen a mesura que es fan, no al final.</p></div>
+    <div class="stack" style="gap:0">
+      <div class="file"><span class="ic gen"></span><div><div class="nm">conciliacio-octubre.xlsx</div><div class="mt">Generant · 29 de 38 files</div></div><span class="open" style="color:var(--ink-3)">Obre ↗</span></div>
+      <div class="file" style="border-top:1px solid var(--line)"><span class="ic"></span><div><div class="nm">conciliacio-octubre.xlsx</div><div class="mt">Llest · 38 files · 1 diferència</div></div><span class="open">Obre ↗</span></div>
+    </div></div>
+
+  <div class="sec" style="border-bottom:0"><div class="about"><span class="lbl">08</span><h2>Avisos</h2><p>Un avís en línia quan cal context. Un toast fosc i breu quan una acció ha anat bé, sempre amb opció de desfer.</p></div>
+    <div class="stack" style="gap:20px">
+      <div class="note"><span class="st wait" style="align-self:center"></span>Gmail ha caducat i no puc enviar correus fins que el tornis a connectar.<span class="a">Connecta</span></div>
+      <div class="note"><span class="st done" style="align-self:center"></span>He fet servir un record: "Les diferències de menys de 5 € no s'han de reclamar".<span class="a">Edita</span></div>
+      <div><span class="toast">Tasca arxivada <span class="a">Desfés</span></span></div>
+    </div></div>
+</div>
+<script src="about:blank"></script>
+</body></html>
