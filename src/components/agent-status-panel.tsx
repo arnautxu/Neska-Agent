@@ -70,7 +70,7 @@ export function AgentStatusPanel({
         <button ref={closeButtonRef} type="button" aria-label={t("Ocultar estado del agente")} className="touch-target grid size-8 place-items-center text-[var(--text-secondary)] hover:text-[var(--text)]" onClick={onClose}><X size={14} /></button>
       </div>
 
-      <figure className="mt-3 border-2 border-[var(--neska-ink)] shadow-[var(--neska-offset)]">
+      <figure className="mt-3 border-2 border-[var(--neska-ink)] shadow-[4px_4px_0_var(--neska-ink)]">
         {/* Duotone halftone: a decorative state image, never content. The
             Neska artwork is attached in neska.css only for that theme. */}
         <div aria-hidden="true" className="neska-state-art aspect-[16/10] bg-[var(--neska-accent)] bg-cover bg-center [image-rendering:pixelated]" />

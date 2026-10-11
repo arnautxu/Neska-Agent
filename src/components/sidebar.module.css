@@ -286,7 +286,7 @@
   :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel {
     margin: 0;
     border: 0;
-    border-right: 2px solid var(--neska-ink);
+    border-right: 1px solid var(--neska-line-soft);
     border-radius: 0;
     box-shadow: none;
   }
@@ -294,11 +294,11 @@
 :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel .newConversation {
   min-height: 44px;
   margin: 4px 4px 14px 0;
-  border: 2px solid var(--neska-ink);
+  border: 1px solid var(--neska-line-soft);
   border-radius: 0;
   background: var(--neska-accent);
   color: var(--neska-accent-text);
-  box-shadow: var(--neska-offset);
+  box-shadow: none;
   font-family: var(--font-pixel);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -308,8 +308,8 @@
   background: color-mix(in srgb, var(--neska-accent) 88%, black);
 }
 :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel .newConversation:not(:disabled):active {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 var(--neska-ink);
+  transform: none;
+  box-shadow: none;
 }
 :global(:root[data-visual-theme="neska"]:not([data-theme="dark"])) .panel .sectionLabel {
   font-family: var(--font-pixel);
