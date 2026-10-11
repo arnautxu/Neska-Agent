@@ -30,3 +30,13 @@ This is local work on the fetched source revision in an isolated worktree. Valid
 The five core findings now have local remediations: password recovery revokes existing local sessions under a per-identity cross-process lock; task-center mutations require the configured same origin; private native filesystem profiles apply regardless of usage quotas; unsupported restricted native turns are rejected before context/model dispatch; production sharp/source-map-js dependencies are updated.
 
 See [SECURITY_REMEDIATION.md](SECURITY_REMEDIATION.md) for behavior, evidence and release requirements. The development-only braces advisory has no upstream patched version at this date and remains tracked. Local validation does not establish Backend CI, GHCR publication, Linux container acceptance, deployment or authenticated live acceptance. No real customer connection has been configured.
+
+## Container CI speed (2026-10-11)
+
+Backend CI now reuses input-addressed native ARM64 Docker dependency layers via
+separate GitHub Actions v2 caches, with loaded full-SHA/OCI revision readback.
+All existing container acceptance and fresh vulnerability scans remain required.
+Manual `clean_build=true` retains a no-cache diagnostic path. This changes CI
+construction only; GHCR publication, deployment and authenticated acceptance
+remain independent and unproven by a cache hit. See the release runbook for
+cache scope, timeouts and evidence boundaries.

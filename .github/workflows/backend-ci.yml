@@ -1,6 +1,12 @@
 name: Backend CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      clean_build:
+        description: Rebuild every container layer without cache
+        type: boolean
+        default: false
   pull_request:
     paths-ignore:
       - "docs/**"
@@ -251,7 +257,7 @@ jobs:
         run: python3 -m unittest discover -s tests/infra -p 'test_knowledge_word.py' -q
 
   containers:
-    name: Clean immutable container builds
+    name: Immutable container builds
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -280,12 +286,25 @@ jobs:
             --env-file infra/hetzner/compose.env.example \
             -f infra/hetzner/compose.yaml \
             config --no-env-resolution --quiet
-      - name: Build application image from scratch
+      - name: Set up native BuildKit cache
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build exact application revision with reusable dependency layers
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: runtime
+          platforms: linux/arm64
+          pull: true
+          load: true
+          push: false
+          no-cache: ${{ github.event_name == 'workflow_dispatch' && inputs.clean_build }}
+          build-args: AIBRAIN_REVISION=${{ github.sha }}
+          tags: aibrain-ci:${{ github.sha }}
+          cache-from: type=gha,version=2,scope=neska-ci-runtime-arm64
+          cache-to: type=gha,version=2,scope=neska-ci-runtime-arm64,mode=max,ignore-error=true,timeout=2m
+      - name: Verify the loaded application revision
         run: |
-          docker build --pull --no-cache \
-            --target runtime \
-            --build-arg AIBRAIN_REVISION="${GITHUB_SHA}" \
-            --tag "aibrain-ci:${GITHUB_SHA}" .
+          test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "aibrain-ci:${GITHUB_SHA}")" = "$GITHUB_SHA"
       - name: Exercise packaged Codex App Server through its production sandbox
         run: |
           sudo apparmor_parser -r infra/hetzner/apparmor/aibrain-container
@@ -405,12 +424,23 @@ jobs:
             --entrypoint node \
             "aibrain-ci:${GITHUB_SHA}" \
             /usr/local/share/aibrain/container-presentation-tool-acceptance.mjs
-      - name: Build egress gateway image from scratch
+      - name: Build exact egress revision with reusable dependency layers
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: egress-gateway
+          platforms: linux/arm64
+          pull: true
+          load: true
+          push: false
+          no-cache: ${{ github.event_name == 'workflow_dispatch' && inputs.clean_build }}
+          build-args: AIBRAIN_REVISION=${{ github.sha }}
+          tags: aibrain-egress-ci:${{ github.sha }}
+          cache-from: type=gha,version=2,scope=neska-ci-egress-arm64
+          cache-to: type=gha,version=2,scope=neska-ci-egress-arm64,mode=max,ignore-error=true,timeout=2m
+      - name: Verify the loaded egress revision
         run: |
-          docker build --pull --no-cache \
-            --target egress-gateway \
-            --build-arg AIBRAIN_REVISION="${GITHUB_SHA}" \
-            --tag "aibrain-egress-ci:${GITHUB_SHA}" .
+          test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "aibrain-egress-ci:${GITHUB_SHA}")" = "$GITHUB_SHA"
       - name: Verify native and passive XLS through the production isolation boundary
         run: |
           docker run --rm \

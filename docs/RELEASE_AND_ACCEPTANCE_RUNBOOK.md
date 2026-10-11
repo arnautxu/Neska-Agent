@@ -34,3 +34,25 @@ A domain purchase is not required to validate or test Neska. A future isolated s
 
 The container runtime uses a pinned Ubuntu 24.04 LTS snapshot and official stable Chrome packages.
 The current release path validates and publishes ARM64 only; package support for AMD64 does not establish AMD64 acceptance. Backend CI additionally exercises the actual packaged browser through the production bubblewrap wrapper: private CDP, independent employee state, Unicode input, PNG capture, takeover authorization and local-file/metadata denial. The image vulnerability scan remains a separate deployment gate without suppressions. See `CONTAINER_SECURITY_REVIEW.md`.
+
+## Container CI cache (2026-10-11)
+
+Backend CI uses native ARM64 BuildKit and GitHub Actions cache v2. Runtime and
+Egress images have distinct cache scopes. The Dockerfile inputs, pinned base
+image digests, dated Ubuntu snapshot, lockfile and copied source determine layer
+reuse. Every candidate is loaded locally with its full Git SHA tag and its OCI
+revision label is checked before acceptance. Both images are still scanned on
+every run, and every existing sandbox, browser, document and XLS check remains
+mandatory. CI does not push either image or reuse GHCR publication credentials.
+
+Cache export is best effort, bounded to two minutes per image; only cache upload
+errors may be ignored. Build, load, label verification, acceptance and scan
+failures still fail the job. The first cache fill and any invalidated layer can
+remain slow. Warm-run timing must be measured in GitHub Actions, not inferred
+from local contract tests.
+
+For a diagnostic clean build, manually run Backend CI with `clean_build=true`.
+This disables layer reuse without changing acceptance or publication gates.
+A workflow-dispatch run cannot satisfy the GHCR workflow's required main-push CI
+condition. The required quality and E2E check names are unchanged; the container
+job now reports `Immutable container builds (ubuntu-24.04-arm)`.

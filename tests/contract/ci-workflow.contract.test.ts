@@ -173,9 +173,9 @@ describe("backend CI contract", () => {
       "npm run infra:validate",
       "npm run test:documents:real",
       "docker compose",
-      "--target runtime",
-      "--target egress-gateway",
-      "--no-cache",
+      "target: runtime",
+      "target: egress-gateway",
+      "no-cache:",
       "bash scripts/scan-container-images.sh",
       "/usr/local/share/aibrain/container-browser-acceptance.mjs",
     ]) {
@@ -184,6 +184,31 @@ describe("backend CI contract", () => {
     expect(workflow).toContain("npm audit --omit=dev --audit-level=high");
     expect(workflow).toContain("node-version: 24.21.0");
     expect(workflow).toMatch(/permissions:\n\s+contents: read/u);
+  });
+
+  it("loads SHA-bound native images from isolated caches without skipping any acceptance gate", async () => {
+    const job = (await readJobs()).containers;
+    const builds = job.steps.filter(step => step.with?.target === "runtime" || step.with?.target === "egress-gateway");
+    expect(builds).toHaveLength(2);
+    for (const [index, step] of builds.entries()) {
+      expect(step.if).toBeUndefined();
+      expect(step["continue-on-error"]).toBeUndefined();
+      expect(step.with).toMatchObject({ context: ".", platforms: "linux/arm64", pull: true, load: true, push: false,
+        "build-args": "AIBRAIN_REVISION=${{ github.sha }}",
+        "no-cache": "${{ github.event_name == 'workflow_dispatch' && inputs.clean_build }}" });
+      const target = index === 0 ? "runtime" : "egress";
+      expect(step.with?.["cache-from"]).toBe(`type=gha,version=2,scope=neska-ci-${target}-arm64`);
+      expect(step.with?.["cache-to"]).toBe(`type=gha,version=2,scope=neska-ci-${target}-arm64,mode=max,ignore-error=true,timeout=2m`);
+      expect(step.with?.tags).toBe(index === 0 ? "aibrain-ci:${{ github.sha }}" : "aibrain-egress-ci:${{ github.sha }}");
+    }
+    const commands = job.steps.map(step => step.run ?? "").join("\n");
+    expect(commands.match(/docker image inspect/g)).toHaveLength(2);
+    for (const script of ["container-app-server-acceptance", "container-browser-acceptance", "container-document-conversion-acceptance", "container-presentation-tool-acceptance", "container-xls-passive-acceptance", "scan-container-images"]) {
+      const step = job.steps.find(step => step.run?.includes(script));
+      expect(step).toBeDefined();
+      expect(step?.if).toBeUndefined();
+      expect(step?.["continue-on-error"]).toBeUndefined();
+    }
   });
 
   it("blocks native container promotion on scanner failures and retains evidence", async () => {
