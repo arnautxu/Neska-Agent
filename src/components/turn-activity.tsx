@@ -130,10 +130,14 @@ const LIFECYCLE_ACTIVITY_IDS = new Set([
   "client-request-status",
 ]);
 
-function translatedRuntimeLabel(label: string) {
-  return label
-    .replace(/^Utilitzant /u, "Usando ")
-    .replace(/ completat$/u, " completado");
+// The runtime reports dynamic tool events in Catalan; the tool name is data
+// and only the surrounding words go through the interface translation.
+function translatedRuntimeLabel(label: string, t: UiText) {
+  const using = /^Utilitzant (.+)$/u.exec(label);
+  if (using) return t("Usando {tool}", { tool: using[1] });
+  const completed = /^(.+) completat$/u.exec(label);
+  if (completed) return t("{tool} completado", { tool: completed[1] });
+  return label;
 }
 
 function ActivityIcon({ item, recoveryPaused = false }: { item: ActivityItem; recoveryPaused?: boolean }) {
@@ -159,7 +163,7 @@ export function activityPresentation(item: ActivityItem, t: UiText = spanishUiTe
   const active = item.status === "running" || item.status === "waiting";
   const safeLabel = publicActivityText(item.label, 240) ?? t("Actividad completada");
   const customLabel = safeLabel && !GENERIC_RUNTIME_LABELS.has(item.label)
-    ? (SYSTEM_ACTIVITY_LABELS[item.label] ? t(SYSTEM_ACTIVITY_LABELS[item.label]) : translatedRuntimeLabel(safeLabel))
+    ? (SYSTEM_ACTIVITY_LABELS[item.label] ? t(SYSTEM_ACTIVITY_LABELS[item.label]) : translatedRuntimeLabel(safeLabel, t))
     : null;
   let title = customLabel;
   let secondaryDetail: string | undefined = detail;

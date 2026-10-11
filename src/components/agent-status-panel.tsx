@@ -5,7 +5,7 @@ import { FileText, X } from "@phosphor-icons/react";
 import type { ChatMessage } from "@/lib/chat-contract";
 import { activityPresentation, isRelevantProcessActivity } from "@/components/turn-activity";
 import { publicActivityText } from "@/ui/public-activity";
-import type { TaskProgress, TaskState } from "@/ui/task-progress";
+import { isStepDone, type TaskProgress, type TaskState } from "@/ui/task-progress";
 
 const STATE_LABEL: Record<TaskState, string> = {
   working: "Trabajando",
@@ -33,11 +33,13 @@ export function AgentStatusPanel({
   progress,
   message,
   request,
+  closeButtonRef,
   onClose,
 }: {
   progress: TaskProgress;
   message: ChatMessage;
   request: ChatMessage | undefined;
+  closeButtonRef?: React.Ref<HTMLButtonElement>;
   onClose: () => void;
 }) {
   const t = useUiText();
@@ -64,12 +66,13 @@ export function AgentStatusPanel({
     >
       <div className="flex items-center justify-between">
         <h2 className="neska-px text-[11px] text-[var(--text)]">{t("Estado del agente")}</h2>
-        <button type="button" aria-label={t("Ocultar estado del agente")} className="touch-target grid size-8 place-items-center text-[var(--text-secondary)] hover:text-[var(--text)]" onClick={onClose}><X size={14} /></button>
+        <button ref={closeButtonRef} type="button" aria-label={t("Ocultar estado del agente")} className="touch-target grid size-8 place-items-center text-[var(--text-secondary)] hover:text-[var(--text)]" onClick={onClose}><X size={14} /></button>
       </div>
 
       <figure className="mt-3 border-2 border-[var(--neska-ink)] shadow-[var(--neska-offset)]">
-        {/* Duotone halftone: a decorative state image, never content. */}
-        <div aria-hidden="true" className="aspect-[16/10] bg-[var(--neska-accent)] bg-cover bg-center [image-rendering:pixelated]" style={{ backgroundImage: "url(/neska/estatua-ample.png)" }} />
+        {/* Duotone halftone: a decorative state image, never content. The
+            Neska artwork is attached in neska.css only for that theme. */}
+        <div aria-hidden="true" className="neska-state-art aspect-[16/10] bg-[var(--neska-accent)] bg-cover bg-center [image-rendering:pixelated]" />
         <figcaption className="flex items-center justify-between bg-[var(--neska-ink)] px-3 py-2 text-[11px] text-[var(--neska-paper)]">
           <span className="neska-px">{t(taskStateLabel(progress.state))}</span>
           <span className="neska-px">{stepLabel}</span>
@@ -79,7 +82,7 @@ export function AgentStatusPanel({
       <Section title={t("Progreso")}>
         <div className="flex gap-1" role="img" aria-label={t("{done} de {total} pasos completados", { done: progress.done, total: progress.total })}>
           {progress.steps.map((step, index) => (
-            <span key={`${step.step}-${index}`} className={`h-3 flex-1 border-2 border-[var(--neska-ink)] ${index < progress.done ? "bg-[var(--neska-accent)]" : index === progress.current ? "neska-dots" : ""}`} />
+            <span key={`${step.step}-${index}`} className={`h-3 flex-1 border-2 border-[var(--neska-ink)] ${isStepDone(step, progress.state) ? "bg-[var(--neska-accent)]" : index === progress.current ? "neska-dots" : ""}`} />
           ))}
         </div>
       </Section>
@@ -128,7 +131,7 @@ export function TaskStatusChip({ progress }: { progress: TaskProgress }) {
   return (
     <span data-testid="task-status-chip" role="status" className="neska-status-chip neska-px">
       <span aria-hidden="true" className="neska-status-chip-bar">
-        {progress.steps.map((step, index) => <span key={`${step.step}-${index}`} data-done={index < progress.done ? "true" : "false"} />)}
+        {progress.steps.map((step, index) => <span key={`${step.step}-${index}`} data-done={isStepDone(step, progress.state) ? "true" : "false"} />)}
       </span>
       {label}
     </span>

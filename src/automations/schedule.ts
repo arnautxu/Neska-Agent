@@ -1,4 +1,6 @@
 import type { AutomationSchedule } from "@/automations/contracts";
+import type { UiLocale } from "@/i18n/locale";
+import type { UiText } from "@/i18n/messages";
 
 type LocalParts = {
   year: number;
@@ -130,13 +132,29 @@ export function nextAfterOccurrence(
   return nextScheduledInstant(schedule, timeZone, new Date(scheduledFor));
 }
 
-export function describeSchedule(schedule: AutomationSchedule, timeZone: string) {
-  if (schedule.kind === "interval") return schedule.minutes % 60 === 0 ? `Cada ${schedule.minutes / 60} horas` : `Cada ${schedule.minutes} minutos`;
+// Spanish source copy, interpolated without loading the interface catalogs
+// into server-side schedule code.
+const spanishSource: UiText = (source, values = {}) =>
+  source.replace(/\{([A-Za-z0-9_]+)\}/g, (match, key: string) => key in values ? String(values[key]) : match);
+
+export function describeSchedule(
+  schedule: AutomationSchedule,
+  timeZone: string,
+  locale: UiLocale = "es",
+  t: UiText = spanishSource,
+) {
+  if (schedule.kind === "interval") {
+    return schedule.minutes % 60 === 0
+      ? t("Cada {hours} horas", { hours: schedule.minutes / 60 })
+      : t("Cada {minutes} minutos", { minutes: schedule.minutes });
+  }
   if (schedule.kind === "once") {
-    return `Una vez · ${new Intl.DateTimeFormat("es-ES", { dateStyle: "medium", timeStyle: "short", timeZone }).format(new Date(schedule.runAt))}`;
+    const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone }).format(new Date(schedule.runAt));
+    return t("Una vez · {date}", { date });
   }
   const time = `${String(schedule.hour).padStart(2, "0")}:${String(schedule.minute).padStart(2, "0")}`;
-  if (schedule.kind === "daily") return `Cada día · ${time}`;
-  const labels = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
-  return `${schedule.weekdays.map((day) => labels[day]).join(", ")} · ${time}`;
+  if (schedule.kind === "daily") return t("Cada día · {time}", { time });
+  // 2023-01-01 was a Sunday, so day 0 maps to the locale's Sunday.
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" });
+  return `${schedule.weekdays.map((day) => weekday.format(new Date(Date.UTC(2023, 0, 1 + day)))).join(", ")} · ${time}`;
 }

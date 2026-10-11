@@ -29,8 +29,14 @@ export function taskProgress(message: Pick<ChatMessage, "plan" | "approvals" | "
         : "stopped";
   const live = state === "working" || state === "waiting";
   const current = live ? steps.findIndex((step) => step.status === "in_progress") : -1;
-  const done = steps.filter((step) => step.status === "completed" || (!live && state === "done" && step.status === "in_progress")).length;
+  const done = steps.filter((step) => isStepDone(step, state)).length;
   return { state, steps, done, total: steps.length, current };
+}
+
+/** Steps can finish out of order, so completion is read from each step's own
+ * status; a finished turn also closes the step it was still on. */
+export function isStepDone(step: PlanStep, state: TaskState) {
+  return step.status === "completed" || (state === "done" && step.status === "in_progress");
 }
 
 /** The panel and the header only appear for work that has steps. */

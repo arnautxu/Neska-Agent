@@ -16,8 +16,10 @@
   --neska-ink: var(--text);
   --neska-ink-2: var(--text-secondary);
   --neska-paper: var(--surface);
-  --neska-accent: var(--installation-accent, var(--text));
-  --neska-accent-text: #ffffff;
+  /* The primary-action pair from the base theme keeps button text legible
+     whatever accent color an installation configures. */
+  --neska-accent: var(--send-button);
+  --neska-accent-text: var(--send-button-text);
   --neska-line: var(--border);
   --neska-line-soft: var(--border-subtle);
   --neska-offset: 4px 4px 0 var(--neska-ink);
@@ -39,6 +41,17 @@
 .workbench-main > .agent-status-panel {
   position: absolute;
   z-index: 2;
+}
+
+/* Neska artwork only renders (and loads) for installations that opt into
+   the theme; other installations keep just the state caption. */
+.neska-state-art {
+  display: none;
+}
+
+:root[data-visual-theme="neska"] .neska-state-art {
+  display: block;
+  background-image: url("/neska/estatua-ample.png");
 }
 
 /* ---------- task status chip ---------- */
@@ -107,6 +120,7 @@
   --neska-ink-2: #5c5c5c;
   --neska-paper: #ffffff;
   --neska-accent: #6b3a1e;
+  --neska-accent-text: #ffffff;
   --neska-line: rgba(22, 22, 22, 0.22);
   --neska-line-soft: rgba(22, 22, 22, 0.12);
   /* next/font sets --font-rubik and --font-geist-pixel-square on <html>. */

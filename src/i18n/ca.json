@@ -1343,5 +1343,11 @@
   "Buscar información": "Cercar informació",
   "Busca en los documentos autorizados de {company} información sobre…": "Cerca als documents autoritzats de {company} informació sobre…",
   "Comparar documentos": "Comparar documents",
-  "Compara estos documentos de {company} y explica las diferencias…": "Compara aquests documents de {company} i explica les diferències…"
+  "Compara estos documentos de {company} y explica las diferencias…": "Compara aquests documents de {company} i explica les diferències…",
+  "Usando {tool}": "Utilitzant {tool}",
+  "{tool} completado": "{tool} completat",
+  "Cada {hours} horas": "Cada {hours} hores",
+  "Cada {minutes} minutos": "Cada {minutes} minuts",
+  "Una vez · {date}": "Un cop · {date}",
+  "Cada día · {time}": "Cada dia · {time}"
 }

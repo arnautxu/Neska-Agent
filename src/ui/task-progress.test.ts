@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ChatMessage, PlanStep } from "@/lib/chat-contract";
-import { isMultiStepTask, taskProgress } from "@/ui/task-progress";
+import { isMultiStepTask, isStepDone, taskProgress } from "@/ui/task-progress";
 
 type Turn = Pick<ChatMessage, "plan" | "approvals" | "status">;
 
@@ -37,5 +37,15 @@ describe("taskProgress", () => {
     expect(isMultiStepTask(taskProgress(turn()))).toBe(true);
     expect(isMultiStepTask(taskProgress(turn({ plan: plan.slice(0, 1) })))).toBe(false);
     expect(taskProgress(turn({ plan: [] })).total).toBe(0);
+  });
+
+  it("reads completion from each step when steps finish out of order", () => {
+    const outOfOrder: PlanStep[] = [
+      { step: "Llegir les factures", status: "pending" },
+      { step: "Creuar imports", status: "completed" },
+    ];
+    const progress = taskProgress(turn({ plan: outOfOrder }));
+    expect(progress.done).toBe(1);
+    expect(progress.steps.map((step) => isStepDone(step, progress.state))).toEqual([false, true]);
   });
 });

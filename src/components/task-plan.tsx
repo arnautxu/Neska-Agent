@@ -2,7 +2,7 @@
 import { useUiText } from "@/i18n/provider";
 
 import { Check } from "@phosphor-icons/react";
-import type { TaskProgress } from "@/ui/task-progress";
+import { isStepDone, type TaskProgress } from "@/ui/task-progress";
 
 /** The live plan: every step stays visible and the current one is inverted,
  * so the employee can see where Neska is without opening the activity log. */
@@ -22,7 +22,7 @@ export function TaskPlan({ progress }: { progress: TaskProgress }) {
       <ol className="py-1">
         {progress.steps.map((step, index) => {
           const current = index === progress.current;
-          const complete = step.status === "completed" || (!current && progress.state === "done" && step.status === "in_progress");
+          const complete = !current && isStepDone(step, progress.state);
           return (
             <li
               key={`${step.step}-${index}`}
