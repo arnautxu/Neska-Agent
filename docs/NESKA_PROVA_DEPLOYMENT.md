@@ -12,8 +12,10 @@ Keep the existing product UI. The server was subsequently purchased after the
 complete ARM/x86 PR gates passed; see the first-host evidence below.
 
 The independent Hetzner project and Supabase Auth/SMTP configuration have been
-verified. The independent server is reachable by SSH; TLS, application deployment
-and ChatGPT sign-in are still pending verification.
+verified. The independent server is reachable by SSH. The `prova` A record and
+HTTPS certificate were verified on 2026-10-11; application deployment and
+ChatGPT sign-in remain pending. Container vulnerability remediation is a
+separate blocking gate; see `CONTAINER_SECURITY_REVIEW.md`.
 The preceding main revision and its separate CI/publication evidence are recorded
 below; they do not accept a newer revision or its ARM runtime.
 

@@ -175,7 +175,7 @@ describe("backend CI contract", () => {
       expect(workflow, `missing CI gate: ${command}`).toContain(command);
     }
     expect(workflow).toContain("npm audit --omit=dev --audit-level=high");
-    expect(workflow).toContain("node-version: 24.18.1");
+    expect(workflow).toContain("node-version: 24.21.0");
     expect(workflow).toMatch(/permissions:\n\s+contents: read/u);
   });
 

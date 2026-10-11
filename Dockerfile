@@ -1,11 +1,39 @@
-ARG NODE_IMAGE=node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7
+ARG NODE_IMAGE=node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
 
-FROM ${NODE_IMAGE} AS egress-gateway
+FROM ${NODE_IMAGE} AS patched-base
+ARG DEBIAN_SNAPSHOT=20261011T000000Z
+
+# The pinned slim base does not contain a system trust store. Bootstrap only
+# ca-certificates from the base image's signed Debian sources before switching
+# every runtime/tool package to the immutable snapshot below.
+RUN apt-get update \
+  && export DEBIAN_FRONTEND=noninteractive \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN printf '%s\n' \
+    "deb https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}/ bookworm main" \
+    "deb https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}/ bookworm-updates main" \
+    "deb https://snapshot.debian.org/archive/debian-security/${DEBIAN_SNAPSHOT}/ bookworm-security main" \
+    > /etc/apt/sources.list \
+  && rm -f /etc/apt/sources.list.d/debian.sources \
+  && printf '%s\n' \
+    'Acquire::Check-Valid-Until "false";' \
+    'Acquire::Retries "3";' \
+    'Acquire::https::Timeout "30";' \
+    > /etc/apt/apt.conf.d/99snapshot \
+  && apt-get update \
+  && export DEBIAN_FRONTEND=noninteractive \
+  && apt-get upgrade -y \
+  && rm -rf /var/lib/apt/lists/*
+
+FROM patched-base AS egress-gateway
 
 ARG AIBRAIN_EGRESS_UID=10002
 ARG AIBRAIN_EGRESS_GID=10002
 
-RUN groupadd --system --gid "${AIBRAIN_EGRESS_GID}" aibrain-egress \
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+  && groupadd --system --gid "${AIBRAIN_EGRESS_GID}" aibrain-egress \
   && useradd --system --uid "${AIBRAIN_EGRESS_UID}" --gid aibrain-egress \
     --home-dir /nonexistent --no-create-home aibrain-egress \
   && install -d -m 0755 -o root -g root /usr/local/share/aibrain
@@ -23,22 +51,21 @@ USER aibrain-egress:aibrain-egress
 EXPOSE 8080
 ENTRYPOINT ["node", "/usr/local/share/aibrain/egress-gateway.mts"]
 
-FROM ${NODE_IMAGE} AS dependencies
+FROM patched-base AS dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM ${NODE_IMAGE} AS builder
+FROM patched-base AS builder
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build && npm run build:automation-worker && npm run build:weekly-token-budget && npm run build:container-app-server-acceptance && npm run build:presentation-runtime && node scripts/build-container-presentation-tool-acceptance.mjs && node scripts/build-container-xls-passive-acceptance.mjs
 
-FROM ${NODE_IMAGE} AS runtime
+FROM patched-base AS runtime
 
 ARG AIBRAIN_UID=10001
 ARG AIBRAIN_GID=10001
-ARG DEBIAN_SNAPSHOT=20260820T000000Z
 
 ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
@@ -65,28 +92,8 @@ ENV NODE_ENV=production \
     XDG_DATA_HOME=/var/lib/aibrain/data/server/xdg/data \
     XDG_STATE_HOME=/var/lib/aibrain/data/server/xdg/state
 
-# The pinned slim base does not contain a system trust store. Bootstrap only
-# ca-certificates from the base image's signed Debian sources before switching
-# every runtime/tool package to the immutable snapshot below.
 RUN apt-get update \
   && export DEBIAN_FRONTEND=noninteractive \
-  && apt-get install -y --no-install-recommends ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
-
-RUN printf '%s\n' \
-    "deb https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}/ bookworm main" \
-    "deb https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}/ bookworm-updates main" \
-    "deb https://snapshot.debian.org/archive/debian-security/${DEBIAN_SNAPSHOT}/ bookworm-security main" \
-    > /etc/apt/sources.list \
-  && rm -f /etc/apt/sources.list.d/debian.sources \
-  && printf '%s\n' \
-    'Acquire::Check-Valid-Until "false";' \
-    'Acquire::Retries "3";' \
-    'Acquire::https::Timeout "30";' \
-    > /etc/apt/apt.conf.d/99snapshot \
-  && apt-get update \
-  && export DEBIAN_FRONTEND=noninteractive \
-  && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends \
     bubblewrap \
     ca-certificates \
@@ -102,14 +109,12 @@ RUN printf '%s\n' \
     poppler-utils \
     python3 \
     python3-openpyxl \
-    python3-pil \
     python3-venv \
     qpdf \
     restic \
-    rclone \
     tini \
   && rm -rf /var/lib/apt/lists/* \
-  && npm install --global --omit=dev "@openai/codex@0.153.4" "tsx@4.20.6" \
+  && npm install --global --omit=dev "@openai/codex@0.153.4" "tsx@4.23.15" \
   && mv /usr/local/bin/codex /usr/local/bin/codex-real \
   && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
   && groupadd --system --gid "${AIBRAIN_GID}" aibrain \
@@ -127,7 +132,17 @@ RUN printf '%s\n' \
   && install -d -m 0555 -o root -g root /srv/aibrain/source-ro \
   && install -d -m 0755 -o root -g root /etc/aibrain /usr/local/share/aibrain
 
-RUN /usr/bin/python3 -c "import openpyxl; from PIL import Image"
+# Use the upstream fixed Pillow wheel; Debian 12 still ships the affected version.
+# Install into Debian's local site directory so /usr/bin/python3 and workers agree.
+COPY --chown=root:root infra/hetzner/python-runtime-requirements.txt /tmp/python-runtime-requirements.txt
+RUN /usr/bin/python3 -m venv /tmp/python-installer \
+  && /tmp/python-installer/bin/pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps \
+    --target /usr/local/lib/python3.11/dist-packages -r /tmp/python-runtime-requirements.txt \
+  && rm -rf /tmp/python-installer /tmp/python-runtime-requirements.txt \
+  && /usr/bin/python3 -c "import openpyxl; import PIL; assert PIL.__version__ == '12.3.0'"
+
+COPY --chown=root:root scripts/install-container-rclone.py /tmp/install-container-rclone.py
+RUN /usr/bin/python3 /tmp/install-container-rclone.py && rm /tmp/install-container-rclone.py
 COPY --chown=root:root infra/hetzner/knowledge-test-requirements.txt /usr/local/share/aibrain/passive-xls-requirements.txt
 RUN /usr/bin/python3 -m venv /opt/aibrain-passive-xls \
   && /opt/aibrain-passive-xls/bin/python -m pip install --no-cache-dir --require-hashes --only-binary=:all: -r /usr/local/share/aibrain/passive-xls-requirements.txt \

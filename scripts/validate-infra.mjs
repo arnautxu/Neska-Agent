@@ -77,8 +77,11 @@ requireMatch(journaldRetention, /^\[Journal\]\nSystemMaxUse=512M\n$/u, "journald
 
 requireMatch(dockerfile, /@openai\/codex@0\.153\.4/u, "Dockerfile does not pin the approved Codex version");
 forbidMatch(dockerfile, /ARG CODEX_VERSION/u, "Dockerfile permits the App Server contract version to be overridden");
-requireMatch(dockerfile, /ARG NODE_IMAGE=node:24\.18\.1-bookworm-slim@sha256:[0-9a-f]{64}/u, "Dockerfile does not pin the reviewed Node 24 runtime digest");
+requireMatch(dockerfile, /ARG NODE_IMAGE=node:24\.21\.0-bookworm-slim@sha256:[0-9a-f]{64}/u, "Dockerfile does not pin the reviewed Node 24 runtime digest");
 requireMatch(dockerfile, /ARG DEBIAN_SNAPSHOT=\d{8}T\d{6}Z/u, "Dockerfile does not pin an immutable Debian snapshot");
+requireMatch(dockerfile, /FROM \$\{NODE_IMAGE\} AS patched-base[\s\S]*apt-get upgrade -y[\s\S]*FROM patched-base AS egress-gateway/u, "Gateway must inherit the patched operating-system base");
+requireMatch(dockerfile, /FROM patched-base AS runtime/u, "Application must inherit the patched operating-system base");
+requireMatch(dockerfile, /FROM patched-base AS egress-gateway[\s\S]*rm -rf \/usr\/local\/lib\/node_modules\/npm \/usr\/local\/bin\/npm \/usr\/local\/bin\/npx[\s\S]*USER aibrain-egress/u, "Gateway must not ship an unused package manager");
 requireMatch(dockerfile, /snapshot\.debian\.org\/archive\/debian\/\$\{DEBIAN_SNAPSHOT\}/u, "Dockerfile APT source is not the pinned Debian snapshot");
 requireMatch(dockerfile, /snapshot\.debian\.org\/archive\/debian-security\/\$\{DEBIAN_SNAPSHOT\}/u, "Dockerfile security APT source is not the pinned Debian snapshot");
 requireMatch(dockerfile, /USER aibrain:aibrain/u, "Dockerfile final process is not non-root");
@@ -116,8 +119,8 @@ for (const tool of ["soffice", "pdfinfo", "pdftoppm", "pdftotext", "qpdf"]) {
   requireMatch(dockerfile, new RegExp(`COPY --chown=root:root infra/hetzner/app/soffice-safe\\.sh /usr/local/bin/aibrain-${tool}`, "u"), `Dockerfile does not install the sandboxed ${tool} launcher`);
 }
 requireMatch(dockerfile, /org\.opencontainers\.image\.revision="\$\{AIBRAIN_REVISION\}"/u, "Docker image does not record its exact source revision");
-requireMatch(dockerfile, /FROM \$\{NODE_IMAGE\} AS egress-gateway/u, "Dockerfile lacks the first-party egress gateway target on the pinned Node base");
-requireMatch(dockerfile, /FROM \$\{NODE_IMAGE\} AS egress-gateway[\s\S]*FROM \$\{NODE_IMAGE\} AS dependencies/u, "egress target follows the expensive application builder under the legacy server builder");
+requireMatch(dockerfile, /FROM patched-base AS egress-gateway/u, "Dockerfile lacks the first-party egress gateway target on the pinned Node base");
+requireMatch(dockerfile, /FROM patched-base AS egress-gateway[\s\S]*FROM patched-base AS dependencies/u, "egress target follows the expensive application builder under the legacy server builder");
 requireMatch(dockerfile, /USER aibrain-egress:aibrain-egress[\s\S]*ENTRYPOINT \["node", "\/usr\/local\/share\/aibrain\/egress-gateway\.mts"\]/u, "egress gateway image is not an unprivileged first-party Node target");
 
 for (const marker of [
