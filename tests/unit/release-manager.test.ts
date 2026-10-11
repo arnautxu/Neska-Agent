@@ -273,10 +273,11 @@ if (args[0] === "image" && args[1] === "inspect") {
   };
 }
 
-function commandArgs(files: Awaited<ReturnType<typeof fixture>>, command: "promote" | "rollback") {
+function commandArgs(files: Awaited<ReturnType<typeof fixture>>, command: "bootstrap" | "promote" | "rollback") {
   return [
     manager,
     command,
+    ...(command === "bootstrap" ? ["--current-compose-file", files.currentComposeFile] : []),
     ...(command === "promote" ? [
       "--image", digestB,
       "--egress-image", egressDigestB,
@@ -347,6 +348,32 @@ afterEach(async () => {
 // separate fake-Docker subprocess per command. Keep this suite's harness bound
 // independently from the production release and Docker deadlines it asserts.
 describe("immutable release manager", { timeout: 20_000 }, () => {
+  it("records a healthy first installation without inventing rollback history", async () => {
+    const files = await fixture();
+    const result = await execFileAsync(process.execPath, commandArgs(files, "bootstrap"), { env: environment(files) });
+    expect(JSON.parse(result.stdout)).toMatchObject({ schemaVersion: 3,
+      current: { image: digestA, egressImage: egressDigestA, revision: revisionA }, previous: null });
+    const first = await readFile(files.stateFile, "utf8");
+    await expect(execFileAsync(process.execPath, commandArgs(files, "bootstrap"), { env: environment(files) }))
+      .rejects.toMatchObject({ stderr: expect.stringContaining("RELEASE_ALREADY_INITIALIZED") });
+    await expect(execFileAsync(process.execPath, commandArgs(files, "rollback"), { env: environment(files) }))
+      .rejects.toMatchObject({ stderr: expect.stringContaining("RELEASE_ROLLBACK_UNAVAILABLE") });
+    expect(await readFile(files.stateFile, "utf8")).toBe(first);
+    const calls = (await readFile(files.logFile, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+    expect(calls.some(args => args.includes("up"))).toBe(false);
+    await execFileAsync(process.execPath, commandArgs(files, "promote"), { env: environment(files) });
+    await execFileAsync(process.execPath, commandArgs(files, "rollback"), { env: environment(files) });
+    expect(JSON.parse(await readFile(files.stateFile, "utf8"))).toMatchObject({ current: { revision: revisionA } });
+  });
+
+  it("does not record an unhealthy first installation", async () => {
+    const files = await fixture();
+    const args = commandArgs(files, "bootstrap");
+    args[args.indexOf("--health-timeout-ms") + 1] = "500";
+    await expect(execFileAsync(process.execPath, args, { env: environment(files, digestA) })).rejects.toThrow();
+    await expect(readFile(files.stateFile, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("promotes and rolls back exact image digests with durable state", async () => {
     const files = await fixture();
     const promoted = await execFileAsync(process.execPath, commandArgs(files, "promote"), {

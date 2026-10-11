@@ -54,6 +54,7 @@ class ReleaseError extends Error {
 function usage() {
   return [
     "Usage:",
+    "  node scripts/manage-release.mjs bootstrap --installation-id <slug> --env-file <absolute> --current-compose-file <absolute> --state-file <absolute>",
     "  node scripts/manage-release.mjs promote --image <name@sha256:...> --egress-image <name@sha256:...> --revision <git-sha> --installation-id <slug> --env-file <active absolute> --target-env-file <target absolute> --compose-file <target absolute> --current-compose-file <current absolute> --installation-config <target absolute> --state-file <absolute>",
     "  node scripts/manage-release.mjs rollback --installation-id <slug> --env-file <absolute> --state-file <absolute>",
     "Optional: --docker-bin <absolute> --health-timeout-ms <positive integer> --docker-command-timeout-ms <positive integer>",
@@ -71,7 +72,7 @@ function parseBooleanEnv(value, fallback = true) {
 
 function parseArguments(argv) {
   const [command, ...rest] = argv;
-  if (!new Set(["promote", "rollback"]).has(command)) {
+  if (!new Set(["bootstrap", "promote", "rollback"]).has(command)) {
     throw new ReleaseError("RELEASE_USAGE", usage());
   }
   if (rest.length % 2 !== 0) throw new ReleaseError("RELEASE_USAGE", usage());
@@ -103,6 +104,7 @@ function parseArguments(argv) {
     if (!allowed.has(name)) throw new ReleaseError("RELEASE_USAGE", `Unknown option ${name}.`);
   }
   const required = ["--installation-id", "--env-file", "--state-file"];
+  if (command === "bootstrap") required.push("--current-compose-file");
   if (command === "promote") {
     required.push("--image", "--egress-image", "--revision", "--target-env-file", "--compose-file", "--installation-config");
   }
@@ -1516,6 +1518,9 @@ function executeUnlocked(options) {
   }
   const stateSnapshot = readStateSnapshot(options);
   const state = stateSnapshot.value;
+  if (options.command === "bootstrap" && state) {
+    throw new ReleaseError("RELEASE_ALREADY_INITIALIZED", "Bootstrap cannot replace existing release history.");
+  }
   if (state && (state.composeProject !== composeProject
       || state.current.image !== currentImage || state.current.egressImage !== currentEgressImage
       || state.current.revision !== envRevision
@@ -1553,6 +1558,20 @@ function executeUnlocked(options) {
     writeActiveRuntimeInputs(options, releaseContents(current));
   }
   verifyCurrentDeployment(options, current, operationDeadline);
+  if (options.command === "bootstrap") {
+    // Record an already running, identity-checked first installation. There is
+    // no previous release to invent; later promotion establishes rollback.
+    const firstState = {
+      schemaVersion: RELEASE_SCHEMA_VERSION,
+      installationId: options.installationId,
+      composeProject,
+      updatedAt: new Date().toISOString(),
+      current,
+      previous: null,
+    };
+    writeAtomic(options.stateFile, `${JSON.stringify(firstState, null, 2)}\n`);
+    return firstState;
+  }
   let target;
   if (options.command === "promote") {
     const revision = inspectImage(options, options.image, options.revision, operationDeadline);

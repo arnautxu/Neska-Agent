@@ -27,7 +27,8 @@ describe("per-installation Nginx rendering", () => {
     expect(alpha).toContain("location ^~ /.well-known/acme-challenge/");
     expect(alpha).toContain("root /var/www/aibrain-acme");
     expect(alpha).toContain('location ~ "^/api/threads/[0-9a-f-]{36}/documents$"');
-    expect(alpha).toContain("http2 on;");
+    expect(alpha).toContain("listen 443 ssl http2;");
+    expect(alpha).not.toContain("http2 on;");
     expect(beta).toContain("zone=aibrain_company_beta_auth:10m");
     expect(beta).toContain("upstream aibrain_company_beta_backend");
     expect(beta).not.toContain("aibrain_company_alpha");
