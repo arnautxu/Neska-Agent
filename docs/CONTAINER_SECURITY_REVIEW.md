@@ -1,5 +1,11 @@
 # Container security review — 2026-10-11
 
+Recovery-volume isolation is a separate security boundary: recovered employee
+files live outside the normal product data root. The worker, browser and document
+launchers hide `/var/lib/aibrain-restores` with an empty read-only mount. Native
+App Server canaries and browser/document startup probes verify this boundary;
+credentials and actual employee content are never used as canaries.
+
 The first CAX21 deployment remains blocked by the image vulnerability gate.
 Functional Backend CI success does not establish image security or authorize
 an older published image. No scan suppression, severity downgrade or

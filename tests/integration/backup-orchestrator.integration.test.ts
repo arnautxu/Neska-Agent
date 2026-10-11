@@ -25,9 +25,9 @@ async function fixture() {
   const dockerLog = path.join(root, "docker.log");
   const runtimeState = path.join(root, "runtime-state.json");
   await writeFile(envFile, "AIBRAIN_INSTALLATION_ID=company-qa\nAIBRAIN_COMPOSE_PROJECT_NAME=aibrain-company-qa\n");
-  await writeFile(composeFile, "services:\n  app: {}\n  alert-dispatcher: {}\n");
+  await writeFile(composeFile, "services:\n  app: {}\n  automation-worker: {}\n  alert-dispatcher: {}\n");
   await writeFile(runtimeEnv, `AIBRAIN_MAINTENANCE_SECRET=${secret}\n`, { mode: 0o600 });
-  await writeFile(runtimeState, JSON.stringify({ running: true }));
+  await writeFile(runtimeState, JSON.stringify({ running: true, services: {app: true, 'automation-worker': true, 'alert-dispatcher': true} }));
   await writeFile(dockerBin, `#!/usr/bin/env node
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 const args = process.argv.slice(2);
@@ -35,9 +35,11 @@ appendFileSync(process.env.FAKE_DOCKER_LOG, JSON.stringify(args) + "\\n");
 const serialized = JSON.stringify(args);
 const state = JSON.parse(readFileSync(process.env.FAKE_RUNTIME_STATE, "utf8"));
 if (args[0] === "compose" && args.includes("stop")) {
-  state.running = false;
+  for (const service of args.slice(args.indexOf("stop") + 1)) state.services[service] = false;
+  state.running = state.services.app;
   writeFileSync(process.env.FAKE_RUNTIME_STATE, JSON.stringify(state));
 } else if (args[0] === "compose" && args.includes("run") && args.includes("create")) {
+  if (Object.values(state.services).some(Boolean)) process.exit(9);
   if (process.env.FAKE_FAIL_CREATE === "1") process.exit(2);
   if (process.env.FAKE_PREFLIGHT === "1") process.stdout.write("Codex App Server container acceptance passed.\\n");
   process.stdout.write(JSON.stringify({ operation: "create", backupId: process.env.FAKE_BACKUP_ID, sourceFingerprint: process.env.FAKE_FINGERPRINT }));
@@ -46,12 +48,16 @@ if (args[0] === "compose" && args.includes("stop")) {
   if (process.env.FAKE_PREFLIGHT === "1") process.stdout.write("Codex App Server container acceptance passed.\\n");
   process.stdout.write(JSON.stringify({ operation: "verify", backupId: process.env.FAKE_BACKUP_ID, sourceFingerprint: process.env.FAKE_FINGERPRINT, verified: true }));
 } else if (args[0] === "compose" && args.includes("up")) {
-  state.running = true;
+  for (const service of Object.keys(state.services)) if (args.includes(service)) state.services[service] = true;
+  state.running = state.services.app;
   writeFileSync(process.env.FAKE_RUNTIME_STATE, JSON.stringify(state));
 } else if (args[0] === "compose" && args.includes("ps")) {
-  process.stdout.write("a".repeat(64));
+  const ids = {app: "a", 'automation-worker': "b", 'alert-dispatcher': "c"};
+  process.stdout.write(ids[args.at(-1)].repeat(64));
 } else if (args[0] === "inspect" && serialized.includes("Health.Status")) {
-  process.stdout.write(state.running ? "healthy" : "unhealthy");
+  const services = {a: "app", b: "automation-worker", c: "alert-dispatcher"};
+  const service = services[args.at(-1)[0]];
+  process.stdout.write(state.services[service] && process.env.FAKE_UNHEALTHY_SERVICE !== service ? "healthy" : "unhealthy");
 } else {
   process.exit(3);
 }
@@ -123,12 +129,14 @@ describe("durable host backup orchestrator", () => {
     const result = await execFileAsync(process.execPath, input.args, { env: input.env });
     expect(JSON.parse(result.stdout)).toMatchObject({ status: "verified", backupId, sourceFingerprint: fingerprint });
     expect(input.actions).toEqual(["drain", "resume"]);
-    expect(JSON.parse(await readFile(input.runtimeState, "utf8"))).toEqual({ running: true });
+    expect(JSON.parse(await readFile(input.runtimeState, "utf8"))).toEqual({ running: true, services: {app: true, 'automation-worker': true, 'alert-dispatcher': true} });
     await expect(stat(input.stateFile)).rejects.toMatchObject({ code: "ENOENT" });
     expect(await receipts(input.root)).toHaveLength(1);
     const commands = (await readFile(input.dockerLog, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
     expect(commands.findIndex((args) => args.includes("stop"))).toBeLessThan(commands.findIndex((args) => args.includes("create")));
     expect(commands.findIndex((args) => args.includes("create"))).toBeLessThan(commands.findIndex((args) => args.includes("verify")));
+    expect(commands.find((args) => args.includes("stop")).slice(-3)).toEqual(["app", "automation-worker", "alert-dispatcher"]);
+    expect(commands.filter((args) => args.includes("ps")).map((args) => args.at(-1))).toEqual(["app", "automation-worker", "alert-dispatcher"]);
   });
 
   it("accepts a normal-sized Docker executable while retaining private configuration checks", async () => {
@@ -146,7 +154,7 @@ describe("durable host backup orchestrator", () => {
       env: { ...input.env, FAKE_FAIL_CREATE: "1" },
     })).rejects.toMatchObject({ stderr: expect.stringContaining("BACKUP_OPERATION_RECOVERED") });
     expect(input.actions).toEqual(["drain", "resume"]);
-    expect(JSON.parse(await readFile(input.runtimeState, "utf8"))).toEqual({ running: true });
+    expect(JSON.parse(await readFile(input.runtimeState, "utf8"))).toEqual({ running: true, services: {app: true, 'automation-worker': true, 'alert-dispatcher': true} });
     await expect(stat(input.stateFile)).rejects.toMatchObject({ code: "ENOENT" });
     const receiptName = (await receipts(input.root))[0]!;
     expect(JSON.parse(await readFile(path.join(input.root, receiptName), "utf8"))).toMatchObject({ status: "aborted", backupId: null });
@@ -158,14 +166,14 @@ describe("durable host backup orchestrator", () => {
       env: { ...input.env, FAKE_KILL_ON_VERIFY: "1" },
     })).rejects.toMatchObject({ code: expect.any(Number) });
     expect(JSON.parse(await readFile(input.stateFile, "utf8"))).toMatchObject({ phase: "snapshot-created", backupId });
-    expect(JSON.parse(await readFile(input.runtimeState, "utf8"))).toEqual({ running: false });
+    expect(JSON.parse(await readFile(input.runtimeState, "utf8"))).toEqual({ running: false, services: {app: false, 'automation-worker': false, 'alert-dispatcher': false} });
 
     const recoverArgs = [...input.args];
     recoverArgs[1] = "recover";
     const recovered = await execFileAsync(process.execPath, recoverArgs, { env: input.env });
     expect(JSON.parse(recovered.stdout)).toMatchObject({ status: "verified", backupId });
     expect(input.actions).toEqual(["drain", "resume"]);
-    expect(JSON.parse(await readFile(input.runtimeState, "utf8"))).toEqual({ running: true });
+    expect(JSON.parse(await readFile(input.runtimeState, "utf8"))).toEqual({ running: true, services: {app: true, 'automation-worker': true, 'alert-dispatcher': true} });
     await expect(stat(input.stateFile)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -176,5 +184,14 @@ describe("durable host backup orchestrator", () => {
       .rejects.toMatchObject({ stderr: expect.stringContaining("BACKUP_OPERATION_PATH_INVALID") });
     expect(input.actions).toEqual([]);
     await expect(readFile(input.dockerLog, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("retains recovery state and refuses success when an auxiliary writer is unhealthy", async () => {
+    const input = await fixture();
+    await expect(execFileAsync(process.execPath, input.args, {env: {...input.env, FAKE_UNHEALTHY_SERVICE: "automation-worker"}}))
+      .rejects.toMatchObject({stderr: expect.stringContaining("BACKUP_OPERATION_AND_RECOVERY_FAILED")});
+    expect(input.actions).toEqual(["drain"]);
+    expect(await receipts(input.root)).toHaveLength(0);
+    expect(JSON.parse(await readFile(input.stateFile, "utf8"))).toMatchObject({phase: "snapshot-verified", backupId});
   });
 });

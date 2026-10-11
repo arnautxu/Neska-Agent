@@ -207,6 +207,9 @@ forbidMatch(egressGateway, /console\.(?:log|error)|process\.env\[["']AIBRAIN_EGR
 
 requireMatch(worker, /--ro-bind \/ \/[\s\S]*--tmpfs "\$publish_root"[\s\S]*--remount-ro "\$publish_root"/u, "worker does not mask publish-rw behind a read-only mount");
 requireMatch(worker, /--ro-bind \/ \/[\s\S]*--tmpfs \/etc\/aibrain[\s\S]*--remount-ro \/etc\/aibrain/u, "worker does not hide operator configuration behind an empty read-only mount");
+for (const [name, sandbox] of [["worker", worker], ["browser", browserSandbox], ["document", soffice]]) {
+  requireMatch(sandbox, /--tmpfs \/var\/lib\/aibrain-restores[\s\S]*--remount-ro \/var\/lib\/aibrain-restores/u, `${name} sandbox does not hide recovered employee data`);
+}
 forbidMatch(worker, /--(?:ro-)?bind[^\n]*\/etc\/aibrain/u, "worker re-exposes operator configuration");
 requireMatch(worker, /--tmpfs "\$data_root"[\s\S]*--ro-bind "\$company_root" "\$company_root"[\s\S]*--ro-bind "\$source_root" "\$source_root"/u, "worker does not hide product data before re-exposing approved read roots");
 requireMatch(worker, /company context root is outside dataRoot[\s\S]*users root is outside dataRoot[\s\S]*employee root is outside usersRoot/u, "worker does not fail closed on configured root containment");
@@ -278,7 +281,8 @@ requireMatch(releaseManager, /\/usr\/bin\/flock/u, "release manager lacks OS adv
 requireMatch(releaseManager, /\/usr\/bin\/lockf/u, "release manager lacks OS advisory locking on macOS QA");
 requireMatch(backupOrchestrator, /snapshot-created[\s\S]*snapshot-verified[\s\S]*app-restarted[\s\S]*admission-resumed/u, "backup orchestrator lacks durable recovery phases");
 requireMatch(backupOrchestrator, /AIBRAIN_MAINTENANCE_SECRET/u, "backup orchestrator does not read the private maintenance secret");
-requireMatch(backupOrchestrator, /"stop", "app"[\s\S]*createSnapshot[\s\S]*verifySnapshot/u, "backup orchestrator does not stop app and verify the snapshot");
+requireMatch(backupOrchestrator, /DATA_WRITERS = Object\.freeze\(\["app", "automation-worker", "alert-dispatcher"\]\)/u, "backup orchestrator does not include all durable data writers");
+requireMatch(backupOrchestrator, /"stop", \.\.\.DATA_WRITERS[\s\S]*createSnapshot[\s\S]*verifySnapshot/u, "backup orchestrator does not stop all writers and verify the snapshot");
 requireMatch(backupOrchestrator, /\/usr\/bin\/flock/u, "backup orchestrator lacks Linux OS advisory locking");
 requireMatch(backupOrchestrator, /\/usr\/bin\/lockf/u, "backup orchestrator lacks macOS OS advisory locking");
 requireMatch(backupRecoveryUnit, /After=docker\.service[\s\S]*orchestrate-backup\.mjs recover[\s\S]*NoNewPrivileges=true/u, "systemd does not recover interrupted backups after Docker startup");
