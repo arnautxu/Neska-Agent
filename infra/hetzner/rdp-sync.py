@@ -185,7 +185,7 @@ def extract_sandboxed(source, suffix):
                 "--setenv", "LANG", "C.UTF-8", "--ro-bind", "/usr", "/usr", "--ro-bind", "/lib", "/lib",
                 # The parsers need no process filesystem. An empty /proc also
                 # works inside systemd's protected mount namespace.
-                "--ro-bind", "/lib64", "/lib64", "--dir", "/proc", "--dev", "/dev", "--tmpfs", "/tmp",
+                "--ro-bind-try", "/lib64", "/lib64", "--dir", "/proc", "--dev", "/dev", "--tmpfs", "/tmp",
                 "--perms", "0444", "--ro-bind-data", str(input_file.fileno()), "/input",
                 "--perms", "0444", "--ro-bind-data", str(script.fileno()), "/extractor.py",
                 "--chdir", "/tmp", "/usr/bin/python3", "/extractor.py", "--format", suffix]

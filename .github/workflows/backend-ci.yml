@@ -73,7 +73,7 @@ jobs:
           npm run infra:validate
 
   quality-tests:
-    name: Tests (${{ matrix.shard }}/3)
+    name: Tests (${{ matrix.runner }}, ${{ matrix.shard }}/3)
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 35
     strategy:
@@ -113,7 +113,7 @@ jobs:
           test "$TESTS_RESULT" = success
 
   e2e-suites:
-    name: E2E (${{ matrix.suite }})
+    name: E2E (${{ matrix.runner }}, ${{ matrix.suite }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:

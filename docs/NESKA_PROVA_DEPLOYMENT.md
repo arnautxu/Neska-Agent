@@ -10,12 +10,10 @@ validation passes**. The observed Helsinki quote was EUR 15.84/month; recheck
 price and capacity at purchase. Use Ubuntu 24.04 arm64, matching native Backend
 CI. Keep the existing product UI. No server has been purchased in this revision.
 
-The provider session, destination IP, dedicated Auth project, image digests,
-live server, certificate and ChatGPT sign-in have not yet been verified.
-The previously tested source candidate is
-`be300a5fc714b5a1432b43a0ac0e93ce1f8bfa87`; its successful PR CI run is
-`38058320743`. That evidence does not accept later release-path changes or
-authorize publication without a successful main push CI for the new revision.
+The independent Hetzner project and Supabase Auth/SMTP configuration have been
+verified. No server, destination IP, TLS certificate or ChatGPT sign-in is live.
+The preceding main revision and its separate CI/publication evidence are recorded
+below; they do not accept a newer revision or its ARM runtime.
 
 ## Independent installation
 
@@ -93,3 +91,9 @@ email delivery has not been exercised. Hetzner project `16355705` is independent
 and empty. Host, HTTPS, authenticated acceptance, real alert delivery and encrypted
 off-host backup/restore remain unverified. Detailed operator-only configuration
 and secrets stay outside Git.
+
+The first native ARM container run exposed an x86-only `/lib64` bind in the
+passive XLS sandbox. The passive reader and generic document extractors now mount
+that optional loader directory read-only when present; `/usr` and `/lib` remain
+mandatory. Namespace, capability, network and filesystem isolation are unchanged.
+The existing real container acceptance must pass on both architectures.
