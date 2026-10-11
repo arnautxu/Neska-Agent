@@ -97,11 +97,18 @@ class ReviewTests(unittest.TestCase):
             server=review.Server(address,manifest,str(bindings),self.root)
             thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
             try:
-                def ask(request=None):
+                def ask(request=None,expect_peer_denial=False):
                     with socket.socket(socket.AF_UNIX) as client:
-                        client.settimeout(2);client.connect(str(address));client.sendall(json.dumps(request or self.request(),ensure_ascii=False).encode()+b'\n')
-                        try:return client.makefile('rb').readline()
-                        except ConnectionResetError:return b''
+                        client.settimeout(2);client.connect(str(address))
+                        try:
+                            client.sendall(json.dumps(request or self.request(),ensure_ascii=False).encode()+b'\n')
+                            return client.makefile('rb').readline()
+                        except (BrokenPipeError,ConnectionResetError):
+                            # Linux may reject this peer before sendall finishes,
+                            # especially for the large UTF-8 request on ARM. Only
+                            # the explicit denial case accepts a closed socket.
+                            if not expect_peer_denial:raise
+                            return b''
                 self.assertEqual(json.loads(ask())['records'][0]['id'],record['id'])
                 self.assertEqual(execution.call_count,1)
                 correction=self.request('correct',{'recordId':record['id'],'revision':1,'content':'é'*5000,'reason':'Corrección Unicode de prueba.'})
@@ -113,7 +120,7 @@ class ReviewTests(unittest.TestCase):
                 self.assertEqual(saved['events'][0]['actor'],ACTOR)
                 self.assertEqual(execution.call_count,2)
                 manifest['appUid']=os.geteuid()+1
-                self.assertEqual(ask(correction),b'');self.assertEqual(execution.call_count,2)
+                self.assertEqual(ask(correction,expect_peer_denial=True),b'');self.assertEqual(execution.call_count,2)
                 self.assertEqual(binding_reader.call_count,2)
             finally:
                 server.shutdown();server.server_close();thread.join(timeout=2)

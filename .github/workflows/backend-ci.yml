@@ -39,7 +39,7 @@ jobs:
       - name: Use pinned Node runtime
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24.18.1
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
@@ -89,7 +89,7 @@ jobs:
       - name: Use pinned Node runtime
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24.18.1
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
@@ -139,7 +139,7 @@ jobs:
       - name: Use pinned Node runtime
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24.18.1
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
@@ -173,7 +173,7 @@ jobs:
       - name: Use pinned Node runtime
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24.18.1
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
@@ -230,7 +230,7 @@ jobs:
       - name: Use pinned Node runtime
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24.18.1
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install native document toolchain
@@ -343,6 +343,32 @@ jobs:
             --entrypoint node \
             "aibrain-ci:${GITHUB_SHA}" \
             /usr/local/share/aibrain/container-app-server-acceptance.mjs
+      - name: Exercise the pinned browser through its production sandbox
+        run: |
+          docker run --rm \
+            --user 10001:10001 \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --security-opt apparmor=aibrain-container \
+            --security-opt systempaths=unconfined \
+            --security-opt seccomp=infra/hetzner/browser/seccomp_profile.json \
+            --pids-limit 768 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=512m,mode=1777 \
+            --tmpfs /run:rw,nosuid,nodev,noexec,size=16m,mode=0755 \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-installation.json,dst=/etc/aibrain/installation.json,readonly" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-data,dst=/var/lib/aibrain/data" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-source,dst=/srv/aibrain/source-ro,readonly" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-publish,dst=/srv/aibrain/publish-rw" \
+            --env NODE_ENV=production \
+            --env CODEX_BIN=/usr/local/bin/aibrain-codex-worker \
+            --env AIBRAIN_CODEX_EXPECTED_VERSION=0.153.4 \
+            --env AIBRAIN_INSTALLATION_CONFIG=/etc/aibrain/installation.json \
+            --env AIBRAIN_EGRESS_PROXY_URL=http://127.0.0.1:9 \
+            --env AIBRAIN_EGRESS_BROWSER_TOKEN=container_ci_browser_token_000000000000000000 \
+            --entrypoint node \
+            "aibrain-ci:${GITHUB_SHA}" \
+            /usr/local/share/aibrain/container-browser-acceptance.mjs
       - name: Convert a real presentation through the production document sandbox
         run: |
           docker run --rm \
@@ -400,3 +426,13 @@ jobs:
             --env AIBRAIN_SYNTHETIC_ACCEPTANCE=1 \
             --entrypoint node "aibrain-ci:${GITHUB_SHA}" \
             /usr/local/share/aibrain/container-xls-passive-acceptance.mjs
+      - name: Scan both native images without vulnerability exceptions
+        run: bash scripts/scan-container-images.sh "${GITHUB_SHA}" "${RUNNER_TEMP}/container-security"
+      - name: Retain native vulnerability reports and SBOMs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: container-security-${{ matrix.runner }}-${{ github.sha }}
+          path: ${{ runner.temp }}/container-security
+          if-no-files-found: warn
+          retention-days: 14

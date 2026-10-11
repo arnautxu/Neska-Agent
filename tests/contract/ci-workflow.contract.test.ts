@@ -171,12 +171,29 @@ describe("backend CI contract", () => {
       "--target runtime",
       "--target egress-gateway",
       "--no-cache",
+      "bash scripts/scan-container-images.sh",
+      "/usr/local/share/aibrain/container-browser-acceptance.mjs",
     ]) {
       expect(workflow, `missing CI gate: ${command}`).toContain(command);
     }
     expect(workflow).toContain("npm audit --omit=dev --audit-level=high");
-    expect(workflow).toContain("node-version: 24.18.1");
+    expect(workflow).toContain("node-version: 24.21.0");
     expect(workflow).toMatch(/permissions:\n\s+contents: read/u);
+  });
+
+  it("blocks native container promotion on scanner failures and retains evidence", async () => {
+    const job = (await readJobs()).containers;
+    expect(job.strategy?.matrix.runner).toEqual(["ubuntu-24.04", "ubuntu-24.04-arm"]);
+    const scanner = job.steps.find((step) => step.run?.startsWith("bash scripts/scan-container-images.sh"));
+    expect(scanner).toBeDefined();
+    expect(scanner?.if).toBeUndefined();
+    expect(scanner?.["continue-on-error"]).toBeUndefined();
+    const reports = job.steps.find((step) => step.with?.name === "container-security-${{ matrix.runner }}-${{ github.sha }}");
+    expect(reports?.if).toBe("always()");
+    const script = await readFile(path.join(process.cwd(), "scripts/scan-container-images.sh"), "utf8");
+    expect(script).toContain("--ignorefile /dev/null --severity CRITICAL --exit-code 1");
+    expect(script).not.toContain("--ignore-unfixed");
+    expect(script).toContain("exit \"$result\"");
   });
 
   it("pins actions and does not grant CI a secret-bearing trigger", async () => {

@@ -41,7 +41,7 @@ install -d -m 0700 "$config/image-evidence/$revision"
 for component in app gateway; do
   image="$app"
   [[ "$component" == app ]] || image="$gateway"
-  trivy image --scanners vuln --severity CRITICAL --exit-code 1 --format json \
+  trivy image --scanners vuln --ignorefile /dev/null --severity CRITICAL --exit-code 1 --format json \
     --output "$config/image-evidence/$revision/$component-critical.json" "$image" >&2
   trivy image --format cyclonedx --output "$config/image-evidence/$revision/$component-sbom.json" "$image" >&2
 done
@@ -49,7 +49,7 @@ docker logout ghcr.io >/dev/null 2>&1
 cd "$release"
 export NESKA_DEPLOY_REVISION="$revision" NESKA_DEPLOY_APP="$app" NESKA_DEPLOY_GATEWAY="$gateway"
 export NESKA_CHROMIUM_VERSION
-NESKA_CHROMIUM_VERSION=$(docker run --rm --entrypoint /usr/bin/chromium "$app" --version | awk '{print $2}')
+NESKA_CHROMIUM_VERSION=$(docker run --rm --entrypoint /usr/bin/chromium "$app" --version | sed -n 's/^[^0-9]*\([0-9][0-9.]*\).*$/\1/p')
 [[ "$NESKA_CHROMIUM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
 node --input-type=module <<'JS'
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
