@@ -25,7 +25,7 @@ describe("backend CI contract", () => {
     const jobs = await readJobs();
     const build = jobs["quality-build"];
     const tests = jobs["quality-tests"];
-    expect(tests.strategy).toEqual({ "fail-fast": false, matrix: { runner: ["ubuntu-24.04", "ubuntu-24.04-arm"], shard: [1, 2, 3] } });
+    expect(tests.strategy).toEqual({ "fail-fast": false, matrix: { runner: ["ubuntu-24.04-arm"], shard: [1, 2, 3] } });
     expect(tests.steps.filter((step) => step.run?.startsWith("npm test"))).toEqual([
       { name: "Unit, integration and contract test shard", run: "npm test -- --shard=${{ matrix.shard }}/3" },
     ]);
@@ -44,17 +44,22 @@ describe("backend CI contract", () => {
     expect(commands).not.toContain("npm test");
   });
 
-  it("requires native ARM and x86 for every execution gate", async () => {
+  it("requires only native ARM64 for every execution and publication gate", async () => {
     const jobs = await readJobs();
     for (const id of ["quality-build", "quality-tests", "e2e-suites", "webkit", "documents", "containers"]) {
       expect(jobs[id]["runs-on"]).toBe("${{ matrix.runner }}");
-      expect(jobs[id].strategy?.matrix.runner).toEqual(["ubuntu-24.04", "ubuntu-24.04-arm"]);
+      expect(jobs[id].strategy?.matrix.runner).toEqual(["ubuntu-24.04-arm"]);
       expect(jobs[id]["continue-on-error"]).toBeUndefined();
     }
     const publish = await readFile(path.join(process.cwd(), ".github/workflows/publish-ghcr.yml"), "utf8");
     expect(publish).toContain("platforms: linux/${{ matrix.arch }}");
     expect(publish).toContain("arch: arm64");
-    expect(publish).toContain("arch: amd64");
+    expect(yaml.load(publish).jobs.publish.strategy?.matrix).toEqual({ include: [{ runner: "ubuntu-24.04-arm", arch: "arm64" }] });
+    for (const job of Object.values(jobs)) {
+      if (job.strategy) expect(job.strategy.matrix.runner).toEqual(["ubuntu-24.04-arm"]);
+      else expect(job["runs-on"]).toBe("ubuntu-24.04-arm");
+    }
+    expect(jobs.containers.steps.some((step) => step.env?.EXPECTED_ARCH === "aarch64")).toBe(true);
     expect(publish).toContain("buildcache-${{ matrix.arch }}");
     expect(publish).toContain("head_sha }}-${{ matrix.arch }}");
   });
@@ -183,7 +188,7 @@ describe("backend CI contract", () => {
 
   it("blocks native container promotion on scanner failures and retains evidence", async () => {
     const job = (await readJobs()).containers;
-    expect(job.strategy?.matrix.runner).toEqual(["ubuntu-24.04", "ubuntu-24.04-arm"]);
+    expect(job.strategy?.matrix.runner).toEqual(["ubuntu-24.04-arm"]);
     const scanner = job.steps.find((step) => step.run?.startsWith("bash scripts/scan-container-images.sh"));
     expect(scanner).toBeDefined();
     expect(scanner?.if).toBeUndefined();

@@ -77,16 +77,23 @@ report any missing gate explicitly. Do not expose demo-mode authentication.
 
 ## Native architecture gates (2026-10-11)
 
-Backend CI runs the same build, unit/integration, browser/recovery, document and
-sandboxed container gates on Ubuntu 24.04 x86 and native ARM runners. There is
-no emulation fallback and failures on either architecture block publication.
-Publication also builds natively on both architectures, with separate caches,
-full-SHA architecture-suffixed tags and release artifacts named
-`aibrain-ghcr-release-<sha>-<amd64|arm64>`. For CAX, consume **only** the arm64
-artifact. Its `architecture` must be `arm64`; verify the loaded images are
-`linux/arm64` and OCI revision matches before promotion. Existing amd64 digests
-cannot be reused on CAX. Neither a green ARM build nor a purchase accepts the
-live host sandbox, login, model turn, persistent data or recovery.
+The operator selected ARM64-only CI and publication on 2026-10-11 because the
+trial installation runs on CAX21. Backend CI runs every existing build, all
+three unit/integration/contract shards, Chromium and WebKit suites and recovery,
+real document checks, sandboxed container canaries and vulnerability scans on
+native `ubuntu-24.04-arm`. The aggregate quality and E2E gates also run on ARM.
+No test, fail-closed dependency gate or scan requirement is removed. AMD64
+execution and publication are excluded; future AMD64 support needs separate
+native validation before release.
+
+Publication builds the app and egress images only for `linux/arm64`, retaining
+ARM cache keys, full-SHA architecture-suffixed tags and the release artifact
+`aibrain-ghcr-release-<sha>-arm64`. Its `architecture` must be `arm64`; verify
+loaded images are `linux/arm64` and their OCI revision matches before promotion.
+Existing AMD64 digests cannot be reused on CAX. Neither a green ARM build nor
+a purchase accepts live host sandboxing, login, model turns, persistent data or
+recovery. Earlier ARM/x86 validation below is historical evidence, not the
+current architecture policy.
 
 Verified preceding release: main `00f67c27b8475860139b9a807ba95f043a9c2870`,
 Backend CI `38128126117`, Publish `38128616014` (amd64 only). Supabase project
@@ -100,7 +107,8 @@ The first native ARM container run exposed an x86-only `/lib64` bind in the
 passive XLS sandbox. The passive reader and generic document extractors now mount
 that optional loader directory read-only when present; `/usr` and `/lib` remain
 mandatory. Namespace, capability, network and filesystem isolation are unchanged.
-The existing real container acceptance must pass on both architectures.
+The existing real container acceptance must pass on native ARM64 under the
+current architecture policy.
 
 ## Off-host trial copies
 
