@@ -93,10 +93,14 @@ describe("backend CI contract", () => {
     expect(publish).toContain(":buildcache");
   });
 
-  it("keeps publication disabled and validates explicit image destinations before authentication", async () => {
+  it("requires operator opt-in and successful same-repository main CI before publication", async () => {
     const workflow = yaml.load(await readFile(path.join(process.cwd(), ".github/workflows/publish-ghcr.yml"), "utf8"));
     const publish = workflow.jobs.publish;
-    expect(publish.if).toContain("false &&");
+    expect(publish.if).toContain("vars.NESKA_PUBLISH_ENABLED == 'true'");
+    expect(publish.if).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(publish.if).toContain("github.event.workflow_run.event == 'push'");
+    expect(publish.if).toContain("github.event.workflow_run.head_branch == 'main'");
+    expect(publish.if).toContain("github.event.workflow_run.head_repository.full_name == github.repository");
     const validationIndex = publish.steps.findIndex((step) => step.run?.includes('"$APP_REPOSITORY" != "$EGRESS_REPOSITORY"'));
     const authenticationIndex = publish.steps.findIndex((step) => step.with?.registry === "ghcr.io");
     expect(validationIndex).toBeGreaterThanOrEqual(0);

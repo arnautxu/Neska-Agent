@@ -1,6 +1,6 @@
 # Neska release and acceptance
 
-The product has no configured production deployment in this revision. The old customer deployment workflow is removed. Generic image build, release-state, rollback and evidence tools remain; publication stays disabled until a new installation's release path is reviewed.
+The product has no verified live deployment in this revision. The old customer deployment workflow is removed. Generic image build, release-state, rollback and evidence tools remain. Publication requires explicit operator opt-in using `NESKA_PUBLISH_ENABLED=true`, explicit image repositories, and a successful same-repository Backend CI push run on main. An unset or false opt-in keeps publication disabled. See [the Neska trial deployment runbook](NESKA_PROVA_DEPLOYMENT.md).
 
 ## Gates
 

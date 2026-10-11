@@ -20,9 +20,9 @@ concurrency:
 jobs:
   publish:
     name: Publish immutable product and egress images
-    # Archived upstream release path; enable only after a Neska-specific release review.
+    # Explicit operator opt-in; a green main CI is still mandatory.
     if: >-
-      false &&
+      vars.NESKA_PUBLISH_ENABLED == 'true' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main' &&

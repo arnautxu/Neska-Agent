@@ -1,6 +1,6 @@
 # Neska operating status
 
-Updated: 2026-10-10.
+Updated: 2026-10-11.
 
 ## Current scope
 
@@ -15,6 +15,8 @@ No real company server, credential or customer data is provisioned by this code 
 The document sync broker now requires operator-provided `--installation-id`, `--connection-id` and `--service-unit`, and rejects a manifest with a different binding. Acceptance validation requires a separately supplied `--target` for live acceptance. There is no built-in production domain.
 
 ## Release status
+
+The operator has authorized a new isolated 8 GB trial server at `https://prova.neska.cat`, with a recurring ceiling of EUR 14/month including VAT, primary IPv4 and provider backups. Provisioning, authentication, image publication and deployment remain pending verification. Publication now has an explicit repository-variable opt-in in addition to the existing successful-main-CI gate; this does not enable or prove deployment. See [NESKA_PROVA_DEPLOYMENT.md](NESKA_PROVA_DEPLOYMENT.md).
 
 This is local work on the fetched source revision in an isolated worktree. Validation results are recorded in the base architecture before completion. No publication, deployment, migration or authenticated production acceptance is performed by this cleanup. The customer deployment workflow and customer systemd units are removed; generic infrastructure templates and transactional release/backup tools remain.
 
