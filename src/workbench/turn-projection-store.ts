@@ -429,6 +429,26 @@ export class FileTurnProjectionStore {
     });
   }
 
+  async withTaskActionLock<T>(threadId: string, messageId: string, operation: () => Promise<T>) {
+    const identity = await this.prepare(threadId, messageId);
+    return this.locks.withLock(`task-action:${identity.lockKey}`, operation);
+  }
+
+  async mutateTask(threadId: string, messageId: string, mutate: (message: ChatMessage) => ChatMessage) {
+    const identity = await this.prepare(threadId, messageId);
+    return this.locks.withLock(identity.lockKey, async () => {
+      const projection = await this.readUnlocked(identity.filePath);
+      if (!projection) throw new WorkbenchPersistenceError("La projecció del torn no existeix.");
+      this.assertBinding(projection, threadId, messageId);
+      const message = mutate(projection.message);
+      this.assertSnapshotBinding({ type: "snapshot", message }, projection.message);
+      const next = turnProjectionSchema.parse({ ...projection, message,
+        localRevision: projection.localRevision + 1, updatedAt: new Date().toISOString() });
+      await this.write(identity.filePath, next);
+      return next;
+    });
+  }
+
   async setRuntimeThreadToken(threadId: string, assistantMessageId: string, token: string) {
     if (token.length < 1 || token.length > 2_048 || /\p{C}/u.test(token)) {
       throw new WorkbenchPersistenceError("El token de runtime no és vàlid.");

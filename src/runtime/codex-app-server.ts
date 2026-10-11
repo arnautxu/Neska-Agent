@@ -663,7 +663,7 @@ export function approvalFromRequest(request: ServerRequest): PendingServerApprov
         ...routing,
         kind: "command",
         title: "Em dones permís per completar aquest pas?",
-        detail: reason ?? command ?? "Revisa l’ordre abans de continuar.",
+        detail: reason ?? "Aquest pas necessita permís. Revisa l’ordre abans de continuar.",
         ...(command ? { command } : {}),
         ...(typeof params.cwd === "string" ? { cwd: params.cwd } : {}),
         status: "pending",

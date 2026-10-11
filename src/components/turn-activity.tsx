@@ -186,6 +186,7 @@ export function activityPresentation(item: ActivityItem, t: UiText = spanishUiTe
       secondaryDetail = undefined;
     } else {
       title = {
+        decision: t("Decideix"),
         tool: active ? t("Usando herramienta") : t("Herramienta completada"),
         plan: active ? t("Preparando el plan") : t("Plan preparado"),
         system: SYSTEM_ACTIVITY_LABELS[item.label] ? t(SYSTEM_ACTIVITY_LABELS[item.label]) : item.label,

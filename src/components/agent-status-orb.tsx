@@ -6,6 +6,7 @@ import type { ActivityKind } from "@/lib/chat-contract";
 type AgentStatusKind = ActivityKind | "connecting";
 
 const ORB_STATE_BY_KIND: Record<AgentStatusKind, OrbState> = {
+  decision: "solving",
   system: "working",
   reasoning: "solving",
   plan: "shaping",

@@ -1412,6 +1412,7 @@ describe("worker Codex turn", () => {
       config: { web_search: "live" },
     });
     expect((threadStart?.params as { dynamicTools?: unknown[] })?.dynamicTools).toEqual([
+      expect.objectContaining({ name: "neska_task", type: "namespace" }),
       expect.objectContaining({
         type: "namespace",
         name: "aibrain_browser",
@@ -1498,7 +1499,7 @@ describe("worker Codex turn", () => {
       { type: "delta", value: "identificador interno." },
     ]);
     expect(events).not.toContainEqual({ type: "delta", value: "Voy a comprobar la fuente autorizada." });
-    expect(events).toContainEqual(expect.objectContaining({
+    expect(events).not.toContainEqual(expect.objectContaining({
       type: "activity",
       item: expect.objectContaining({
         id: "commentary-1",
@@ -1506,7 +1507,7 @@ describe("worker Codex turn", () => {
         detail: expect.stringContaining("Voy a comprobar la fuente autorizada."),
       }),
     }));
-    expect(projectionKeys).toContain("commentary:completed:commentary-1");
+    expect(projectionKeys).not.toContain("commentary:completed:commentary-1");
     expect(projectionKeys.every((key) => /^[A-Za-z0-9][A-Za-z0-9._:-]{0,511}$/u.test(key))).toBe(true);
     expect(events).toContainEqual({
       type: "activity",
@@ -1539,11 +1540,11 @@ describe("worker Codex turn", () => {
       type: "activity",
       item: expect.objectContaining({ label: "Preparando el resumen del razonamiento" }),
     }));
-    expect(events).toContainEqual(expect.objectContaining({
+    expect(events).not.toContainEqual(expect.objectContaining({
       type: "activity",
       item: expect.objectContaining({ kind: "reasoning", detail: "Analitzant la petició" }),
     }));
-    expect(events).toContainEqual(expect.objectContaining({
+    expect(events).not.toContainEqual(expect.objectContaining({
       type: "activity",
       item: expect.objectContaining({ kind: "reasoning", detail: "Resum final verificat" }),
     }));

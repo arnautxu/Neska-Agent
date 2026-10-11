@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@/lib/chat-contract";
+import { isPlanProposal, isTaskQueue, isApprovalItem, type PlanProposal, type TaskQueue, type ApprovalItem, type ChatMessage } from "@/lib/chat-contract";
 import type { WorkbenchProject, WorkbenchSnapshot, WorkbenchThread } from "@/workbench/types";
 
 export type TaskCenterStatus = "running" | "needs_attention" | "completed" | "failed";
@@ -26,6 +26,9 @@ export type TaskCenterItem = {
   createdAt: string;
   updatedAt: string;
   unread: boolean;
+  queue?: TaskQueue;
+  planProposal?: PlanProposal;
+  pendingApprovals?: ApprovalItem[];
 };
 
 export type TaskCenterPayload = {
@@ -126,6 +129,9 @@ export function deriveTaskCenterItems(
         createdAt: message.createdAt,
         updatedAt: taskUpdatedAt(message, thread),
         unread: status !== "running" && !read.has(id),
+        ...(message.queue ? { queue: message.queue } : {}),
+        ...(message.planProposal ? { planProposal: message.planProposal } : {}),
+        ...(status === "needs_attention" ? { pendingApprovals: message.approvals.filter(item => item.status === "pending") } : {}),
       });
     }
   }
@@ -158,5 +164,8 @@ export function isTaskCenterPayload(value: unknown): value is TaskCenterPayload 
     "detail" in task && typeof task.detail === "string" &&
     "createdAt" in task && typeof task.createdAt === "string" &&
     "updatedAt" in task && typeof task.updatedAt === "string" &&
+    (!('queue' in task) || isTaskQueue(task.queue)) &&
+    (!('planProposal' in task) || isPlanProposal(task.planProposal)) &&
+    (!('pendingApprovals' in task) || (Array.isArray(task.pendingApprovals) && task.pendingApprovals.every(isApprovalItem))) &&
     "unread" in task && typeof task.unread === "boolean"));
 }
