@@ -1288,7 +1288,9 @@ button:disabled {
   animation: activity-text-shimmer 1.8s linear infinite;
 }
 
-/* AICSS Streaming Text: follow incoming text without replaying stored answers. */
+/* AICSS Streaming Text: follow incoming text without replaying stored answers.
+   The caret is remounted with every chunk, so the delay keeps it solid while
+   text arrives and it only starts blinking once the stream goes quiet. */
 .t-stream-caret {
   display: inline-block;
   width: 8px;
@@ -1296,7 +1298,7 @@ button:disabled {
   margin-left: 2px;
   vertical-align: text-bottom;
   background: var(--text);
-  animation: stream-caret-pulse 1s step-end infinite;
+  animation: stream-caret-pulse 1s step-end 0.6s infinite;
 }
 
 @keyframes stream-caret-pulse {
@@ -1413,7 +1415,7 @@ button:disabled {
   }
 
   .t-stream-caret {
-    display: none;
+    animation: none;
   }
 
   *,

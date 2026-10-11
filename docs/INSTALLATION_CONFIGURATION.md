@@ -8,6 +8,7 @@ No se guardan contraseñas, tokens, claves de Supabase ni credenciales del repos
 
 - Producción exige `AIBRAIN_INSTALLATION_CONFIG` con una ruta absoluta a un fichero regular. El arranque falla si falta, contiene JSON inválido, usa una versión desconocida, incluye campos extra o viola las restricciones de rutas y branding.
 - Desarrollo sin la variable utiliza únicamente el fixture sintético `config/installations/development.example.json`.
+- Los despliegues *preview* de Vercel (`VERCEL_ENV=preview`) sin la variable cargan `config/installations/neska-agent.vercel-preview.json`, resuelto desde el directorio de trabajo. Solo sirven las páginas de diseño con datos ficticios (`/design/*`), que devuelven 404 en producción.
 - QA puede usar `config/installations/qa.example.json`. Ambos fixtures tienen empresas, marcas, dominios y raíces diferentes y no contienen datos reales.
 - `branding.visualTheme` es opcional y solo acepta `"neska"`: activa la capa visual Neska (`src/styles/neska.css`, ver `DESIGN.md`) en el tema claro. Sin el campo, la instalación conserva el tema base. El esquema JSON y `manage-release.mjs` aceptan el campo; cualquier otro valor o clave de branding se rechaza.
 - Los paths de contexto, usuarios y backups deben quedar dentro de `dataRoot`.

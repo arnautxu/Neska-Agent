@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "installationId": "neska-agent-vercel-preview",
+  "companyName": "Neska Agent",
+  "companySlug": "neska-agent",
+  "publicUrl": "https://neska-agent.vercel.app",
+  "branding": {
+    "productName": "Neska",
+    "logoPath": "/branding/neska/logo.svg",
+    "faviconPath": "/branding/neska/favicon.svg",
+    "accentColor": "#6B3A1E",
+    "visualTheme": "neska"
+  },
+  "paths": {
+    "dataRoot": "/tmp/neska-agent-vercel-preview/data",
+    "companyContextRoot": "/tmp/neska-agent-vercel-preview/data/company",
+    "usersRoot": "/tmp/neska-agent-vercel-preview/data/users",
+    "sourceReadRoot": "/tmp/neska-agent-vercel-preview/documents/source-ro",
+    "publishWriteRoot": "/tmp/neska-agent-vercel-preview/documents/publish-rw",
+    "backupsRoot": "/tmp/neska-agent-vercel-preview/data/backups"
+  }
+}

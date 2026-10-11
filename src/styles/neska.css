@@ -282,6 +282,12 @@
     white-space: nowrap;
   }
 
+  /* The streaming caret is the answer being alive: brown, square-ish block. */
+  & .t-stream-caret {
+    width: 0.45em;
+    background: var(--neska-accent);
+  }
+
   & .markdown-body :not(pre) > code {
     border-radius: 0;
     background: transparent;

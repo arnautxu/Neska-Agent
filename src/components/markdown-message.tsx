@@ -127,7 +127,7 @@ export const MarkdownMessage = memo(function MarkdownMessage({ children, streami
       {streamingTail ? (
         <div className="markdown-stream-tail">
           {streamingTail}
-          <span aria-hidden="true" className="t-stream-caret" />
+          <span key={streamingTail.length} aria-hidden="true" className="t-stream-caret" />
         </div>
       ) : null}
     </div>

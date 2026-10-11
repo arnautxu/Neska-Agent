@@ -8,10 +8,14 @@ import {
 
 const MAX_INSTALLATION_CONFIG_BYTES = 64 * 1024;
 const DEVELOPMENT_INSTALLATION_CONFIG = "config/installations/development.example.json";
+// Vercel previews only serve the mock design pages; build and runtime run from
+// different directories, so the bundled file is resolved from the cwd.
+const VERCEL_PREVIEW_INSTALLATION_CONFIG = "config/installations/neska-agent.vercel-preview.json";
 
 type InstallationEnvironment = {
   AIBRAIN_INSTALLATION_CONFIG?: string;
   NODE_ENV?: string;
+  VERCEL_ENV?: string;
 };
 
 export type InstallationConfigLoadOptions = {
@@ -35,6 +39,9 @@ export function resolveInstallationConfigPath(
       throw new Error("AIBRAIN_INSTALLATION_CONFIG debe ser una ruta absoluta.");
     }
     return path.normalize(configured);
+  }
+  if (env.VERCEL_ENV === "preview") {
+    return path.join(cwd, VERCEL_PREVIEW_INSTALLATION_CONFIG);
   }
   if (env.NODE_ENV === "production") {
     throw new Error("AIBRAIN_INSTALLATION_CONFIG es obligatorio en producción.");
