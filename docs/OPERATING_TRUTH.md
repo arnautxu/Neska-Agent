@@ -41,3 +41,13 @@ advanced for newly provisioned runtime threads. Plan execution reuses ordinary
 chat authorization and durable dispatch with atomically reserved execution IDs.
 See UI_BACKEND_CONTRACT section 19 for compatibility and unknown-data rules.
 Local tests are not Backend CI, GHCR publication, deployment or live acceptance.
+
+## Container CI speed (2026-10-11)
+
+Backend CI now reuses input-addressed native ARM64 Docker dependency layers via
+separate GitHub Actions v2 caches, with loaded full-SHA/OCI revision readback.
+All existing container acceptance and fresh vulnerability scans remain required.
+Manual `clean_build=true` retains a no-cache diagnostic path. This changes CI
+construction only; GHCR publication, deployment and authenticated acceptance
+remain independent and unproven by a cache hit. See the release runbook for
+cache scope, timeouts and evidence boundaries.
