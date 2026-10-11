@@ -40,5 +40,7 @@ describe("factual task cycle", () => {
     expect(screen.queryByRole("button", { name: "Omite este paso" })).toBeNull();
     rerender(<TaskCycle {...props} readOnly />);
     expect(screen.queryByRole("button", { name: "Vuelve a intentarlo" })).toBeNull();
+    rerender(<TaskCycle {...props} message={{ ...props.message, status: "complete" }} />);
+    expect(screen.queryByRole("button", { name: "Vuelve a intentarlo" })).toBeNull();
   });
 });

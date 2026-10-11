@@ -20,7 +20,7 @@ const schema = defineVersionedSchema<LanguageRecord>({
 /** Public presentation preference. The write caller must authorize the administrator. */
 export class FileInstallationLanguageStore {
   private readonly locks: ResourceLockManager;
-  constructor(private readonly installationId: string, private readonly dataRoot: string) {
+  constructor(private readonly installationId: string, private readonly dataRoot: string, private readonly fallbackLocale: UiLocale = DEFAULT_UI_LOCALE) {
     if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(installationId) || !path.isAbsolute(dataRoot)) throw new Error("Invalid installation language boundary.");
     this.locks = new ResourceLockManager({ rootDirectory: path.join(dataRoot, "settings", "language-locks") });
   }
@@ -44,7 +44,7 @@ export class FileInstallationLanguageStore {
       if (record.installationId !== this.installationId) throw new Error("Language record belongs to another installation.");
       return record.locale;
     } catch (error) {
-      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return DEFAULT_UI_LOCALE;
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return this.fallbackLocale;
       throw error;
     }
   }

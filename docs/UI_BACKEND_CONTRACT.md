@@ -240,12 +240,13 @@ type PublicInstallationBranding = {
   logoPath: string;
   faviconPath: string;
   accentColor: string;
+  visualTheme?: "neska";
 };
 ```
 
 ### 4.2 Límite público actual
 
-`branding.visualTheme` no forma parte de esa proyección: el layout raíz lo emite como `data-visual-theme` en `<html>` y solo activa estilos (`src/styles/neska.css`). Sin ese campo la instalación conserva el tema base.
+`branding.visualTheme` és una projecció opcional de la configuració autoritativa de la instal·lació. El layout també l’emet com `data-visual-theme` a `<html>`. Permet activar inici i navegació de Neska; sense el camp es manté la interfície base. No concedeix permisos. Les instal·lacions Neska sense preferència d’idioma persistent comencen en català; la preferència existent, inclòs el castellà, es respecta. Les altres instal·lacions conserven el valor per defecte anterior.
 
 **No hay endpoint JSON de branding.** Next.js carga esta proyección server-side y la pasa como props a login y recovery. El workbench recibe un `BrainManifest` renderizado en servidor cuyo `identity.productName` y color de accent se sobrescriben con el branding exacto de instalación. Metadata, favicon y título también se generan server-side.
 
@@ -1728,3 +1729,13 @@ antics segueix el rebootstrap autoritzat i l’historial immutable existent.
 Estimacions, push mòbil, records utilitzats i repetició d’una tasca feta no es
 publiquen amb aquest canvi. La UI n’ha d’ometre els controls mentre no hi hagi
 una dada o capacitat real; les automatitzacions continuen al seu contracte propi.
+
+### 19.5 Inici, Safata i mòbil
+
+Inici i el comptador de pendents consumeixen exclusivament les tasques de
+`GET /api/task-center` en mode filesystem. El comptador correspon a
+`needs_attention`; els plans proposats i la cua es mostren només si existeix la
+metadada explícita. No es fusionen tasques optimistes del navegador amb aquesta
+llista. Les dades fictícies només viuen en maquetes protegides amb
+`designPreviewsEnabled()`. El full de permís mòbil utilitza els mateixos IDs i
+decisions server-side: tancar-lo no accepta ni rebutja el permís.

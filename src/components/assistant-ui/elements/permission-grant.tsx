@@ -19,7 +19,7 @@ export function PermissionGrant({ approval, onResolve, connectorApproval = false
     {detail ? <p className="mt-2 text-[15px] leading-6 text-[var(--text-secondary)]">{detail}</p> : null}
     {approval.command ? <details className="mt-4"><summary className="cursor-pointer text-sm text-[var(--text-secondary)]">{t("Revisa els detalls")}</summary><p className="mt-2 break-all font-mono text-xs">{publicCommandTitle(approval.command)}</p>{approval.kind === "command" && !connectorApproval && !readOnly ? <button type="button" className={`${button} mt-3 border border-[var(--border)]`} onClick={() => onResolve("acceptForSession")}>{t("Permet durant aquesta tasca")}</button> : null}</details> : null}
     {readOnly ? <p className="mt-5 text-sm">{t("Esperant la decisió d’un editor del projecte")}</p> : <div className="mt-5 flex flex-wrap gap-2">
-      <button type="button" className={`${button} bg-[var(--neska-accent)] text-white`} onClick={() => onResolve("accept")}>{t("Permet")}</button>
+      <button type="button" className={`${button} bg-[var(--neska-accent,var(--brain-accent))] text-white`} onClick={() => onResolve("accept")}>{t("Permet")}</button>
       {approval.reviewUrl ? <a href={approval.reviewUrl} target="_blank" rel="noreferrer" className={`${button} inline-flex items-center justify-center border border-[var(--border)]`}>{t("Revisa")}</a> : onOpenReview ? <button type="button" className={`${button} border border-[var(--border)]`} onClick={onOpenReview}>{t("Revisa")}</button> : null}
       <button type="button" className={`${button} text-[var(--text-secondary)] sm:ml-auto`} onClick={() => onResolve("decline")}>{t("Ara no")}</button>
     </div>}

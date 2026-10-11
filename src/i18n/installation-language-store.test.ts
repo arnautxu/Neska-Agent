@@ -19,6 +19,13 @@ describe("installation language persistence", () => {
     await first.write("en", "admin-a");
     expect(await first.read()).toBe("en");
   });
+  it("uses the Neska Catalan fallback only until a company saves its preference", async () => {
+    const dir = await root();
+    const neska = new FileInstallationLanguageStore("neska", dir, "ca");
+    expect(await neska.read()).toBe("ca");
+    await neska.write("es", "admin");
+    expect(await new FileInstallationLanguageStore("neska", dir, "ca").read()).toBe("es");
+  });
   it("fails closed for a foreign record and cannot overwrite it", async () => {
     const dir = await root();
     await new FileInstallationLanguageStore("company-a", dir).write("es", "admin-a");

@@ -42,6 +42,13 @@ chat authorization and durable dispatch with atomically reserved execution IDs.
 See UI_BACKEND_CONTRACT section 19 for compatibility and unknown-data rules.
 Local tests are not Backend CI, GHCR publication, deployment or live acceptance.
 
+Neska home and inbox now read the server task-center projection. The optional
+public visualTheme selects the Neska shell without granting capabilities. New
+Neska installations default to Catalan only when no language preference exists;
+other installations and saved preferences retain their previous behavior. Mobile
+approvals reuse the ordinary server decision route and exact approval IDs.
+Protected design routes remain separate from real data and live acceptance.
+
 ## Container CI speed (2026-10-11)
 
 Backend CI now reuses input-addressed native ARM64 Docker dependency layers via
