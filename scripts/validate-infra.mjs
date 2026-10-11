@@ -78,12 +78,15 @@ requireMatch(journaldRetention, /^\[Journal\]\nSystemMaxUse=512M\n$/u, "journald
 requireMatch(dockerfile, /@openai\/codex@0\.153\.4/u, "Dockerfile does not pin the approved Codex version");
 forbidMatch(dockerfile, /ARG CODEX_VERSION/u, "Dockerfile permits the App Server contract version to be overridden");
 requireMatch(dockerfile, /ARG NODE_IMAGE=node:24\.21\.0-bookworm-slim@sha256:[0-9a-f]{64}/u, "Dockerfile does not pin the reviewed Node 24 runtime digest");
-requireMatch(dockerfile, /ARG DEBIAN_SNAPSHOT=\d{8}T\d{6}Z/u, "Dockerfile does not pin an immutable Debian snapshot");
-requireMatch(dockerfile, /FROM \$\{NODE_IMAGE\} AS patched-base[\s\S]*apt-get upgrade -y[\s\S]*FROM patched-base AS egress-gateway/u, "Gateway must inherit the patched operating-system base");
+requireMatch(dockerfile, /ARG OS_IMAGE=ubuntu:24\.04@sha256:[0-9a-f]{64}/u, "Dockerfile does not pin the reviewed Ubuntu LTS runtime digest");
+requireMatch(dockerfile, /ARG UBUNTU_SNAPSHOT=\d{8}T\d{6}Z/u, "Dockerfile does not pin an immutable Ubuntu snapshot");
+requireMatch(dockerfile, /FROM \$\{OS_IMAGE\} AS patched-base[\s\S]*apt-get upgrade -y[\s\S]*FROM patched-base AS egress-gateway/u, "Gateway must inherit the patched operating-system base");
 requireMatch(dockerfile, /FROM patched-base AS runtime/u, "Application must inherit the patched operating-system base");
 requireMatch(dockerfile, /FROM patched-base AS egress-gateway[\s\S]*rm -rf \/usr\/local\/lib\/node_modules\/npm \/usr\/local\/bin\/npm \/usr\/local\/bin\/npx[\s\S]*USER aibrain-egress/u, "Gateway must not ship an unused package manager");
-requireMatch(dockerfile, /snapshot\.debian\.org\/archive\/debian\/\$\{DEBIAN_SNAPSHOT\}/u, "Dockerfile APT source is not the pinned Debian snapshot");
-requireMatch(dockerfile, /snapshot\.debian\.org\/archive\/debian-security\/\$\{DEBIAN_SNAPSHOT\}/u, "Dockerfile security APT source is not the pinned Debian snapshot");
+requireMatch(dockerfile, /snapshot\.ubuntu\.com\/ubuntu\/\$\{UBUNTU_SNAPSHOT\}\//u, "Dockerfile APT source is not the pinned Ubuntu snapshot");
+requireMatch(dockerfile, /noble-security main universe/u, "Dockerfile snapshot excludes the Ubuntu security archive");
+requireMatch(dockerfile, /COPY --from=node-toolchain \/usr\/local\/bin\/node \/usr\/local\/bin\/node/u, "Runtime must use the pinned official Node build");
+requireMatch(dockerfile, /install-container-chrome\.py/u, "Browser must use the hash-verified official stable package");
 requireMatch(dockerfile, /USER aibrain:aibrain/u, "Dockerfile final process is not non-root");
 requireMatch(dockerfile, /npm run build:presentation-runtime/u, "Dockerfile does not build the offline presentation runtime");
 requireMatch(dockerfile, /COPY --from=builder --chown=root:root \/app\/dist\/pptxgenjs\.cjs \/usr\/local\/share\/aibrain\/pptxgenjs\.cjs/u, "Dockerfile does not ship the locked presentation authoring bundle");
@@ -428,7 +431,7 @@ if (failures.length > 0) {
 
 process.stdout.write("Static Docker/Compose boundary validation: PASS\n");
 process.stdout.write("Private inherited Chrome CDP pipe (no TCP endpoint): PASS\n");
-process.stdout.write("Pinned base image, Debian snapshot and Node toolchain: PASS\n");
+process.stdout.write("Pinned LTS base image, Ubuntu snapshot and Node toolchain: PASS\n");
 if (existsSync("/usr/local/bin/docker") || existsSync("/usr/bin/docker") || existsSync("/opt/homebrew/bin/docker")) {
   try {
     execFileSync("docker", [

@@ -1,4 +1,4 @@
-# CPython 3.11, Linux arm64 and amd64; upstream PyPI wheel digests.
+# CPython 3.12, Linux arm64 and amd64; upstream PyPI wheel digests.
 Pillow==12.3.0 \
-  --hash=sha256:bcb46e2f9feff8d06323983bd83ed00c201fdcab3d74973e7072a889b3979fcd \
-  --hash=sha256:23d27a3e0307ec2244cc51e7287b919aa68d097504ebe19df4e76a98a3eea5bd
+  --hash=sha256:d9c7f76c0673154f044e9d78c8655fb4213f6ca31a836df48b40fe5d187717b9 \
+  --hash=sha256:78cb2c6865a35ab8ff8b75fd122f6033b92a62c82801110e48ddd6c936a45d91

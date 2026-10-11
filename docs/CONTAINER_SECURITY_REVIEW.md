@@ -59,3 +59,33 @@ Any future exception requires a narrow package/version scope, evidence,
 expiry, review and retained raw findings. Do not silently equate vendor Low
 severity or sandboxing with "not affected". Do not promote while the unchanged
 critical gate rejects the candidate.
+
+## Official LTS replacement under validation
+
+Debian 13 fixes GLib and SQLite but still reverts libxml2 to affected 2.9.14.
+The candidate therefore uses the signed Ubuntu 24.04 LTS archive at snapshot
+`20261011T000000Z`, with a pinned multi-architecture Ubuntu image. This supplies
+vendor-maintained fixes for [libxml2](https://ubuntu.com/security/CVE-2026-6653)
+and [GLib](https://ubuntu.com/security/CVE-2026-58016); its
+[SQLite version is not affected](https://ubuntu.com/security/CVE-2025-7458).
+No Debian packages or custom XML patches are transplanted into Ubuntu.
+
+The exact official Node 24.21.0 binary and npm are copied from the separately
+pinned Node image. Ubuntu provides its compatible system libraries. Gateway
+and runtime still remove npm/npx; the worker version and isolation are unchanged.
+Pillow uses pinned CPython 3.12 wheels for the new LTS Python runtime.
+
+The browser is the official Google Chrome **stable** 155.0.8059.39-1, available
+for both ARM64 and AMD64. Google's dated stable package metadata supplies the
+pinned per-architecture SHA-256 hashes. Installation verifies the complete
+package before invoking APT; dependencies stay on the signed Ubuntu snapshot.
+The moving repository added by Google's installer is removed. The existing
+`/usr/bin/chromium` protocol path aliases the Chrome launcher, preserving the
+mandatory non-root, read-only, per-user bubblewrap/CDP/proxy boundary. This is
+a browser engine security update; product UI is untouched. Version readback
+accepts either vendor prefix and still requires the exact numeric version.
+
+Re-run native document conversion, passive XLS, packaged App Server and browser
+isolation, encrypted backup/restore, and the raw image scan on both architectures.
+No suppression or risk exception is enabled. Do not promote until these gates
+and the exact main CI/publication gates pass.

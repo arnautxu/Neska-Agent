@@ -343,6 +343,32 @@ jobs:
             --entrypoint node \
             "aibrain-ci:${GITHUB_SHA}" \
             /usr/local/share/aibrain/container-app-server-acceptance.mjs
+      - name: Exercise the pinned browser through its production sandbox
+        run: |
+          docker run --rm \
+            --user 10001:10001 \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --security-opt apparmor=aibrain-container \
+            --security-opt systempaths=unconfined \
+            --security-opt seccomp=infra/hetzner/browser/seccomp_profile.json \
+            --pids-limit 768 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=512m,mode=1777 \
+            --tmpfs /run:rw,nosuid,nodev,noexec,size=16m,mode=0755 \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-installation.json,dst=/etc/aibrain/installation.json,readonly" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-data,dst=/var/lib/aibrain/data" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-source,dst=/srv/aibrain/source-ro,readonly" \
+            --mount "type=bind,src=${RUNNER_TEMP}/aibrain-ci-publish,dst=/srv/aibrain/publish-rw" \
+            --env NODE_ENV=production \
+            --env CODEX_BIN=/usr/local/bin/aibrain-codex-worker \
+            --env AIBRAIN_CODEX_EXPECTED_VERSION=0.153.4 \
+            --env AIBRAIN_INSTALLATION_CONFIG=/etc/aibrain/installation.json \
+            --env AIBRAIN_EGRESS_PROXY_URL=http://127.0.0.1:9 \
+            --env AIBRAIN_EGRESS_BROWSER_TOKEN=container_ci_browser_token_000000000000000000 \
+            --entrypoint node \
+            "aibrain-ci:${GITHUB_SHA}" \
+            /usr/local/share/aibrain/container-browser-acceptance.mjs
       - name: Convert a real presentation through the production document sandbox
         run: |
           docker run --rm \

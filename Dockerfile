@@ -1,22 +1,22 @@
 ARG NODE_IMAGE=node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+ARG OS_IMAGE=ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
 
-FROM ${NODE_IMAGE} AS patched-base
-ARG DEBIAN_SNAPSHOT=20261011T000000Z
+FROM ${NODE_IMAGE} AS node-toolchain
+FROM ${OS_IMAGE} AS patched-base
+ARG UBUNTU_SNAPSHOT=20261011T000000Z
 
-# The pinned slim base does not contain a system trust store. Bootstrap only
-# ca-certificates from the base image's signed Debian sources before switching
-# every runtime/tool package to the immutable snapshot below.
+# Bootstrap only the trust store from Ubuntu's signed default archive; the
+# snapshot redirects HTTP to HTTPS. Runtime packages use the dated snapshot.
 RUN apt-get update \
-  && export DEBIAN_FRONTEND=noninteractive \
-  && apt-get install -y --no-install-recommends ca-certificates \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 RUN printf '%s\n' \
-    "deb https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}/ bookworm main" \
-    "deb https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}/ bookworm-updates main" \
-    "deb https://snapshot.debian.org/archive/debian-security/${DEBIAN_SNAPSHOT}/ bookworm-security main" \
+    "deb https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/ noble main universe" \
+    "deb https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/ noble-updates main universe" \
+    "deb https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/ noble-security main universe" \
     > /etc/apt/sources.list \
-  && rm -f /etc/apt/sources.list.d/debian.sources \
+  && rm -f /etc/apt/sources.list.d/ubuntu.sources \
   && printf '%s\n' \
     'Acquire::Check-Valid-Until "false";' \
     'Acquire::Retries "3";' \
@@ -25,7 +25,16 @@ RUN printf '%s\n' \
   && apt-get update \
   && export DEBIAN_FRONTEND=noninteractive \
   && apt-get upgrade -y \
+  && apt-get install -y --no-install-recommends ca-certificates libstdc++6 \
   && rm -rf /var/lib/apt/lists/*
+
+# Use the exact official Node build on Ubuntu's newer, compatible glibc. Neither
+# Debian OS packages nor third-party distribution repositories are imported.
+COPY --from=node-toolchain /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-toolchain /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+  && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+  && node --version | grep -Fx v24.21.0
 
 FROM patched-base AS egress-gateway
 
@@ -60,7 +69,7 @@ FROM patched-base AS builder
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
-RUN npm run build && npm run build:automation-worker && npm run build:weekly-token-budget && npm run build:container-app-server-acceptance && npm run build:presentation-runtime && node scripts/build-container-presentation-tool-acceptance.mjs && node scripts/build-container-xls-passive-acceptance.mjs
+RUN npm run build && npm run build:automation-worker && npm run build:weekly-token-budget && npm run build:container-app-server-acceptance && npm run build:presentation-runtime && node scripts/build-container-presentation-tool-acceptance.mjs && node scripts/build-container-xls-passive-acceptance.mjs && node scripts/build-container-browser-acceptance.mjs
 
 FROM patched-base AS runtime
 
@@ -97,8 +106,6 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     bubblewrap \
     ca-certificates \
-    chromium \
-    chromium-sandbox \
     file \
     fonts-dejavu-core \
     fonts-liberation \
@@ -132,14 +139,23 @@ RUN apt-get update \
   && install -d -m 0555 -o root -g root /srv/aibrain/source-ro \
   && install -d -m 0755 -o root -g root /etc/aibrain /usr/local/share/aibrain
 
-# Use the upstream fixed Pillow wheel; Debian 12 still ships the affected version.
-# Install into Debian's local site directory so /usr/bin/python3 and workers agree.
+RUN dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libxml2)" ge '2.9.14+dfsg-1.3ubuntu3.8' \
+  && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libglib2.0-0t64)" ge '2.80.0-6ubuntu3.9' \
+  && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libsqlite3-0)" ge '3.45.1'
+
+# Use fixed upstream Pillow wheels with both native architecture hashes.
 COPY --chown=root:root infra/hetzner/python-runtime-requirements.txt /tmp/python-runtime-requirements.txt
 RUN /usr/bin/python3 -m venv /tmp/python-installer \
   && /tmp/python-installer/bin/pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps \
-    --target /usr/local/lib/python3.11/dist-packages -r /tmp/python-runtime-requirements.txt \
+    --target /usr/local/lib/python3.12/dist-packages -r /tmp/python-runtime-requirements.txt \
   && rm -rf /tmp/python-installer /tmp/python-runtime-requirements.txt \
   && /usr/bin/python3 -c "import openpyxl; import PIL; assert PIL.__version__ == '12.3.0'"
+
+COPY --chown=root:root scripts/install-container-chrome.py /tmp/install-container-chrome.py
+RUN /usr/bin/python3 /tmp/install-container-chrome.py \
+  && rm /tmp/install-container-chrome.py \
+  && ln -s /usr/bin/google-chrome-stable /usr/bin/chromium \
+  && /usr/bin/chromium --version | grep -F '155.0.8059.39'
 
 COPY --chown=root:root scripts/install-container-rclone.py /tmp/install-container-rclone.py
 RUN /usr/bin/python3 /tmp/install-container-rclone.py && rm /tmp/install-container-rclone.py
@@ -169,6 +185,7 @@ COPY --from=builder --chown=root:root /app/dist/initialize-weekly-token-budget.m
 COPY --from=builder --chown=root:root /app/dist/container-app-server-acceptance.mjs /usr/local/share/aibrain/container-app-server-acceptance.mjs
 COPY --from=builder --chown=root:root /app/dist/container-presentation-tool-acceptance.mjs /usr/local/share/aibrain/container-presentation-tool-acceptance.mjs
 COPY --from=builder --chown=root:root /app/dist/container-xls-passive-acceptance.mjs /usr/local/share/aibrain/container-xls-passive-acceptance.mjs
+COPY --from=builder --chown=root:root /app/dist/container-browser-acceptance.mjs /usr/local/share/aibrain/container-browser-acceptance.mjs
 COPY --chown=root:root tests/fixtures/legacy-passive-links-macros.xls tests/fixtures/legacy-autofilter.xls /usr/local/share/aibrain/
 # The scheduler is an explicit server-conditioned ESM bundle. Unlike the app,
 # it does not depend on Next's standalone file tracer, tsx, source mounts, or a
