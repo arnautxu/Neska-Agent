@@ -35,7 +35,7 @@ export function PermissionGrant({
   const button = "neska-px min-h-11 max-sm:w-full border-2 border-[var(--neska-ink)] px-4 py-2 text-[12px] transition active:translate-x-[2px] active:translate-y-[2px]";
 
   return (
-    <div data-slot="permission-grant" data-pending={pending ? "true" : "false"} className="overflow-hidden bg-[var(--surface)]" role="group" aria-label={t("Aprobación: {p0}", { p0: title })}>
+    <div data-slot="permission-grant" data-pending={pending ? "true" : "false"} className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]" role="group" aria-label={t("Aprobación: {p0}", { p0: title })}>
       <div className="px-4 pb-3 pt-3.5">
         <p className={`neska-px flex items-center gap-2 text-[11px] ${pending ? "text-[var(--neska-accent)]" : "text-[var(--text-secondary)]"}`}>
           <LockSimple size={14} weight="bold" aria-hidden="true" />{pending ? t("Aprobación pendiente") : t("Aprobación")}
