@@ -1,0 +1,63 @@
+<!doctype html><html lang="ca"><head><meta charset="utf-8"><title>Neska · Tasca</title>
+<link rel="stylesheet" href="m.css"></head><body>
+<script>if (location.search.includes('panel')) document.body.classList.add('panel')</script>
+<aside class="side">
+  <div class="logo"><canvas class="neska"></canvas>NESKA</div>
+  <div class="new"><span>Nova tasca</span><kbd>⌘N</kbd></div>
+  <div class="item "><span class="t">Inici</span></div>
+  <div class="item"><span class="t">Safata</span><span class="meta num">1</span></div>
+  <div class="item"><span class="t">Automatitzacions</span></div>
+  <div class="lbl">Tasques</div>
+  <div class="item on"><span class="dot live"></span><span class="t">Conciliació factures octubre</span></div>
+  <div class="item"><span class="dot wait"></span><span class="t">Resposta a Ferreteria Puig</span></div>
+  <div class="item"><span class="dot"></span><span class="t">Informe vendes Q3</span></div>
+  <div class="item"><span class="dot"></span><span class="t">Contracte lloguer nau</span></div>
+  <div class="item"><span class="dot"></span><span class="t">Nòmines setembre</span></div>
+  <div class="foot"><span class="av">AR</span>Arnau</div>
+</aside>
+<main class="main">
+  <div class="top"><span>Comptabilitat 2026</span><span class="act"><span class="ACTON">Activitat</span><span>Fitxers</span><span>···</span></span></div>
+  <div class="body"><div class="col">
+    <div class="head">
+      <div class="lbl head-l"><span class="alive"></span>En curs · pas 3 de 5 · <span class="num">02:41</span></div>
+      <h1>Conciliació factures octubre</h1>
+      <div class="ask">Concilia les factures d'octubre amb l'extracte del banc i prepara el correu per als proveïdors amb diferències.</div>
+    </div>
+
+
+    <div class="steps">
+      <div class="step done"><span class="n">01</span><span class="t">Llegir les 38 factures</span><span class="r">0:41</span></div>
+      <div class="step done"><span class="n">02</span><span class="t">Normalitzar l'extracte bancari</span><span class="r">0:12</span></div>
+      <div class="step run"><span class="n">03</span><span class="t">Creuar imports, dates i NIF</span><span class="r">29 / 38</span><div class="sub">Llegint F-2026-0932.pdf<span class="caret"></span></div><div class="bar"><i style="width:76%"></i></div></div>
+      <div class="step todo"><span class="n">04</span><span class="t">Generar l'informe de diferències</span><span class="r"></span></div>
+      <div class="step todo"><span class="n">05</span><span class="t">Enviar correus als proveïdors</span><span class="gate">Amb permís</span></div>
+    </div>
+
+    <div class="ask-card">
+      <div class="lbl">Necessito el teu permís</div>
+      <h2>Enviar un correu a Ferreteria Puig</h2>
+      <p>La factura F-2026-0931 és de 1.240,00 € i el banc en mostra 1.204,00 €. Els reclamo la diferència de 36,00 €.</p>
+      <div class="ctas"><span class="btn pri">Permet <kbd>⏎</kbd></span><span class="btn">Revisa el correu</span><span class="btn ghost">Ara no</span><span class="later">Continuo amb la resta mentrestant</span></div>
+    </div>
+
+    <div class="out"><span class="ic"></span><div><div class="nm">conciliacio-octubre.xlsx</div><div class="mt">Esborrany · s'actualitza mentre treballo</div></div><span class="open">Obre ↗</span></div>
+  </div></div>
+  <div class="composer"><div class="col">
+    <div class="box"><span class="ph">Afegeix context o demana un canvi…</span><span class="send">↑</span></div>
+  </div></div>
+</main>
+<aside class="panel-r PANEL">
+  <div class="ph2"><span>Activitat</span><span>✕</span></div>
+  <div class="log">
+    <div class="e"><span class="ts">19:42:58</span><span><span class="tool">Llegeix</span> F-2026-0931.pdf<span class="d">2 pàgines · 0,4 s</span></span></div>
+    <div class="e"><span class="ts">19:43:01</span><span><span class="tool">Extreu</span> dades de la factura<span class="d">B-66120934 · 1.240,00 €</span></span></div>
+    <div class="e flag"><span class="ts">19:43:04</span><span><span class="tool">Creua</span> amb el moviment 227<span class="d">Diferència de 36,00 €</span></span></div>
+    <div class="e think"><span class="ts">19:43:05</span><span><span class="tool">Decideix</span><span class="d">Supera el llindar de 5 € que tens a la memòria. La marco per reclamar.</span></span></div>
+    <div class="e"><span class="ts">19:43:07</span><span><span class="tool">Escriu</span> conciliacio-octubre.xlsx<span class="d">Fila 29</span></span></div>
+    <div class="e live"><span class="ts">19:43:09</span><span><span class="tool">Llegeix</span> F-2026-0932.pdf<span class="caret"></span></span></div>
+  </div>
+  <div class="sum"><div><div class="v">142</div><div class="k">accions</div></div><div><div class="v">4</div><div class="k">eines</div></div><div><div class="v">1</div><div class="k">record usat</div></div></div>
+</aside>
+<script src="about:blank"></script>
+<script>if (!document.body.classList.contains('panel')) document.querySelector('.panel-r').remove(); else document.querySelector('.ACTON').classList.add('on')</script>
+</body></html>
