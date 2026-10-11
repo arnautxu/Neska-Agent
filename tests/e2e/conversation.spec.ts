@@ -305,22 +305,15 @@ test("the existing chat route streams a complete turn and persists it in preview
   await page.getByRole("textbox", { name: "Mensaje" }).fill("Resume este contenido sintético en tres ideas claras.");
   await page.getByRole("button", { name: "Enviar mensaje" }).click();
   await expect(page.getByRole("button", { name: "Detener respuesta" })).toBeVisible();
-  const liveActivity = page.getByTestId("turn-thinking-steps").last();
-  const liveActivityTrigger = page.getByRole("button", { name: "Mostrar el proceso de trabajo" }).last();
-  await expect(liveActivityTrigger).toHaveAttribute("aria-expanded", "false");
-  await expect(liveActivityTrigger).toHaveAttribute("data-streaming", "true");
-  await expect(liveActivityTrigger).toContainText(/Analizando la petición|Revisando el proyecto|Plan preparado/);
-  await expect(liveActivity.getByRole("region", { name: "Detalles del proceso de trabajo", includeHidden: true })).toBeHidden();
+  // The plan is the live focus; the completed plan becomes folded history.
+  await expect(page.getByTestId("task-plan").last()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Vista previa" })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole("button", { name: "Detener respuesta" })).toHaveCount(0, { timeout: 10_000 });
-  const completedActivity = page.getByTestId("turn-thinking-steps").last();
-  const completedActivityTrigger = page.getByRole("button", { name: "Mostrar el proceso de trabajo" }).last();
-  await expect(completedActivityTrigger).toHaveAttribute("aria-expanded", "false");
-  await expect(completedActivityTrigger).toContainText(/Ha trabajado durante \d+m \d+s/);
-  await expect(completedActivityTrigger).toHaveAttribute("data-streaming", "false");
-  await completedActivityTrigger.click();
-  await expect(page.getByRole("button", { name: "Ocultar el proceso de trabajo" }).last()).toHaveAttribute("aria-expanded", "true");
-  await expect(completedActivity.getByText("Analizando la petición", { exact: true })).toBeVisible();
+  const history = page.locator(".task-cycle details").last();
+  await expect(history).not.toHaveAttribute("open");
+  await history.locator("summary").click();
+  await expect(page.getByTestId("task-plan").last()).toBeVisible();
+  await expect(page.getByTestId("task-plan").last().locator('[data-step-status="completed"]')).not.toHaveCount(0);
 
   await page.waitForTimeout(250);
   await reloadAndReopenConversation(page);

@@ -1714,3 +1714,11 @@ button:disabled {
   .landing-band-item { min-width: 44px; }
   .landing-band .composer-picker-button { min-width: 44px; }
 }
+
+/* Planning is a real composer action; keep all controls reachable at 320px. */
+@media (max-width: 479px) {
+  .composer-controls { flex-wrap: wrap; }
+  .composer-controls-end { max-width: calc(100% - 52px); flex-shrink: 1; flex-wrap: wrap; justify-content: flex-end; }
+  .composer-compact { grid-template-columns: 44px minmax(0, 1fr); }
+  .composer-compact .composer-controls-end { grid-column: 1 / -1; grid-row: 2; max-width: 100%; }
+}
