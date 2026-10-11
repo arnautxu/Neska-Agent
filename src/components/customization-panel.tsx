@@ -4,7 +4,7 @@ import { CompanyMailConnectionForm } from "@/components/company-mail-connection-
 import { ConnectorLogo } from "@/components/connector-logo";
 import { connectorPresentation } from "@/connectors/presentation";
 
-import { Archive, Bell, Brain, PaintBrush, Plugs, X } from "@phosphor-icons/react";
+import { Archive, Brain, PaintBrush, X } from "@phosphor-icons/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import type { RuntimeStatus } from "@/lib/runtime-status";
@@ -14,6 +14,10 @@ import { OverlayPresenceLayer } from "@/ui/overlay-presence";
 import { ThemeToggle } from "@/components/ui/primitives";
 import { MemoryPanel } from "@/components/memory-panel";
 import { STANDALONE_PROJECT_SLUG, type WorkbenchProject, type WorkbenchThread } from "@/workbench/types";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { ConnectIcon } from "@/components/ui/connect";
+import { ArchiveIcon } from "@/components/ui/archive";
+import { BellIcon } from "@/components/ui/bell";
 
 type Props = {
   productName: string;
@@ -80,10 +84,10 @@ export function CustomizationPanel({ productName, open, initialTab = "appearance
   };
   const tabs: Array<{ id: Tab; label: string; icon: ReactNode }> = [
     { id: "appearance", label: t("Apariencia"), icon: <PaintBrush size={17} /> },
-    { id: "connectors", label: t("Conectores"), icon: <Plugs size={17} /> },
+    { id: "connectors", label: t("Conectores"), icon: <TriggerIcon icon={ConnectIcon} size={17} /> },
     { id: "memory", label: t("Memoria"), icon: <Brain size={17} /> },
-    { id: "notifications", label: t("Avisos"), icon: <Bell size={17} /> },
-    { id: "archived", label: t("Archivados"), icon: <Archive size={17} /> },
+    { id: "notifications", label: t("Avisos"), icon: <TriggerIcon icon={BellIcon} size={17} /> },
+    { id: "archived", label: t("Archivados"), icon: <TriggerIcon icon={ArchiveIcon} size={17} /> },
   ];
   return <AnimatePresence initial={false}>{open ? (
     <OverlayPresenceLayer key="customization-panel" origin="center" className="workspace-overlay fixed inset-0 z-50 grid place-items-center p-0 md:p-6">

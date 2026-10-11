@@ -13,18 +13,13 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import {
   ArrowDown,
   ArrowUp,
-  At,
   CaretDown,
   Check,
-  Copy,
   FolderOpen,
   File as FileIcon,
   Image as ImageIcon,
   ImagesSquare,
-  Paperclip,
   Plus,
-  PencilSimple,
-  SidebarSimple,
   SpinnerGap,
   Stop,
   WarningCircle,
@@ -66,6 +61,14 @@ import type { ConnectorMention } from "@/connectors/mentions-contract";
 import { useMenuKeyboardNavigation } from "@/ui/use-menu-keyboard-navigation";
 import { restoreRequestDocument } from "@/ui/restore-request-documents";
 import { readerScrolledAway } from "@/ui/reader-scroll-intent";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { AttachFileIcon } from "@/components/ui/attach-file";
+import { AtSignIcon } from "@/components/ui/at-sign";
+import { BrainIcon } from "@/components/ui/brain";
+import { CopyIcon } from "@/components/ui/copy";
+import { PanelLeftCloseIcon } from "@/components/ui/panel-left-close";
+import { PlusIcon } from "@/components/ui/plus";
+import { SquarePenIcon } from "@/components/ui/square-pen";
 
 type ChatWorkspaceProps = {
   liveAnswers?: LiveAnswerStore;
@@ -164,6 +167,7 @@ function ComposerPicker({
   align = "start",
   anchor = "self",
   className,
+  icon,
   disabled = false,
   onOpenChange,
   onSelect,
@@ -177,6 +181,7 @@ function ComposerPicker({
   align?: "start" | "end";
   anchor?: "self" | "controls";
   className?: string;
+  icon?: ReactNode;
   disabled?: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (value: string) => void;
@@ -219,6 +224,7 @@ function ComposerPicker({
           onOpenChange(true);
         }}
       >
+        {icon}
         <span className="max-w-32 truncate">{valueLabel}</span>
         <CaretDown size={11} className={`shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
@@ -285,7 +291,7 @@ function ResultActions({ content }: { content: string }) {
   };
   return (
     <div className="mt-3 flex flex-wrap items-center gap-0.5 text-[var(--text-muted)]">
-      <button type="button" title={t("Copiar")} aria-label={t("Copiar")} className="result-action" onClick={() => void copyResult()}><Copy size={14} />{copied ? <span className="ml-1 text-[12px]">{t("Copiado")}</span> : null}</button>
+      <button type="button" title={t("Copiar")} aria-label={t("Copiar")} className="result-action" onClick={() => void copyResult()}><TriggerIcon icon={CopyIcon} size={14} />{copied ? <span className="ml-1 text-[12px]">{t("Copiado")}</span> : null}</button>
     </div>
   );
 }
@@ -418,7 +424,7 @@ function UserMessage({ message, connectorMentions, threadId, onRequestPublicatio
               <span key={attachment.id} className="flex max-w-52 items-center gap-1.5 rounded-md bg-[var(--surface-raised)]/70 px-2 py-1 text-[12px] text-[var(--text)]">
                 {attachment.mimeType.startsWith("image/") ? <ChatAttachmentImage attachment={attachment} threadId={threadId} /> : <FileIcon size={11} />}
                 <span className="truncate">{attachment.name}</span>
-                {!readOnly && onRequestPublication ? <button type="button" aria-label={t("Preparar publicación de {p0}", { p0: attachment.name })} title={t("Publicar como documento oficial")} onClick={() => onRequestPublication(attachment)} className="touch-target shrink-0 rounded p-1 hover:bg-[var(--surface-hover)]"><Plus size={12} /></button> : null}
+                {!readOnly && onRequestPublication ? <button type="button" aria-label={t("Preparar publicación de {p0}", { p0: attachment.name })} title={t("Publicar como documento oficial")} onClick={() => onRequestPublication(attachment)} className="touch-target shrink-0 rounded p-1 hover:bg-[var(--surface-hover)]"><TriggerIcon icon={PlusIcon} size={12} /></button> : null}
               </span>
             ))}
           </div>
@@ -434,7 +440,7 @@ function UserMessage({ message, connectorMentions, threadId, onRequestPublicatio
           </div>
         ) : <div className="whitespace-pre-wrap">{mentionTextParts(message.content, connectorMentions.filter(m => message.connectorMentions?.includes(m.id))).map((part, index) => part.id ? <span key={index} className="rounded bg-[var(--surface-selected)] text-[var(--text)]"><span className="inline-flex align-middle"><ConnectorLogo id={part.id} size={14} /></span>{part.text.slice(1)}</span> : part.text)}</div>}
       </div>
-      {!readOnly && !editing && message.attachments.length === 0 ? <div className="mt-1 flex justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"><button type="button" className="result-action" aria-label={t("Editar mensaje y crear una rama")} title={t("Editar mensaje")} onClick={() => setEditing(true)}><PencilSimple size={14} /></button></div> : null}
+      {!readOnly && !editing && message.attachments.length === 0 ? <div className="mt-1 flex justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"><button type="button" className="result-action" aria-label={t("Editar mensaje y crear una rama")} title={t("Editar mensaje")} onClick={() => setEditing(true)}><TriggerIcon icon={SquarePenIcon} size={14} /></button></div> : null}
       </div>
     </article>
   );
@@ -924,7 +930,7 @@ export function ChatWorkspace({
       <header data-testid="mobile-app-header" className="mobile-app-header workbench-navigation shrink-0 items-center px-2 md:px-3">
         <div className="workbench-navigation-context flex min-w-0 items-center gap-2">
           <button aria-label={t("Mostrar u ocultar la barra lateral")} aria-expanded={sidebarOpen} className="touch-target rounded-lg p-2 text-[var(--text-subtle)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)] md:hidden" onClick={(event) => onToggleSidebar(event.currentTarget)}>
-            <SidebarSimple size={17} />
+            <TriggerIcon icon={PanelLeftCloseIcon} size={17} />
           </button>
           <div data-testid="project-breadcrumb" className="min-w-0 px-1 py-1 text-left">
             {!standaloneConversation ? <span className="flex min-w-0 items-center gap-1 text-[11px] font-medium leading-4 text-[var(--text-subtle)]"><FolderOpen size={12} className="shrink-0" weight="fill" /><span className="max-w-[calc(100vw-6rem)] truncate sm:max-w-44">{project?.name}</span></span> : null}
@@ -1046,9 +1052,9 @@ export function ChatWorkspace({
             {dragActive ? <div className="pointer-events-none absolute inset-1 z-20 grid place-items-center rounded-[var(--brain-radius)] bg-[var(--surface-raised)]/95 text-[12px] font-semibold text-[var(--text)]">{t("Suelta los archivos para adjuntarlos")}</div> : null}
             {composerMenuOpen ? (
               <div ref={composerMenuRef} id="composer-add-menu" role="menu" aria-label={t("Añadir al mensaje")} className={`absolute inset-x-0 z-30 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-2 shadow-[var(--shadow-lg)] ${hasMessages ? "bottom-full mb-2 origin-bottom" : "top-full mt-2 origin-top"}`} onKeyDown={onComposerMenuKeyDown}>
-                {(canAttachImages || canAttachDocuments) ? <button role="menuitem" tabIndex={-1} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] hover:bg-[var(--surface-hover)] active:scale-[.99]" disabled={sending || documentUploading} onClick={() => { setComposerMenuOpen(false); fileInputRef.current?.click(); }}><Paperclip size={17} />{t("Adjuntar archivos")}</button> : null}
+                {(canAttachImages || canAttachDocuments) ? <button role="menuitem" tabIndex={-1} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] hover:bg-[var(--surface-hover)] active:scale-[.99]" disabled={sending || documentUploading} onClick={() => { setComposerMenuOpen(false); fileInputRef.current?.click(); }}><TriggerIcon icon={AttachFileIcon} size={17} />{t("Adjuntar archivos")}</button> : null}
                 {canGenerateImages ? <button role="menuitemcheckbox" tabIndex={-1} aria-checked={imageGeneration} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] hover:bg-[var(--surface-hover)] active:scale-[.99] disabled:opacity-45" disabled={sending} onClick={() => { onImageGenerationChange(!imageGeneration); setComposerMenuOpen(false); requestAnimationFrame(() => composerAddButtonRef.current?.focus()); }}><ImagesSquare size={17} /><span className="min-w-0 flex-1">{t("Crear imagen")}</span>{imageGeneration ? <Check size={13} weight="bold" /> : null}</button> : null}
-                <button role="menuitem" tabIndex={-1} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] hover:bg-[var(--surface-hover)] active:scale-[.99] disabled:opacity-45" disabled={sending} onClick={() => openAuthorizedConnectors(composerAddButtonRef.current)}><At size={17} />{t("Tools")}</button>
+                <button role="menuitem" tabIndex={-1} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] hover:bg-[var(--surface-hover)] active:scale-[.99] disabled:opacity-45" disabled={sending} onClick={() => openAuthorizedConnectors(composerAddButtonRef.current)}><TriggerIcon icon={AtSignIcon} size={17} />{t("Tools")}</button>
                 <button role="menuitem" tabIndex={-1} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] disabled:opacity-45" disabled={!project || sending || !onServerReferencesChange} onClick={() => { serverReturnFocusRef.current = composerAddButtonRef.current; setComposerMenuOpen(false); setServerOpenKey(serverSelectionKey); }}><FileIcon size={17} />{t("Server")}</button>
               </div>
             ) : null}
@@ -1190,6 +1196,7 @@ export function ChatWorkspace({
                   align="end"
                   anchor="controls"
                   className="composer-experience"
+                  icon={<TriggerIcon icon={BrainIcon} size={15} />}
                   disabled={sending}
                   onOpenChange={(open) => { setComposerMenuOpen(false); setMentionOpen(false); setConnectorCatalogOpen(false); setComposerPickerOpen(open ? "experience" : null); }}
                   onSelect={(value) => onComposerExperienceChange(value as ComposerExperience)}
@@ -1243,7 +1250,7 @@ export function ChatWorkspace({
 
             </div>
             <button type="button" className="landing-band-item" disabled={!project || sending || !onServerReferencesChange} onClick={event => { serverReturnFocusRef.current = event.currentTarget; setServerOpenKey(serverSelectionKey); }}><FileIcon size={15} aria-hidden="true" />{t("Server")}</button>
-            <button type="button" className="landing-band-item" disabled={sending} aria-haspopup="listbox" aria-expanded={connectorCatalogOpen} onClick={(event) => { setComposerPickerOpen(null); if (connectorCatalogOpen) setConnectorCatalogOpen(false); else openAuthorizedConnectors(event.currentTarget); }}><At size={15} aria-hidden="true" />{t("Tools")}</button>
+            <button type="button" className="landing-band-item" disabled={sending} aria-haspopup="listbox" aria-expanded={connectorCatalogOpen} onClick={(event) => { setComposerPickerOpen(null); if (connectorCatalogOpen) setConnectorCatalogOpen(false); else openAuthorizedConnectors(event.currentTarget); }}><TriggerIcon icon={AtSignIcon} size={15} />{t("Tools")}</button>
           </div> : null}
           {!hasMessages ? <div className="landing-suggestions mx-auto mt-5 w-full max-w-[720px]" aria-label={t("Sugerencias para empezar")}>
             <LandingTasks tasks={suggestions} disabled={sending} onSelect={selectSuggestion} />

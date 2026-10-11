@@ -5,11 +5,9 @@ import { useUiText } from "@/i18n/provider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClipboardEvent, FocusEvent, KeyboardEvent, PointerEvent, WheelEvent } from "react";
 import {
-  ArrowClockwise,
   ArrowLeft,
   ArrowRight,
   ArrowsIn,
-  ArrowsOut,
   SpinnerGap,
   X,
 } from "@phosphor-icons/react";
@@ -33,6 +31,9 @@ import {
   type ComputerStep,
 } from "@/components/assistant-ui/elements/computer-use";
 import { useModalFocus } from "@/ui/use-modal-focus";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { ExpandIcon } from "@/components/ui/expand";
+import { RefreshCWIcon } from "@/components/ui/refresh-cw";
 
 type ViewerMetrics = Readonly<{ fps: number; latencyMs: number; captureMs: number }>;
 type NavigationProgress = "idle" | "loading" | "complete" | "error";
@@ -759,7 +760,7 @@ function BrowserPanelAttachment({ threadId, open, onClose, initialStatus = null 
         <span className="shrink-0 px-1 text-[11px] font-semibold text-[var(--text)]">{t("Navegador")}</span>
         <button data-browser-capability="back" type="button" aria-label={t("Atrás")} title={t("Atrás")} className="browser-action size-8 justify-center p-0" disabled={!navigation.canGoBack} onClick={() => void navigateHistory("back")}><ArrowLeft size={15} /></button>
         <button data-browser-capability="forward" type="button" aria-label={t("Adelante")} title={t("Adelante")} className="browser-action size-8 justify-center p-0" disabled={!navigation.canGoForward} onClick={() => void navigateHistory("forward")}><ArrowRight size={15} /></button>
-        <button data-browser-capability="reload" type="button" aria-label={t("Recargar")} title={t("Recargar")} className="browser-action size-8 justify-center p-0" onClick={() => void navigateHistory("reload")}>{navigationProgress === "loading" ? <SpinnerGap size={15} className="motion-safe:animate-spin" /> : <ArrowClockwise size={15} />}</button>
+        <button data-browser-capability="reload" type="button" aria-label={t("Recargar")} title={t("Recargar")} className="browser-action size-8 justify-center p-0" onClick={() => void navigateHistory("reload")}>{navigationProgress === "loading" ? <SpinnerGap size={15} className="motion-safe:animate-spin" /> : <TriggerIcon icon={RefreshCWIcon} size={15} />}</button>
         <form data-browser-capability="url" className="relative mx-1 min-w-0 flex-1" onSubmit={(event) => { event.preventDefault(); void navigate(); }}>
           <label className="sr-only" htmlFor="browser-address">{t("Dirección web")}</label>
           <input id="browser-address" type="text" inputMode="url" spellCheck={false}
@@ -779,7 +780,7 @@ function BrowserPanelAttachment({ threadId, open, onClose, initialStatus = null 
         </form>
         <span aria-label={indicator} title={metrics ? `${indicator} · captura ${Math.round(metrics.captureMs)} ms` : indicator}
           className={`mx-1 size-2 shrink-0 rounded-full ${live ? "bg-[var(--positive)]" : connection === "reconnecting" ? "bg-[var(--warning)] motion-safe:animate-pulse" : "bg-[var(--text-subtle)] motion-safe:animate-pulse"}`} role="status" />
-        <button data-browser-capability="fullscreen" type="button" aria-label={fullscreen ? t("Salir de pantalla completa") : t("Pantalla completa")} title={fullscreen ? t("Salir de pantalla completa") : t("Pantalla completa")} className="browser-action size-8 justify-center p-0" onClick={() => setFullscreen((current) => !current)}>{fullscreen ? <ArrowsIn size={15} /> : <ArrowsOut size={15} />}</button>
+        <button data-browser-capability="fullscreen" type="button" aria-label={fullscreen ? t("Salir de pantalla completa") : t("Pantalla completa")} title={fullscreen ? t("Salir de pantalla completa") : t("Pantalla completa")} className="browser-action size-8 justify-center p-0" onClick={() => setFullscreen((current) => !current)}>{fullscreen ? <ArrowsIn size={15} /> : <TriggerIcon icon={ExpandIcon} size={15} />}</button>
         <button ref={closeButtonRef} type="button" aria-label={t("Cerrar navegador")} title={t("Cerrar")} className="browser-action size-8 justify-center p-0" onClick={closePanel}><X size={15} /></button>
       </header>
 

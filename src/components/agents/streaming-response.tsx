@@ -27,6 +27,8 @@ import {
 import { AgentDisclosure } from "@/components/agents/agent-disclosure";
 import { EASE_OUT, SPRING_PRESS, SPRING_SWAP } from "@/lib/ease";
 import { cn } from "@/lib/utils";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { CopyIcon } from "@/components/ui/copy";
 
 export type StreamingResponseStatus = "streaming" | "paused" | "complete" | "error";
 export type StreamingResponseFeedback = "up" | "down" | null;
@@ -195,7 +197,7 @@ export function StreamingResponse({
                   {copied ? (
                     <Check className="size-3.5" />
                   ) : (
-                    <Copy className="size-3.5" />
+                    <TriggerIcon icon={CopyIcon} size={14} />
                   )}
                 </ResponseAction>
               ) : null}

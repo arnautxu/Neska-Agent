@@ -3,10 +3,13 @@ import { useUiText } from "@/i18n/provider";
 
 import Image from "next/image";
 import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes } from "react";
-import { Desktop, Moon, Sun } from "@phosphor-icons/react";
+import { Desktop } from "@phosphor-icons/react";
 import { useTheme } from "@/components/theme-provider";
 import type { PublicInstallationBranding } from "@/ui/installation-branding";
 import type { ThemePreference } from "@/ui/theme";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { MoonIcon } from "@/components/ui/moon";
+import { SunIcon } from "@/components/ui/sun";
 
 function classes(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
@@ -82,8 +85,8 @@ export function ThemeToggle({ className }: { className?: string }) {
   const { preference, setPreference } = useTheme();
   const options: Array<{ value: ThemePreference; label: string; icon: React.ReactNode }> = [
     { value: "system", label: t("Tema del sistema"), icon: <Desktop size={14} /> },
-    { value: "light", label: t("Tema claro"), icon: <Sun size={14} /> },
-    { value: "dark", label: t("Tema oscuro"), icon: <Moon size={14} /> },
+    { value: "light", label: t("Tema claro"), icon: <TriggerIcon icon={SunIcon} size={14} /> },
+    { value: "dark", label: t("Tema oscuro"), icon: <TriggerIcon icon={MoonIcon} size={14} /> },
   ];
   const activeIndex = options.findIndex((option) => option.value === preference);
   const next = options[(activeIndex + 1) % options.length] ?? options[0];

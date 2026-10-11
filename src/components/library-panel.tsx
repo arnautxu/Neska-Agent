@@ -13,9 +13,7 @@ import {
   FileText,
   GlobeHemisphereWest,
   ImagesSquare,
-  MagnifyingGlass,
   SpinnerGap,
-  UploadSimple,
   X,
 } from "@phosphor-icons/react";
 import {
@@ -31,6 +29,9 @@ import { useModalFocus } from "@/ui/use-modal-focus";
 import { SafeVisualizationPreview } from "@/components/safe-visualization-preview";
 import { AuthenticatedPdfPreview } from "@/components/authenticated-pdf-preview";
 import { AuthenticatedTextPreview } from "@/components/authenticated-text-preview";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { SearchIcon } from "@/components/ui/search";
+import { UploadIcon } from "@/components/ui/upload";
 
 type LibraryFilter = "all" | LibraryItemType;
 
@@ -460,7 +461,7 @@ export function LibraryPanel({
           <div className="flex min-h-0 max-h-[44%] w-full flex-col border-b border-[var(--border-subtle)] md:max-h-none md:w-[48%] md:border-b-0 md:border-r">
             <div className="shrink-0 space-y-3 p-3 sm:p-4">
               <label className="flex h-11 items-center gap-2.5 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 text-[var(--text-subtle)] focus-within:border-[var(--border-strong)]">
-                <MagnifyingGlass size={16} />
+                <TriggerIcon icon={SearchIcon} size={16} />
                 <input ref={searchRef} aria-label={t("Buscar en la biblioteca")} className="min-w-0 flex-1 bg-transparent text-[14px] text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)]" placeholder={t("Buscar archivos y resultados")} value={query} onChange={(event) => setQuery(event.target.value)} />
               </label>
               <div className="scrollbar-thin flex gap-1 overflow-x-auto pb-0.5" aria-label={t("Filtros de biblioteca")}>
@@ -493,7 +494,7 @@ export function LibraryPanel({
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 {effectiveDownloadUrl ? <a href={effectiveDownloadUrl} download={effectiveName} className="touch-target flex min-h-10 items-center gap-2 rounded-full bg-[var(--text)] px-4 text-[12px] font-semibold text-[var(--surface)]"><ArrowDown size={14} />{activeDocumentHistory ? t("Descargar versión actual") : t("Descargar archivo")}</a> : null}
-                {activeDocumentHistory && selectedCanMutate ? <><input ref={versionInputRef} className="sr-only" type="file" aria-label={t("Seleccionar una nueva versión")} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadNewVersion(file); }} /><button type="button" disabled={versionAction !== null} className="touch-target flex min-h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-raised)] px-4 text-[12px] font-semibold text-[var(--text)] disabled:opacity-50" onClick={() => versionInputRef.current?.click()}><UploadSimple size={14} />{versionAction === "upload" ? t("Subiendo…") : t("Subir versión editada")}</button></> : null}
+                {activeDocumentHistory && selectedCanMutate ? <><input ref={versionInputRef} className="sr-only" type="file" aria-label={t("Seleccionar una nueva versión")} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadNewVersion(file); }} /><button type="button" disabled={versionAction !== null} className="touch-target flex min-h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-raised)] px-4 text-[12px] font-semibold text-[var(--text)] disabled:opacity-50" onClick={() => versionInputRef.current?.click()}><TriggerIcon icon={UploadIcon} size={14} />{versionAction === "upload" ? t("Subiendo…") : t("Subir versión editada")}</button></> : null}
                 {selected.downloadZipUrl ? <a href={selected.downloadZipUrl} download className="touch-target flex min-h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-raised)] px-4 text-[12px] font-semibold text-[var(--text)]"><ArrowDown size={14} />{t("Exportar ZIP")}</a> : null}
                 {effectivePreviewUrl ? <a href={effectivePreviewUrl} target="_blank" rel="noreferrer" className="touch-target flex min-h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-raised)] px-4 text-[12px] font-semibold text-[var(--text)]"><ArrowSquareOut size={14} />{t("Abrir representación")}</a> : null}
                 {selected.artifactId && selectedCanMutate ? <button type="button" disabled={artifactAction !== null} className="touch-target min-h-10 rounded-full border border-[var(--border)] bg-[var(--surface-raised)] px-4 text-[12px] font-semibold text-[var(--text)] disabled:opacity-50" onClick={() => void publishArtifact()}>{artifactAction === "publish" ? t("Publicando…") : selected.internalSiteUrl ? t("Actualizar sitio interno") : t("Publicar sitio interno")}</button> : null}

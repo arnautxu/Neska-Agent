@@ -4,7 +4,7 @@ import { useUiText } from "@/i18n/provider";
 
 import { InstallationLanguage } from "@/components/installation-language";
 import { useCallback, useEffect, useId, useState } from "react";
-import { Check, Plus, ShieldCheck, SpinnerGap, Trash, UserPlus } from "@phosphor-icons/react";
+import { Check, ShieldCheck, SpinnerGap, UserPlus } from "@phosphor-icons/react";
 import {
   isWorkspaceAdminSnapshot,
   type WorkspaceAdminCommand,
@@ -13,6 +13,9 @@ import {
   type WorkspacePolicy,
   type WorkspaceRoleId,
 } from "@/admin/contracts";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { DeleteIcon } from "@/components/ui/delete";
+import { PlusIcon } from "@/components/ui/plus";
 
 const appLabels: Record<keyof WorkspacePolicy["apps"], string> = {
   "web-search": "Búsqueda web",
@@ -154,7 +157,7 @@ export function AdminCenter() {
           <span className="mb-1.5 block text-caption-1-regular font-medium text-[var(--text-muted)]">{t("Descripción")}</span>
           <input id="admin-group-description" value={description} className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-body-2-regular" onChange={(event) => setDescription(event.target.value)} />
         </label>
-        <button type="button" disabled={busy !== null || !name.trim()} className="touch-target flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 text-caption-1-regular font-semibold" onClick={createGroup}><Plus size={12} />{t("Crear")}</button>
+        <button type="button" disabled={busy !== null || !name.trim()} className="touch-target flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 text-caption-1-regular font-semibold" onClick={createGroup}><TriggerIcon icon={PlusIcon} size={12} />{t("Crear")}</button>
       </div>
       <div className="space-y-3">{snapshot.groups.map((group) => <GroupCard key={group.id} group={group} snapshot={snapshot} busy={busy !== null} onSave={(next) => void run({ action: "update-group", groupId: next.id, name: next.name, description: next.description, memberIds: next.memberIds, policy: next.policy }, `group:${next.id}`)} onDelete={() => void run({ action: "delete-group", groupId: group.id }, `delete:${group.id}`)} />)}{snapshot.groups.length === 0 ? <p className="rounded-[16px] border border-[var(--border-subtle)] p-4 text-body-2-regular text-[var(--text-subtle)]">{t("Todavía no hay grupos. Los miembros usan únicamente la política de su rol.")}</p> : null}</div>
     </section>
@@ -266,7 +269,7 @@ function GroupCard({ group, snapshot, busy, onSave, onDelete }: { group: Workspa
         <span className="mb-1.5 block text-caption-1-regular font-medium text-[var(--text-muted)]">{t("Nombre del grupo")}</span>
         <input id={`${fieldId}-name`} value={draft.name} className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-body-2-regular font-semibold" onChange={(event) => setDraft((value) => ({ ...value, name: event.target.value }))} />
       </label>
-      <button type="button" aria-label={t("Eliminar {p0}", { p0: group.name })} disabled={busy} className="touch-target grid size-8 place-items-center rounded-lg text-[var(--danger)] hover:bg-[var(--danger-soft)]" onClick={onDelete}><Trash size={14} /></button>
+      <button type="button" aria-label={t("Eliminar {p0}", { p0: group.name })} disabled={busy} className="touch-target grid size-8 place-items-center rounded-lg text-[var(--danger)] hover:bg-[var(--danger-soft)]" onClick={onDelete}><TriggerIcon icon={DeleteIcon} size={14} /></button>
     </div>
     <label className="mt-2 block" htmlFor={`${fieldId}-description`}>
       <span className="mb-1.5 block text-caption-1-regular font-medium text-[var(--text-muted)]">{t("Descripción")}</span>
