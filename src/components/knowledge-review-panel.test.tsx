@@ -20,7 +20,7 @@ beforeEach(() => {
       return Response.json({ available: true, record: corrected });
     }
     if (!url.searchParams.has("scope")) return Response.json({ scopes: [{ scope: "company", scopeId: null, label: "Empresa", canReview }] });
-    return Response.json({ available: true, connectionId: "arnall", records: url.searchParams.get("status") === "confirmed" ? corrected ? [corrected] : [] : corrected ? [] : [original], nextCursor: null });
+    return Response.json({ available: true, connectionId: "example-company", records: url.searchParams.get("status") === "confirmed" ? corrected ? [corrected] : [] : corrected ? [] : [original], nextCursor: null });
   }));
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });

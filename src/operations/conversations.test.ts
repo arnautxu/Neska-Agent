@@ -10,7 +10,7 @@ const actor = "00000000-0000-4000-8000-000000000001";
 const target = "00000000-0000-4000-8000-000000000002";
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.config.mockResolvedValue({ installationId: "arnall", paths: { dataRoot: "/private/data", usersRoot: "/private/users" } });
+  mocks.config.mockResolvedValue({ installationId: "example-company", paths: { dataRoot: "/private/data", usersRoot: "/private/users" } });
   mocks.user.mockResolvedValue({ userId: target, displayName: "Mari Àngels" });
   mocks.audit.mockResolvedValue(undefined);
   mocks.list.mockResolvedValue({ items: [{ id: "thread-1", title: "Hello", updatedAt: "today", status: "archived" }], nextCursor: "next" });

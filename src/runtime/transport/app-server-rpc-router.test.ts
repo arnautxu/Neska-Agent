@@ -103,7 +103,7 @@ describe("AppServerRpcRouter", () => {
     router.registerTurn("parent", "local", { onNotification: vi.fn(), onServerRequest: tool, onFailure: vi.fn() }).bindRuntimeTurn("turn");
     await router.start();
     transport.queue.push(event(1, { kind: "rpc-request", rpc: { method: "item/tool/call", id: "tool", params: {
-      threadId: "parent", turnId: "turn", callId: "tool", namespace: "aibrain_horaria", tool: "run", arguments: {},
+      threadId: "parent", turnId: "turn", callId: "tool", namespace: "example_calculator", tool: "run", arguments: {},
     } } }));
     transport.queue.push(event(2, { kind: "rpc-notification", rpc: { method: "turn/started", params: {
       threadId: "parent", turn: { id: "turn", status: "inProgress", items: [], error: null, itemsView: "full", startedAt: null, completedAt: null, durationMs: null },
@@ -145,7 +145,7 @@ describe("AppServerRpcRouter", () => {
     }).bindRuntimeTurn("calculation-turn");
     await router.start();
     transport.queue.push(event(1, { kind: "rpc-request", rpc: { method: "item/tool/call", id: "draft", params: {
-      threadId: "parent", turnId: "parent-turn", callId: "draft", namespace: "aibrain_horaria", tool: "run", arguments: {},
+      threadId: "parent", turnId: "parent-turn", callId: "draft", namespace: "example_calculator", tool: "run", arguments: {},
     } } }));
     for (let sequence = 2; sequence <= 1401; sequence++) transport.queue.push(event(sequence, {
       kind: "rpc-notification", rpc: { method: "item/agentMessage/delta", params: {

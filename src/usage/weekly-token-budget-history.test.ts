@@ -109,14 +109,14 @@ describe("weekly token budget offline history", () => {
     const f = await fixture();
     await f.write("one.jsonl", [meta("a"), usage("2026-09-21T09:00:00Z", 1_000, 1_000),
       usage("2026-09-24T08:00:00Z", 2_000, 1_000)]);
-    const config = { ...f.config, installationId: "arnall", paths: { ...f.config.paths, dataRoot: f.usersRoot },
+    const config = { ...f.config, installationId: "example-company", paths: { ...f.config.paths, dataRoot: f.usersRoot },
       usageLimits: { weeklyTokens: 7_500_000, timeZone: "Europe/Madrid" as const } };
     const preview = await initializeWeeklyTokenBudget(config, parseWeeklyTokenBudgetArguments(["--offline", "--start-now"]), now);
     expect(preview).toMatchObject({ mode: "preview", recordedTokens: 0, initializationPolicy: "start-now", countingStartsAt: now.toISOString() });
     await expect(lstat(path.join(f.usersRoot, "usage", "weekly-token-budget.json"))).rejects.toMatchObject({ code: "ENOENT" });
     const result = await initializeWeeklyTokenBudget(config, parseWeeklyTokenBudgetArguments(["--offline", "--start-now", "--apply"]), now);
     expect(result).toMatchObject({ mode: "initialized", status: { usedTokens: 0, remainingTokens: 7_500_000 } });
-    const store = new WeeklyTokenBudgetStore({ installationId: "arnall", dataRoot: f.usersRoot, limitTokens: 7_500_000,
+    const store = new WeeklyTokenBudgetStore({ installationId: "example-company", dataRoot: f.usersRoot, limitTokens: 7_500_000,
       now: () => now.getTime() + 60_000 });
     expect(JSON.parse(await readFile(store.statePath, "utf8"))).toMatchObject({ initializedAt: now.toISOString(), dailyTotals: [], cursors: [{ totalTokens: 2_000 }] });
     await store.recordUsage({ userId, threadId: "a", eventId: "old-replay", totalTokens: 1_000, lastTokens: 1_000, observedAt: "2026-09-21T09:00:00Z" });
@@ -144,7 +144,7 @@ describe("weekly token budget offline history", () => {
   it("keeps incomplete legacy allowance imports blocked unless start-now is explicit", async () => {
     const f = await fixture();
     await f.write("one.jsonl", [meta("a"), usage("2026-09-24T08:00:00Z", 100, 100)]);
-    const config = { ...f.config, installationId: "arnall", paths: { ...f.config.paths, dataRoot: f.usersRoot },
+    const config = { ...f.config, installationId: "example-company", paths: { ...f.config.paths, dataRoot: f.usersRoot },
       usageLimits: { weeklyTokens: 7_500_000, timeZone: "Europe/Madrid" as const } };
     await expect(initializeWeeklyTokenBudget(config, { apply: true, startNow: false }, now)).rejects.toThrow("BUDGET_HISTORY_INCOMPLETE_COVERAGE");
     await expect(lstat(path.join(f.usersRoot, "usage", "weekly-token-budget.json"))).rejects.toMatchObject({ code: "ENOENT" });

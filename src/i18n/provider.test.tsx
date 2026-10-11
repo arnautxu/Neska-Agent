@@ -32,9 +32,9 @@ describe("installation interface language", () => {
   it("localizes built-in suggestion prompts while preserving the company name", async () => {
     const select = vi.fn(); render(<Tasks onSelect={select} />);
     expect(screen.queryByRole("button", { name: "Recurring tasks" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Work on team schedules for Empresa Proyecto" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Review schedule changes" }));
-    expect(select).toHaveBeenCalledWith("Review team schedule changes for Empresa Proyecto for…");
+    fireEvent.click(screen.getByRole("button", { name: "Work with information from Empresa Proyecto" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Compare documents" }));
+    expect(select).toHaveBeenCalledWith("Compare these documents from Empresa Proyecto and explain the differences…");
   });
   it("refreshes only after an acknowledged company preference write", async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ locale: "es" }), { status: 200 })); vi.stubGlobal("fetch", fetch);

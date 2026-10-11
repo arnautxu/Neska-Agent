@@ -8,7 +8,7 @@ import { GET, POST } from "./route";
 import { KnowledgeReviewError } from "@/knowledge/review-service";
 import { assertUiContract, uiContract } from "../../../../../tests/helpers/ui-contract";
 const id = "10000000-0000-4000-8000-000000000001";
-const input = { projectId: id, scope: "company", scopeId: null, connectionId: "arnall", recordId: id, revision: 1, decision: "confirm" };
+const input = { projectId: id, scope: "company", scopeId: null, connectionId: "example-company", recordId: id, revision: 1, decision: "confirm" };
 const request = (body: unknown) => new Request("https://example.test/api/knowledge/review", { method: "POST", body: JSON.stringify(body) });
 describe("knowledge review API", () => {
   beforeEach(() => { mocks.session = { user: { id } }; mocks.origin = true; mocks.list.mockReset(); mocks.review.mockReset(); mocks.scopes.mockReset(); });

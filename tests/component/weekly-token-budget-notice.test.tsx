@@ -31,7 +31,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const mount = (userId = "employee-one") => render(<WeeklyTokenBudgetNotice tenantId="arnall" userId={userId} />);
+const mount = (userId = "employee-one") => render(<WeeklyTokenBudgetNotice tenantId="example-company" userId={userId} />);
 const focus = async () => { await act(async () => { window.dispatchEvent(new Event("focus")); }); };
 
 describe("weekly token budget notice", () => {
@@ -52,7 +52,7 @@ describe("weekly token budget notice", () => {
   });
 
   it("translates the percentage-only notice into the employee locale", async () => {
-    render(<UiLocaleProvider locale="en"><WeeklyTokenBudgetNotice tenantId="arnall" userId="employee-one" /></UiLocaleProvider>);
+    render(<UiLocaleProvider locale="en"><WeeklyTokenBudgetNotice tenantId="example-company" userId="employee-one" /></UiLocaleProvider>);
     const region = await screen.findByLabelText("Shared weekly allowance");
     expect(region).toHaveTextContent("Weekly allowance remaining: 75%");
     expect(region).not.toHaveTextContent(/tokens|cache|7[.,]?500[.,]?000/i);

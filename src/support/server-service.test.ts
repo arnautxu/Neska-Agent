@@ -26,8 +26,8 @@ describe("createSupportRequest", () => {
     vi.stubEnv("AIBRAIN_SUPPORT_WEBHOOK_URL", "https://support.example.test/hook");
     const result = await createSupportRequest({
       provider: "local",
-      user: { id: USER_ID, name: "David", email: "david@example.com" },
-      tenant: { id: "company-qa", name: "Arnall" },
+      user: { id: USER_ID, name: "Example Employee", email: "employee@example.com" },
+      tenant: { id: "company-qa", name: "Example Company" },
       expiresAt: "2026-09-06T00:00:00.000Z",
     }, { kind: "bug", description: "No carga", context: { pathname: "/", projectId: null, threadId: null, viewport: "desktop" } }, vi.fn(async () => new Response("failed", { status: 503 })) as typeof fetch);
     expect(result.id).toMatch(/^[0-9a-f-]{36}$/);

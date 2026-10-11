@@ -14,7 +14,7 @@ vi.mock("@/catalog/server-service", () => ({
 
 import { GET, PATCH } from "@/app/api/admin/catalog/route";
 
-const session = { provider: "local" as const, user: { id: "00000000-0000-4000-8000-000000000001", name: "Admin", email: "admin@example.com" }, tenant: { id: "arnall-qa", name: "Arnall" }, expiresAt: "2026-08-29T00:00:00.000Z" };
+const session = { provider: "local" as const, user: { id: "00000000-0000-4000-8000-000000000001", name: "Admin", email: "admin@example.com" }, tenant: { id: "example-company-qa", name: "Example Company" }, expiresAt: "2026-08-29T00:00:00.000Z" };
 const resource = { id: "mail-app", kind: "app", label: "Mail", credentialMode: "personal-oauth", managedBy: "company", sharedResource: false, appId: "mail", connectorId: null, mcp: null };
 
 describe("catalog admin API", () => {

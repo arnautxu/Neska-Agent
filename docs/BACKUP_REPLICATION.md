@@ -6,7 +6,7 @@ El adapter no inicializa, elimina, olvida ni poda snapshots remotos. Es idempote
 
 ## Preparación por instalación
 
-Estas acciones son externas y requieren seleccionar el proveedor/destino autorizado. No reutilices cuentas, buckets, rutas, redes ni credenciales de BGreenly.
+Estas acciones son externas y requieren seleccionar el proveedor/destino autorizado. No reutilices cuentas, buckets, rutas, redes ni credenciales de otra instalación.
 
 1. Crea `/etc/aibrain/<installation>/replica.env` a partir de `infra/hetzner/replica.env.example`, propiedad de `root`, modo `0600`. V1 admite `s3:https://`, `rest:https://`, `b2:`, `azure:` o `gs:`; el preflight rechaza repositorios locales.
 2. Crea un password Restic aleatorio, independiente de Supabase/Codex y del proveedor, en `/etc/aibrain/<installation>/restic-password`, propiedad del UID/GID AiBrain y modo `0400`. Guárdalo también en el gestor de secretos externo; perderlo hace la réplica irrecuperable.

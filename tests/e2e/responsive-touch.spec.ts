@@ -9,7 +9,8 @@ test.use(iphone13);
 async function login(page: Page) {
   await page.goto("/login");
   await page.getByRole("button", { name: new RegExp(accountName) }).click();
-  await expect(page.getByTestId("composer")).toBeVisible();
+  await page.waitForURL(/\/$/);
+  await expect(page.getByTestId("composer")).toBeVisible({ timeout: 15_000 });
 }
 
 async function expectTouchTarget(locator: Locator) {

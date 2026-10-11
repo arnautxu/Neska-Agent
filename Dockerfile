@@ -28,15 +28,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM ${NODE_IMAGE} AS horaria-dependencies
-# The slim build base may detect OpenSSL 1.1, while the final runtime uses 3.0.
-ENV PRISMA_CLI_BINARY_TARGETS=debian-openssl-3.0.x
-WORKDIR /horaria
-COPY modules/horaria/backend/package.json modules/horaria/backend/package-lock.json ./
-COPY modules/horaria/backend/prisma ./prisma
-RUN npm ci --ignore-scripts && npm run build \
-  && test -x node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x
-
 FROM ${NODE_IMAGE} AS builder
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
@@ -154,9 +145,6 @@ COPY --chown=root:root docs/PRESENTATION_AUTHORING.md /usr/local/share/aibrain/p
 
 WORKDIR /app
 COPY --from=builder --chown=aibrain:aibrain /app/.next/standalone ./
-COPY --from=horaria-dependencies --chown=root:root /horaria /opt/aibrain-horaria
-COPY --chown=root:root modules/horaria/backend/src /opt/aibrain-horaria/src
-RUN /opt/aibrain-horaria/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x --version
 COPY --from=builder --chown=aibrain:aibrain /app/.next/static ./.next/static
 COPY --from=builder --chown=aibrain:aibrain /app/public ./public
 COPY --from=builder --chown=root:root /app/config/internal-agent-context /usr/local/share/aibrain/internal-agent-context

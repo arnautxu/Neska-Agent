@@ -13,13 +13,13 @@ policy=importlib.util.module_from_spec(spec);spec.loader.exec_module(policy)
 class GenerationPolicyTests(unittest.TestCase):
     def setUp(self):
         fixtures.RetrievalTests.setUp(self)
-        self.manifest={'installationId':'test','connectionId':'arnall'}
+        self.manifest={'installationId':'test','connectionId':'example-company'}
         self.policy_file=self.root/'generation.json';self.bindings_file=self.root/'bindings.json'
         store=policy.catalogue.Catalogue(self.root/'partitions'/policy.publication.partition_id(fixtures.COMPANY),'test','company')
         try:self.plan=policy.worker.summary.Summary(store).prepare('Y:\\report.txt')
         finally:store.close()
         self.job=self.plan['jobId']
-        self.value={'schemaVersion':1,'installationId':'test','connectionId':'arnall','enabled':True,'modelKey':'fixture-model-v1','expiresAt':'2099-01-01T00:00:00Z',
+        self.value={'schemaVersion':1,'installationId':'test','connectionId':'example-company','enabled':True,'modelKey':'fixture-model-v1','expiresAt':'2099-01-01T00:00:00Z',
             'grants':[{'jobId':self.job,'source':'Y:\\report.txt','sha256':'a'*64,'audience':fixtures.COMPANY}]}
         self.write();self.adapter=worker_fixtures.Adapter();self.adapter.model_key='fixture-model-v1'
         self.engine=policy.GenerationPolicy(self.root,self.manifest,self.bindings_file,self.policy_file)

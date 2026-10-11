@@ -111,7 +111,7 @@ npm run infra:preflight -- \
 
 No continúes si falla. En particular, el preflight rechaza symlinks, roots
 solapados, nombres fuera de convención, ownership ajeno y cualquier ruta que
-apunte a BGreenly.
+apunte a otra instalación.
 
 Desde el release:
 

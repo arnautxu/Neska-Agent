@@ -25,7 +25,7 @@ export function MotionPreview() {
     return () => window.clearInterval(id);
   }, [run]);
   return <main className="mx-auto min-h-screen max-w-3xl px-6 py-20 text-[var(--text)]">
-    <p className="mb-3 text-xs text-[var(--text-secondary)]">ARNALL · DEMOSTRACIÓ VISUAL</p>
+    <p className="mb-3 text-xs text-[var(--text-secondary)]">NESKA · DEMOSTRACIÓ VISUAL</p>
     <h1 className="mb-3 text-3xl font-semibold tracking-tight">Una resposta, pas a pas.</h1>
     <p className="mb-12 text-sm text-[var(--text-secondary)]">Mostra amb contingut fictici. No executa cap petició al model.</p>
     <ToolTimeline open={open} onOpenChange={setOpen} streaming={thinking} label={thinking ? "Pensant…" : "Procés completat"} indicator={null} complete={!thinking}>

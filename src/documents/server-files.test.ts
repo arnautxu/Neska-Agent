@@ -33,8 +33,8 @@ async function fixture(allow = true, reply?: (request: Record<string, unknown>) 
   const roots = await network.rootsForTurn({ userId: USER, projectId: PROJECT, permissions });
   const directory = path.join(dataRoot, "locks/server-files");
   await mkdir(directory, { recursive: true, mode: 0o750 });
-  const descriptor = path.join(directory, "arnall.json");
-  await writeFile(descriptor, JSON.stringify({ schemaVersion: 1, installationId: config.installationId, connectionId: "arnall",
+  const descriptor = path.join(directory, "example-company.json");
+  await writeFile(descriptor, JSON.stringify({ schemaVersion: 1, installationId: config.installationId, connectionId: "example-company",
     scope: "company", mode: "read-only" }), { mode: 0o440 });
   const requests: Record<string, unknown>[] = [];
   const server = createServer((socket) => {
@@ -49,8 +49,8 @@ async function fixture(allow = true, reply?: (request: Record<string, unknown>) 
     });
   });
   servers.push(server);
-  await new Promise<void>((resolve) => server.listen(path.join(directory, "arnall.sock"), resolve));
-  await chmod(path.join(directory, "arnall.sock"), 0o660);
+  await new Promise<void>((resolve) => server.listen(path.join(directory, "example-company.sock"), resolve));
+  await chmod(path.join(directory, "example-company.sock"), 0o660);
   const options = { ownerUid: process.getuid?.() ?? 0, timeoutMs: 100 };
   const files = new ServerDocumentFiles(network, options);
   const tool = (name: string, args: object) => handleCompanyFilesDynamicToolCall({ namespace: "aibrain_company_files", tool: name,
@@ -75,7 +75,7 @@ describe("server document file access", () => {
   });
 
   it("returns whole-tree inventory counts separately from file pages without inferring business counts", async () => {
-    const target = "server-arnall/Y/Offers";
+    const target = "server-example-company/Y/Offers";
     const f = await fixture(true, () => ({ available: true, checkedAt: new Date().toISOString(), scope: "company", path: target,
       sourceChecked: false, snapshot: false, enumerationComplete: true, countBasis: "observed-files-in-folder-tree", businessRecordCount: null,
       fileCount: 120, directories: { complete: 3 }, fileTypes: { ".pdf": 100, ".jpg": 20 }, folders: { ".": 100, "Annexes": 20 },
@@ -99,7 +99,7 @@ describe("server document file access", () => {
   });
 
   it("rejects inventory rows outside the requested subtree and invented business totals", async () => {
-    const target = "server-arnall/Y/Offers";
+    const target = "server-example-company/Y/Offers";
     for (const changed of [{ results: [{ scope: "company", path: target + "Other/file.pdf" }] }, { businessRecordCount: 12 }, { fileCount: -1 }]) {
       const f = await fixture(true, () => ({ available: true, checkedAt: new Date().toISOString(), scope: "company", path: target,
         sourceChecked: false, snapshot: false, enumerationComplete: true, countBasis: "observed-files-in-folder-tree", businessRecordCount: null,
@@ -126,18 +126,18 @@ describe("server document file access", () => {
 
   it("browses folders outside the old import using the existing chat tool schema", async () => {
     const f = await fixture(true, () => ({ available: true, checkedAt: new Date().toISOString(), results: [
-      { scope: "company", path: "server-arnall/Y/PRESSUPOSTOS/Oferta.pdf", kind: "file", size: 42 },
+      { scope: "company", path: "server-example-company/Y/PRESSUPOSTOS/Oferta.pdf", kind: "file", size: 42 },
     ], nextQuery: "server:/Y/PRESSUPOSTOS?offset=50", truncated: true }));
     const response = await f.tool("search", { query: "server:/Y/PRESSUPOSTOS" });
     expect(response.success).toBe(true);
-    expect(JSON.stringify(response)).toContain("server-arnall/Y/PRESSUPOSTOS/Oferta.pdf");
+    expect(JSON.stringify(response)).toContain("server-example-company/Y/PRESSUPOSTOS/Oferta.pdf");
     expect(JSON.stringify(response)).toContain("offset=50");
     expect(f.requests).toHaveLength(1);
     expect(f.requests[0]).toMatchObject({ operation: "search", input: { query: "server:/Y/PRESSUPOSTOS", limit: 50 } });
   });
 
   it("reads the current server file without requiring a local synchronized copy", async () => {
-    const file = "server-arnall/Y/PRESSUPOSTOS/Oferta.pdf";
+    const file = "server-example-company/Y/PRESSUPOSTOS/Oferta.pdf";
     const f = await fixture(true, () => ({ available: true, checkedAt: new Date().toISOString(), scope: "company", path: file,
       content: "Pressupost vigent", sha256: "a".repeat(64) }));
     const response = await f.tool("read", { scope: "company", path: file });
@@ -147,12 +147,12 @@ describe("server document file access", () => {
 
   it("keeps local content search while adding live server filename matches", async () => {
     const f = await fixture(true, () => ({ available: true, checkedAt: new Date().toISOString(), results: [
-      { scope: "company", path: "server-arnall/Z/PRESSUPOSTOS/Oferta.pdf", kind: "file", size: 42 },
+      { scope: "company", path: "server-example-company/Z/PRESSUPOSTOS/Oferta.pdf", kind: "file", size: 42 },
     ], limited: true }));
     await writeFile(path.join(f.network.companyRoot(), "note.txt"), "Pressupostos");
     const response = await f.tool("search", { query: "pressupostos" });
     expect(JSON.stringify(response)).toContain("note.txt");
-    expect(JSON.stringify(response)).toContain("server-arnall/Z/");
+    expect(JSON.stringify(response)).toContain("server-example-company/Z/");
   });
 
   it("never contacts the server for denied company roots, forged scopes, traversal or invalid queries", async () => {
@@ -165,16 +165,16 @@ describe("server document file access", () => {
     for (const query of ["../x", "server:/Y/../x", "server:/Y/a%2fb", "server:/Y?offset=bad"]) {
       expect((await f.tool("search", { query })).success).toBe(false);
     }
-    expect((await f.tool("read", { scope: "private", path: "server-arnall/Y/a.txt" })).success).toBe(false);
-    expect((await f.tool("read", { scope: "company", path: "server-arnall/Y/%2e%2e/a.txt" })).success).toBe(false);
+    expect((await f.tool("read", { scope: "private", path: "server-example-company/Y/a.txt" })).success).toBe(false);
+    expect((await f.tool("read", { scope: "company", path: "server-example-company/Y/%2e%2e/a.txt" })).success).toBe(false);
     expect(f.requests).toHaveLength(0);
   });
 
   it("rejects replies bound to another installation and mismatched read paths", async () => {
     const f = await fixture(true, () => ({ available: true, installationId: "other", checkedAt: new Date().toISOString(), results: [] }));
     expect(await f.files.search(f.roots, "server:/")).toMatchObject({ available: false });
-    const read = await fixture(true, () => ({ available: true, scope: "company", path: "server-arnall/Y/other.txt", content: "foreign", checkedAt: new Date().toISOString() }));
-    expect(await read.files.read(read.roots, { scope: "company", path: "server-arnall/Y/a.txt" })).toMatchObject({ available: false });
+    const read = await fixture(true, () => ({ available: true, scope: "company", path: "server-example-company/Y/other.txt", content: "foreign", checkedAt: new Date().toISOString() }));
+    expect(await read.files.read(read.roots, { scope: "company", path: "server-example-company/Y/a.txt" })).toMatchObject({ available: false });
   });
 
   it("honors cancellation and bounds unresponsive source requests", async () => {
@@ -192,10 +192,10 @@ describe("server document file access", () => {
 it("returns configured work folders without a Windows request or invented freshness", async () => {
   const { files, roots, descriptor, requests } = await fixture();
   await chmod(descriptor, 0o640);
-  await writeFile(descriptor, JSON.stringify({ schemaVersion: 1, connectionId: "arnall", installationId: "files-test", scope: "company", mode: "read-only",
-    entryPoints: [{ label: "Compres · Y", path: "server-arnall/Y/COMPRES" }] }));
+  await writeFile(descriptor, JSON.stringify({ schemaVersion: 1, connectionId: "example-company", installationId: "files-test", scope: "company", mode: "read-only",
+    entryPoints: [{ label: "Compres · Y", path: "server-example-company/Y/COMPRES" }] }));
   await expect(files.navigation(roots)).resolves.toMatchObject({ available: true, navigation: true, sourceChecked: false, checkedAt: null,
-    results: [{ name: "Compres · Y", path: "server-arnall/Y/COMPRES", kind: "directory" }] });
+    results: [{ name: "Compres · Y", path: "server-example-company/Y/COMPRES", kind: "directory" }] });
   expect(requests).toEqual([]);
 });
 
@@ -210,8 +210,8 @@ it("denies navigation metadata before reading a descriptor for a denied user", a
 it("does not expose another installation or connection through navigation", async () => {
   const { files, roots, descriptor, requests } = await fixture();
   await chmod(descriptor, 0o640);
-  const base = { schemaVersion: 1, connectionId: "arnall", installationId: "files-test", scope: "company", mode: "read-only" };
-  await writeFile(descriptor, JSON.stringify({ ...base, installationId: "foreign", entryPoints: [{ label: "Foreign", path: "server-arnall/Y/Foreign" }] }));
+  const base = { schemaVersion: 1, connectionId: "example-company", installationId: "files-test", scope: "company", mode: "read-only" };
+  await writeFile(descriptor, JSON.stringify({ ...base, installationId: "foreign", entryPoints: [{ label: "Foreign", path: "server-example-company/Y/Foreign" }] }));
   await expect(files.navigation(roots)).resolves.toMatchObject({ available: false });
   await writeFile(descriptor, JSON.stringify({ ...base, entryPoints: [{ label: "Foreign", path: "server-other/Y/Foreign" }] }));
   await expect(files.navigation(roots)).resolves.toMatchObject({ available: false });

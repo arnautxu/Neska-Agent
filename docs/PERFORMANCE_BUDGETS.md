@@ -22,26 +22,7 @@ durable and authoritative. Completed plain paragraphs/headings keep their DOM
 nodes; complex Markdown retains its full terminal parse. No-op message updates
 do not invalidate the workbench.
 
-The unchanged CPU x4 fixture passes on a local optimized production build:
-757 frames, 150 mutations, p95 frame gap 18.5 ms, slow-frame ratio 0.00132,
-200 ms total long tasks. The local development build still fails its total
-long-task ceiling at 524 ms, despite p95 17.6 ms and ratio 0.00690. These are
-separate results, not deployed/client acceptance. Five local browser regressions
-pass cancellation, independent concurrent turns, refresh/persistence and a real
-loopback connection outage. Evidence is outside the repo in the task's
-`arnall-incidents-20261006/evidence` directory.
 
-| Capability | State | Contract and evidence |
-| --- | --- | --- |
-| Stable turn identity and replay | validated locally | UI IDs are idempotency keys; App Server IDs are bound server-side. `src/runtime/worker-codex-turn.ts`, `src/runtime/transport/app-server-rpc-router.ts`, `tests/integration/worker-crash-recovery.integration.test.ts`. |
-| Two users / four concurrent threads | validated locally | Routing is installation + user worker + runtime thread + runtime turn. `tests/integration/multi-user-worker-acceptance.integration.test.ts`. |
-| Reconnect without cross-turn projection | validated locally | Journal replay and the turn owner captured at event receipt prevent a delayed event from attaching to a later registration. `src/runtime/transport/file-event-journal.ts`, `src/runtime/transport/app-server-rpc-router.test.ts`, `src/workbench/turn-projection-store.test.ts`. |
-| NDJSON disconnect does not stop the turn | validated locally | The HTTP consumer is now separate from the server-owned turn lifetime. Only `/api/runtime/turns/control` can request `turn/interrupt`. `src/app/api/chat/route.ts`, `src/app/api/chat/route.test.ts`. Live refresh/reconnect remains pending. |
-| Silent App Server turn reaches one terminal state | validated locally | A 4-minute activity deadline and 30-minute hard deadline reconcile `thread/read` before one bounded `turn/interrupt`; no model action is resubmitted. Durable approval/user-input waits pause the watchdog. `src/runtime/turn-terminal-watchdog.ts`, `src/runtime/worker-codex-turn.test.ts`. |
-| Explicit stop is durable and scoped | validated locally | Stop resolves the private runtime IDs from the turn projection and requires the expected turn. `src/runtime/turn-control.ts`, `tests/integration/turn-control-route.integration.test.ts`. |
-| Per-turn token attribution | validated locally | Only the `last` breakdown from `thread/tokenUsage/updated` is accepted when thread and turn match. Account-wide usage remains a shared subscription snapshot and is never assigned to an employee. `src/runtime/worker-codex-turn.ts`, `src/usage/server-service.ts`, `src/usage/file-usage-store.test.ts`. |
-| Real restart recovery on Arnall | not started | Requires an authenticated turn, restart of the deployed immutable revision, reconnect with the same local IDs, one final message and one usage record. Health endpoints alone do not satisfy this row. |
-| Browser/tool exactly-once outcome | validated locally | A timed-out, cancelled or failed post-dispatch mutation is durable `indeterminate`, is not replayed, and forces a per-user process/session recovery before a new call. Reads may retry once after fencing. `src/runtime/browser/dynamic-tools.test.ts`, `src/runtime/browser/browser.test.ts`. Live Arnall readback remains required. |
 
 ## 2026-08-30 P0 latency diagnosis
 
@@ -54,37 +35,6 @@ proxy already disables response buffering and the client already applies the
 first delta synchronously, so neither is identified as the causal bottleneck by
 the available local and prior runtime evidence.
 
-The gateway now has independent ordered lanes for App Server output and client
-input. The RPC router separately applies the request deadline to transport
-admission itself, so a blocked send, router close or worker loss cannot leave a
-`thread/read` waiting outside its timeout. The same deadline remains active
-through durable response projection. Output durability and exactly-once
-server-response confirmation remain ordered; uncertain effects are not replayed.
-Authenticated Arnall logs and host metrics remain a post-deploy acceptance gate,
-not evidence available from this local-only change.
-
-## 2026-09-01 live cadence diagnosis
-
-An authenticated turn against deployed revision `872b73642b4` separated model
-latency from presentation cadence. First visible text arrived after 6,294 ms
-and the turn completed after 25,273 ms, but only 11 visible text updates were
-observed. The median gap was 1,983 ms and p95 was 2,265 ms. The browser was not
-inventing those pauses: the server projected each newly sanitized whole answer
-as a replacement `content` event, which bypassed the delta frame dispatcher.
-The UI then reparsed all accumulated Markdown and synchronously read the full
-scroll height on each replacement.
-
-The current local candidate keeps whole-answer sanitization authoritative but
-emits only the proven-safe suffix as a `delta` while the public value remains a
-monotonic extension. A non-monotonic sanitizer result still uses an exact
-`content` replacement. The browser applies the first nonempty chunk immediately
-in full, then batches subsequent chunks in full at the next rAF or a 48 ms
-fallback, with exact flush before non-delta/terminal events and close. It
-memoizes completed Markdown blocks, keeps only the live
-tail lightweight and follows the bottom without a synchronous `scrollHeight`
-read. The exact full Markdown surface is restored at terminal state. This is
-validated locally only; the 2026-09-01 live numbers are a deployed baseline,
-not acceptance of this candidate.
 
 ## Metric definitions and budgets
 
@@ -96,7 +46,7 @@ stop client reattachment. Projection batches validate envelopes/events first,
 then the accumulated message at the atomic-write boundary (64-delta fixture:
 66 to 3 complete-message validations). These are operation-count/correctness
 results, not provider-speed measurements. The local evidence and caveats are in
-[MELSO_R2_F_20260904.md](MELSO_R2_F_20260904.md).
+the current product runbook.
 
 Remote/model-dependent budgets are comparative: measure AiBrain and ChatGPT
 Work on the same Mac, network, account/model and prompt set. AiBrain passes when
@@ -104,22 +54,6 @@ its p50 and p95 are no worse than the reference by more than 10% or 250 ms,
 whichever allowance is larger. This avoids promising a fixed model time without
 a controlled benchmark.
 
-| Metric | Start / end | Guardrail | State | Current evidence / next measurement |
-| --- | --- | --- | --- | --- |
-| Input latency | key/paste event → next painted composer value | p95 ≤ 100 ms; no task > 200 ms | not started | Browser `performance.mark` and `requestAnimationFrame`; UI owner. |
-| Navigation latency | navigation intent → destination shell painted and interactive | p95 ≤ 500 ms for cached shell; otherwise comparative budget | not started | Browser marks per sidebar/search/project/thread transition; UI owner. |
-| TTI | document navigation start → composer focused and usable | comparative budget | not started | Must be collected in the real Arnall browser, not inferred from server logs. |
-| Turn setup | valid chat request → NDJSON response created | p95 ≤ reference + allowance; no repeated access-index or catalog refresh on the hot path | validated locally | `chat.request_phase` separates feature policy, thread context, maintenance, permissions, documents, turn persistence and projection. A project-scoped workbench cache and one resolved authorization context remove repeated parsing and access scans. |
-| Initial honest feedback | send intent → first painted factual activity | **< 1,000 ms**; no invented response content | validated locally | The optimistic assistant state paints `Enviando solicitud`; a real Chromium test holds `/api/chat` open and measures click → visible activity with `performance.now()`. |
-| Accepted activity | successful chat response acceptance → `Solicitud aceptada` paint | **< 1,000 ms** | validated locally | Client telemetry schema 2 records both the accepted timestamp and its next paint opportunity. The accepted callback fires once across reattachment. |
-| App Server first delta | server admission immediately before runtime work → first non-empty agent delta accepted | comparative budget | validated locally | Private `codex.turn_metrics.serverFirstDeltaMs` is measured at the server notification boundary. This is not visible TTFT. `src/runtime/turn-telemetry.test.ts` fixes the clock and verifies the calculation. |
-| Visible TTFT | send intent → first agent text painted | comparative budget | validated locally | The first non-empty delta is applied synchronously and measured at the next rAF, avoiding the previous extra-frame delay. This is a paint proxy, not model latency; never substitute the server first delta. |
-| Streaming cadence | paint timestamps for consecutive non-empty agent deltas | p95 inter-paint gap ≤ reference + allowance; zero reordering/duplicates | validated locally | Safe monotonic answer growth is emitted as suffix deltas. The first nonempty chunk is applied immediately in full; subsequent chunks batch in full at the next rAF or 48 ms fallback, without artificial reveal pacing. Non-delta/terminal events and close flush the exact pending suffix first; reconnect projection replaces the partial message instead of appending it twice. |
-| Total turn latency | send intent → terminal state painted and persisted | comparative budget; persisted terminal state must match UI | implemented | The client records terminal `done`/`error`/`stopped` after rAF; `codex.turn_metrics.totalMs` remains server elapsed. Persisted-state correlation is still a live acceptance requirement. |
-| Reconnect latency | disconnect observed → durable snapshot caught up to latest delivered sequence | p95 ≤ 1,000 ms on loopback; comparative live | implemented | Idempotent replay starts a client reconnect span; the next applied durable snapshot is measured after rAF. `codex.turn_lifecycle` remains separate server lifecycle evidence; live catch-up timing is pending. |
-| Tool latency | App Server item start → terminal tool outcome, split into queue/runtime/projection/paint | overhead p95 ≤ 250 ms excluding remote tool execution | implemented | `codex.tool_phase` records queue and execution duration with bounded tool kind and opaque correlation only. Browser owner must still preserve `indeterminate`; visible paint remains client-side. |
-| Same-user concurrency | request admission in chats B/C/D while chat A is streaming or waiting on a tool | no cross-thread head-of-line blocking; admission remains bounded by its own RPC timeout | validated locally | The private gateway uses independent client-input and App-Server-output lanes. A blocked durable output test proves a new chat is admitted; a router test runs three bound chats, opens a fourth during a tool, times out one `thread/read`, then completes a trivial request. |
-| Bounded turn lifetime | accepted runtime turn → terminal state | default 30 min; configured range 30 s–30 min; one interrupt only | implemented | `AIBRAIN_WORKER_TURN_TIMEOUT_MS` aborts the scoped turn and requests one `turn/interrupt`. The default matches the terminal watchdog hard budget, avoiding an unconditional cut at ten minutes while work is still active. Explicit installation overrides retain their configured limit. Failure to confirm is terminal error; uncertain effects are never replayed. Configuration bounds and the scoped cancellation path are validated locally; elapsed wall-clock expiry remains a live acceptance case. |
 
 ## Reproducible local evidence on the authorized base
 
@@ -265,11 +199,6 @@ recorded as inconclusive environmental evidence, not as passes; repeat them on
 a quiet runner before integration. The green baseline above was collected
 before this route-only change from the same authorized commit.
 
-Generated Codex contract verification also passed for pinned version `0.149.1`.
-The desktop Codex binary inspected on the development Mac reports
-`0.149.0-alpha.4.3`; that process is not the Arnall worker and is not accepted as
-live AiBrain evidence. Production's entrypoint must continue rejecting a binary
-that differs from the generated contract version.
 
 ## Private runtime telemetry readback
 
@@ -361,23 +290,6 @@ error detail or secret. It is not exposed as a per-message control; the focal
 browser test attaches its numeric benchmark JSON only to that local test run.
 This change adds no API route, analytics POST, shared storage or server logger.
 
-The first nonempty chunk is applied immediately in full; subsequent chunks are
-batched in full at the next rAF or 48 ms fallback. Non-delta/terminal events and
-close flush pending text exactly first. The measurement then schedules rAF. The resulting
-timestamp is a controlled local proxy for a paint opportunity. The Chromium
-initial-feedback test is real-browser evidence for the local shell only;
-authenticated Arnall validation remains required before claiming live provider
-or user-perceived model latency.
-
-## Historical live observations, not current acceptance
-
-Repository evidence records first-text/total pairs of 3003/4891 ms,
-2021/3513 ms and 2250/3774 ms for one earlier deployed revision, and a later
-Computer Use turn at 15219/22741 ms. These numbers demonstrate large prompt/tool
-variance; they do not prove the current branch, current production revision or
-ChatGPT Work parity. Repeat the matched benchmark after release and attach the
-immutable revision, model, prompt, timestamps, raw NDJSON event timing and final
-persisted turn/usage readback.
 
 ## Warm-path implementation
 

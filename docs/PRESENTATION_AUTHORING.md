@@ -37,24 +37,6 @@ limitation to report, never a reason to claim a text dump is a finished design.
 
 Node and a pinned PptxGenJS bundle are available without network access:
 
-```js
-const pptxgen = require('/usr/local/share/aibrain/pptxgenjs.cjs');
-const deck = new pptxgen();
-deck.layout = 'LAYOUT_WIDE';
-deck.author = 'Arnall AI';
-deck.subject = 'The user-approved subject';
-deck.title = 'The presentation title';
-deck.lang = 'ca-ES'; // use the requested language
-deck.theme = { headFontFace: 'Liberation Sans', bodyFontFace: 'Liberation Sans', lang: 'ca-ES' };
-const slide = deck.addSlide();
-slide.background = { color: '162821' };
-slide.addText('A concise title', { x: 0.7, y: 0.8, w: 11.8, h: 1.2,
-  fontSize: 42, bold: true, color: 'FFFFFF', margin: 0 });
-// Compose the actual slide; this snippet is only an API example, not a template.
-// slide.addImage({ path: authorizedImage, ...deck.imageSizingCrop(authorizedImage, x, y, w, h) });
-// slide.addChart(deck.ChartType.bar, [{ name: 'Series', labels: [...], values: [...] }], options);
-await deck.writeFile({ fileName: '.aibrain-drafts/deck.pptx' });
-```
 
 Use a `.cjs` script with an async main function for the await above, or load the
 bundle from ESM with `createRequire`. Dimensions are inches; wide slides are

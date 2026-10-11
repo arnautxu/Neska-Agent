@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-const eventName = "arnall-sidebar-disclosure";
+const eventName = "neska-sidebar-disclosure";
 const fallback = new Map<string, string>();
 function subscribe(listener: () => void) {
   window.addEventListener("storage", listener);

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { LocalAuthService } from "@/auth/auth-service";
 import type {
   AuthIdentityProvider,
@@ -29,13 +29,14 @@ class FakeIdentityProvider implements AuthIdentityProvider {
   passwordUpdates = 0;
   recoveryRequests = 0;
   signOuts = 0;
+  password = "Temporary-pass-123";
 
   private check() {
     if (!this.available) throw new IdentityProviderError("provider_unavailable", "offline");
   }
   async verifyPassword(email: string, password: string) {
     this.check();
-    if (email !== identity.email || password !== "Temporary-pass-123") {
+    if (email !== identity.email || password !== this.password) {
       throw new IdentityProviderError("invalid_credentials", "invalid");
     }
     return identity;
@@ -43,6 +44,7 @@ class FakeIdentityProvider implements AuthIdentityProvider {
   async updatePassword(_credentials: IdentityCredentials, _password: string) {
     this.check();
     this.passwordUpdates += 1;
+    this.password = _password;
   }
   async requestPasswordRecovery(_email: string, _redirectTo: string) {
     this.check();
@@ -79,7 +81,7 @@ async function fixture(initialPassword = false) {
     rootDirectory: path.join(root, "challenges"),
   });
   const service = new LocalAuthService("example-lab-dev", provider, users, sessions, challenges);
-  return { provider, sessions, users, service, root };
+  return { provider, sessions, users, challenges, service, root };
 }
 
 afterEach(async () => {
@@ -136,5 +138,81 @@ describe("LocalAuthService", () => {
     expect(provider.recoveryRequests).toBe(1);
     expect(provider.passwordUpdates).toBe(1);
     expect(authenticated.user.userId).toBe(USER_ID);
+  });
+});
+
+
+describe("password recovery security", () => {
+  const installation = "example-lab-dev";
+  it("revokes old cookies, preserves another user and installation, and closes provider credentials", async () => {
+    const { provider, sessions, service } = await fixture();
+    const old = await service.login(identity.email, "Temporary-pass-123");
+    if (old.kind !== "authenticated") throw new Error("unexpected challenge");
+    const other = await sessions.create(installation, "0198b9f0-6631-7000-8000-000000000011");
+    const otherTenant = await sessions.create("other-company", USER_ID);
+    const fresh = await service.completePasswordRecovery({ tokenHash: "synthetic" }, "Recovered-pass-789");
+    expect(await sessions.read(old.session.sessionId, installation)).toBeNull();
+    expect(await sessions.read(fresh.session.sessionId, installation)).not.toBeNull();
+    expect(await sessions.read(other.sessionId, installation)).not.toBeNull();
+    expect(await sessions.read(otherTenant.sessionId, "other-company")).not.toBeNull();
+    expect(provider.signOuts).toBe(2);
+    await expect(service.login(identity.email, "Temporary-pass-123")).rejects.toMatchObject({ code: "invalid_credentials" });
+    expect((await service.login(identity.email, "Recovered-pass-789")).kind).toBe("authenticated");
+  });
+
+  it("serializes recovery with an old-password login across independent service instances", async () => {
+    const { provider, sessions, users, challenges, service, root } = await fixture();
+    const second = new LocalAuthService(installation, provider, users,
+      new FileLocalSessionStore({ rootDirectory: path.join(root, "sessions") }), challenges);
+    let enter!: () => void; let release!: () => void;
+    const entered = new Promise<void>((resolve) => { enter = resolve; });
+    const hold = new Promise<void>((resolve) => { release = resolve; });
+    const verify = provider.verifyPassword.bind(provider);
+    vi.spyOn(provider, "verifyPassword").mockImplementationOnce(async (...args) => {
+      const verified = await verify(...args); enter(); await hold; return verified;
+    });
+    const oldLogin = service.login(identity.email, "Temporary-pass-123");
+    await entered;
+    const recovery = second.completePasswordRecovery({ tokenHash: "synthetic" }, "Recovered-pass-789");
+    release();
+    const [old, fresh] = await Promise.all([oldLogin, recovery]);
+    if (old.kind !== "authenticated") throw new Error("unexpected challenge");
+    expect(await sessions.read(old.session.sessionId, installation)).toBeNull();
+    expect(await sessions.read(fresh.session.sessionId, installation)).not.toBeNull();
+  });
+
+  it("checks a queued login against the new password after recovery", async () => {
+    const { provider, users, challenges, service, root } = await fixture();
+    const second = new LocalAuthService(installation, provider, users,
+      new FileLocalSessionStore({ rootDirectory: path.join(root, "sessions") }), challenges);
+    let enter!: () => void; let release!: () => void;
+    const entered = new Promise<void>((resolve) => { enter = resolve; });
+    const hold = new Promise<void>((resolve) => { release = resolve; });
+    const update = provider.updatePassword.bind(provider);
+    vi.spyOn(provider, "updatePassword").mockImplementationOnce(async (...args) => { enter(); await hold; await update(...args); });
+    const recovery = service.completePasswordRecovery({ tokenHash: "synthetic" }, "Recovered-pass-789");
+    await entered;
+    const denied = expect(second.login(identity.email, "Temporary-pass-123")).rejects.toMatchObject({ code: "invalid_credentials" });
+    release(); await recovery; await denied;
+  });
+
+  it("rejects an earlier initial-password challenge after recovery", async () => {
+    const { provider, service } = await fixture(true);
+    const challenge = await service.login(identity.email, "Temporary-pass-123");
+    if (challenge.kind !== "password_change_required") throw new Error("missing challenge");
+    await service.completePasswordRecovery({ tokenHash: "synthetic" }, "Recovered-pass-789");
+    await expect(service.changeInitialPassword(challenge.challengeId, "Attacker-pass-789"))
+      .rejects.toMatchObject({ code: "challenge_invalid" });
+    expect(provider.passwordUpdates).toBe(1);
+    expect(provider.signOuts).toBe(2);
+  });
+
+  it("does not revoke on a rejected provider update, but always closes recovery credentials", async () => {
+    const { provider, sessions, service } = await fixture();
+    const old = await sessions.create(installation, USER_ID);
+    vi.spyOn(provider, "updatePassword").mockRejectedValueOnce(new Error("provider rejected"));
+    await expect(service.completePasswordRecovery({ tokenHash: "synthetic" }, "Recovered-pass-789")).rejects.toThrow("provider rejected");
+    expect(await sessions.read(old.sessionId, installation)).not.toBeNull();
+    expect(provider.signOuts).toBe(1);
   });
 });

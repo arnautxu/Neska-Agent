@@ -8,7 +8,7 @@ import { KnowledgeReviewTransport } from "./review-transport";
 const temp: string[] = [], servers: Server[] = [], sockets: Socket[] = [];
 const actor = "10000000-0000-4000-8000-000000000001", company = { scope: "company", scopeId: null } as const;
 const partition = createHash("sha256").update("company").digest("hex").slice(0, 32);
-const reference = `knowledge-arnall/${partition}/Y/example.txt?sha256=${"a".repeat(64)}&part=1`;
+const reference = `knowledge-example-company/${partition}/Y/example.txt?sha256=${"a".repeat(64)}&part=1`;
 const record = { id: actor, kind: "fact", label: "Fictional", topic: "Review", content: "Review weekly.", status: "proposed", revision: 1,
   citations: [{ source: "Y:\\example.txt", sha256: "a".repeat(64), locator: "line:1", quote: "Review weekly.", path: reference }], conflicts: [], events: [] };
 afterEach(async () => { for (const s of sockets.splice(0)) s.destroy(); await Promise.all(servers.splice(0).map((s) => new Promise<void>((resolve) => s.close(() => resolve())))); await Promise.all(temp.splice(0).map((p) => rm(p, { recursive: true, force: true }))); });
@@ -17,26 +17,26 @@ async function fixture(reply?: (request: Record<string, unknown>) => object) {
   const roots = [{ ...company, path: "/fixture", readOnly: false }];
   const network = { config: { installationId: "test", paths: { dataRoot: root } }, validateSyncRoots: vi.fn(async (items: typeof roots) => { if (items.some((r) => r !== roots[0])) throw new Error("FORGED_ROOT"); }) };
   const directory = path.join(root, "locks/knowledge-review"); await mkdir(directory, { recursive: true, mode: 0o750 });
-  await writeFile(path.join(directory, "arnall.json"), JSON.stringify({ schemaVersion: 1, mode: "human-review", installationId: "test", connectionId: "arnall", publications: [company] }), { mode: 0o440 });
+  await writeFile(path.join(directory, "example-company.json"), JSON.stringify({ schemaVersion: 1, mode: "human-review", installationId: "test", connectionId: "example-company", publications: [company] }), { mode: 0o440 });
   const requests: Record<string, unknown>[] = [];
   const server = createServer((socket) => {
     sockets.push(socket); let text = "";
     socket.on("data", (chunk) => {
       text += chunk.toString(); if (!text.includes("\n")) return;
       const request = JSON.parse(text); requests.push(request);
-      socket.end(JSON.stringify({ requestId: request.requestId, installationId: "test", connectionId: "arnall", audience: company, checkedAt: new Date().toISOString(),
+      socket.end(JSON.stringify({ requestId: request.requestId, installationId: "test", connectionId: "example-company", audience: company, checkedAt: new Date().toISOString(),
         ...(reply?.(request) ?? { available: true, records: [record], nextCursor: null }) }) + "\n");
     });
   }); servers.push(server);
-  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(path.join(directory, "arnall.sock"), resolve); });
-  await chmod(path.join(directory, "arnall.sock"), 0o660);
+  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(path.join(directory, "example-company.sock"), resolve); });
+  await chmod(path.join(directory, "example-company.sock"), 0o660);
   return { roots, requests, directory, transport: new KnowledgeReviewTransport(network as never, { ownerUid: process.getuid!(), timeoutMs: 500 }) };
 }
 describe("trusted review socket", () => {
   it("sends server actor, authorized audience and exact expected revision", async () => {
     const f = await fixture((request) => request.operation === "review" ? { available: true, record: { ...record, status: "confirmed", revision: 2 } } : { available: true, records: [record], nextCursor: null });
     expect(await f.transport.call(f.roots, actor, company, "list", { status: "proposed", cursor: 0 })).toMatchObject({ available: true, records: [{ id: actor }] });
-    expect(await f.transport.call(f.roots, actor, company, "review", { recordId: actor, revision: 1, decision: "confirm" }, "arnall")).toMatchObject({ record: { revision: 2 } });
+    expect(await f.transport.call(f.roots, actor, company, "review", { recordId: actor, revision: 1, decision: "confirm" }, "example-company")).toMatchObject({ record: { revision: 2 } });
     expect(f.requests[1]).toMatchObject({ actorId: actor, audience: company, input: { recordId: actor, revision: 1, decision: "confirm" } });
   });
   it("requires correction replies to bind the prior record and exact revision", async () => {

@@ -29,7 +29,7 @@ class ReconciliationTests(unittest.TestCase):
         self.store.index_document(self.source,row['fingerprint'],'a'*64,[{'locator':'line:1','content':'Contrato aprobado de ejemplo'}])
         self.bindings={'schemaVersion':1,'installationId':'test','rules':[{'sourceRoot':'Y:\\','audience':COMPANY}]}
         r.publication.publish(self.root,'test',self.bindings,lambda _:None)
-        self.reader=retrieval.Retrieval(self.root,'test','arnall',self.bindings,lambda a:a==COMPANY)
+        self.reader=retrieval.Retrieval(self.root,'test','example-company',self.bindings,lambda a:a==COMPANY)
         self.path=self.reader.search(COMPANY,'contrato')['results'][0]['path']
         self.manifest={'installationId':'test','sourceRoots':['Y:\\']}
 

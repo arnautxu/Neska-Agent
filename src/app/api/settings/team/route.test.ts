@@ -9,7 +9,7 @@ import { GET } from "@/app/api/settings/team/route";
 
 describe("settings team route", () => {
   beforeEach(() => {
-    mocked.session = { user: { id: "00000000-0000-4000-8000-000000000001" }, tenant: { id: "arnall" } };
+    mocked.session = { user: { id: "00000000-0000-4000-8000-000000000001" }, tenant: { id: "example-company" } };
     mocked.isAdmin.mockReset(); mocked.members.mockReset(); mocked.isAdmin.mockResolvedValue(false);
   });
 

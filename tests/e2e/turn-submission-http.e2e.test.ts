@@ -272,7 +272,12 @@ createInterface({input: process.stdin}).on("line", line => {
   const rpc = JSON.parse(line);
   appendFileSync(log, JSON.stringify(rpc) + "\\n");
   if (rpc.id === undefined) return;
-  const result = value => send({id: rpc.id, result: value});
+  const result = value => send({id: rpc.id, result: {
+    ...(["thread/start", "thread/resume"].includes(rpc.method) ? {
+      cwd: rpc.params.cwd, approvalPolicy: rpc.params.approvalPolicy,
+      activePermissionProfile: {id: rpc.params.permissions},
+    } : {}), ...value,
+  }});
   if (rpc.method === "initialize") return result({userAgent: "synthetic-recovery-worker"});
   if (rpc.method === "account/read") return result({account: {type: "chatgpt", planType: "team"}});
   if (rpc.method === "model/list" || rpc.method === "skills/list") return result({data: []});

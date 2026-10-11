@@ -11,7 +11,7 @@ vi.mock("@/documents/enterprise-document-network", () => ({ EnterpriseDocumentNe
 vi.mock("./review-transport", () => ({ KnowledgeReviewTransport: class { call = mocks.call; } }));
 import { listKnowledgeReviews, reviewKnowledge } from "./review-service";
 const session = { provider: "local", tenant: { id: "test", name: "Test" }, user: { id: userId, name: "Reviewer", email: "reviewer@example.test" }, expiresAt: "2099-01-01T00:00:00Z" } as const;
-const input = { projectId, scope: "company", scopeId: null, connectionId: "arnall", recordId: projectId, revision: 1, decision: "confirm" } as const;
+const input = { projectId, scope: "company", scopeId: null, connectionId: "example-company", recordId: projectId, revision: 1, decision: "confirm" } as const;
 const allowed = () => ({ role: { canManageWorkspace: true }, groups: [], policy: { capabilities: { consult: true, publish: true } } });
 describe("current review authority", () => {
   beforeEach(() => {
@@ -29,7 +29,7 @@ describe("current review authority", () => {
   });
   it("uses session actor and rereads role on each review", async () => {
     await reviewKnowledge(session, { ...input, actorId: projectId } as never);
-    expect(mocks.call).toHaveBeenCalledWith(expect.any(Array), userId, { scope: "company", scopeId: null }, "review", { recordId: projectId, revision: 1, decision: "confirm" }, "arnall");
+    expect(mocks.call).toHaveBeenCalledWith(expect.any(Array), userId, { scope: "company", scopeId: null }, "review", { recordId: projectId, revision: 1, decision: "confirm" }, "example-company");
     mocks.policy.mockResolvedValue({ ...allowed(), role: { canManageWorkspace: false } });
     await expect(reviewKnowledge(session, input)).rejects.toMatchObject({ status: 403 }); expect(mocks.call).toHaveBeenCalledTimes(1);
   });
@@ -37,7 +37,7 @@ describe("current review authority", () => {
     const correction = { ...input, decision: "correct", content: "Qualified statement", reason: "Clarify source scope" } as const;
     await reviewKnowledge(session, correction);
     expect(mocks.call).toHaveBeenCalledWith(expect.any(Array), userId, { scope: "company", scopeId: null }, "correct",
-      { recordId: projectId, revision: 1, content: correction.content, reason: correction.reason }, "arnall");
+      { recordId: projectId, revision: 1, content: correction.content, reason: correction.reason }, "example-company");
     mocks.policy.mockResolvedValue({ ...allowed(), policy: { capabilities: { consult: true, publish: false } } });
     await expect(reviewKnowledge(session, correction)).rejects.toMatchObject({ status: 403 });
     expect(mocks.call).toHaveBeenCalledTimes(1);

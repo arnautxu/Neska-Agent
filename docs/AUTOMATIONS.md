@@ -4,7 +4,6 @@ AiBrain puede ejecutar un prompt una vez, por intervalo, cada día o ciertos dí
 
 ## Garantía operativa honesta
 
-Una tarea se procesa en `automation-worker`, un servicio durable e independiente de la aplicación web. Sigue trabajando aunque el navegador o el dispositivo del usuario estén cerrados; un heartbeat fresco forma parte de readiness y el despliegue de Arnall exige que el contenedor esté saludable. El worker tampoco envía correos, mensajes ni publicaciones por sí solo: ejecuta un turno normal y conserva el resultado en una conversación.
 
 El mismo proceso drena los trabajos pendientes de memoria privada automática. Cada turno terminal persiste primero un trabajo mínimo por usuario y después solicita su procesamiento; si la aplicación cae en esa ventana, el siguiente barrido del worker lo recupera de disco. La cola no conserva el prompt completo, el procesamiento es idempotente y nunca promociona recuerdos al ámbito de empresa.
 
@@ -16,7 +15,6 @@ Cada ejecución solicita búsqueda web en vivo. Inmediatamente antes de iniciar 
 
 La superficie principal permite crear, editar, pausar, reanudar, eliminar y ejecutar ahora una tarea, además de consultar su historial y abrir la conversación de resultado. `Ejecutar ahora` usa un id de solicitud durable: repetir la misma petición no crea otra ocurrencia, y una segunda petición distinta se rechaza mientras haya una ejecución manual pendiente o en curso. Una ejecución manual puede arrancar con la recurrencia en pausa y no la reactiva al terminar.
 
-El chat también puede preparar una automatización mediante herramientas dinámicas internas y reconoce instrucciones naturales como «envíame hello dentro de 2 minutos», «mañana a las 9» o «cada lunes». Cuando el usuario no especifica proyecto, zona horaria o audiencia, usa el proyecto actual, `Europe/Madrid` y el usuario actual; conserva menciones `@`, archivos y referencias a skills dentro del prompt. Antes de persistirla muestra acción, horario, zona horaria, proyecto o `Sin proyecto` y audiencia. La propuesta se guarda por usuario, tenant, conversación y turno, pero no crea ninguna tarea. La creación exige una confirmación explícita en un mensaje posterior; un «sí» natural puede confirmar la última propuesta pendiente de esa conversación sin repetir su id. Propuesta y tarea usan ids durables para que un reintento tras reinicio no duplique la automatización.
 
 Las herramientas dinámicas quedan fijadas cuando se crea la conversación privada del runtime. Los tokens de conversación incluyen una revisión del toolset: si una petición de programación llega desde una conversación anterior a esta capacidad, el servidor abre de forma acotada un hilo privado nuevo para ese turno y conserva la conversación visible y su propuesta durable. Las conversaciones actuales y los mensajes normales continúan reanudándose sin reinicio.
 
@@ -115,10 +113,6 @@ Current membership is resolved on every authorized result read. The owner is not
 implicitly a recipient. Only that owner or a workspace administrator can edit,
 pause, run or delete; other recipients can only view results.
 
-## horarIA per xat
-
-La integració d’horaris conserva el xat i les previsualitzacions natives d’AiBrain, sense UI pròpia. El worker resol la identitat, els permisos i les operacions background autoritzades a cada execució. La configuració, migració i gates d’activació són a [HORARIA.md](HORARIA.md). La integració local no activa proveïdors ni modifica les automatitzacions reals.
-
 ## Intervalos y facturas de correo de empresa — candidato 06/10/2026
 
 El horario `interval` guarda `minutes` (entero 60–10080) y `anchorAt` ISO UTC.
@@ -133,7 +127,7 @@ Ejecutar ahora y recuperación de una sola ocurrencia atrasada.
 La importación de facturas desde `company-mail` conserva credenciales en el
 server y originales/recibos/Excel en el volumen privado de Hetzner. Requiere
 que el propietario conecte primero el buzón y que el turno tenga acceso actual
-al conector, ejecución y proyecto. David configura una tarea de 120 minutos y
+al conector, ejecución y proyecto. Usuario B configura una tarea de 120 minutos y
 otra diaria con hora/audiencia acordadas. Ninguna se crea o activa por habilitar
 el conector. Ver [COMPANY_MAIL.md](COMPANY_MAIL.md) para los prompts, límites,
 estados de revisión y aceptación de las siguientes ocurrencias reales.

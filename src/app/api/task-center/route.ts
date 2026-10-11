@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isSameOriginMutation } from "@/auth/request-security";
 import { getSession } from "@/auth/session";
 import {
   isTaskCenterId,
@@ -22,6 +23,9 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  if (!await isSameOriginMutation(request)) {
+    return NextResponse.json({ error: "Origen no permitido." }, { status: 403 });
+  }
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   let body: unknown;

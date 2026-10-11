@@ -273,11 +273,7 @@ function assertTargetEnvironment(current, target, options) {
       throw new ReleaseError("RELEASE_TARGET_ENV_MIGRATION_REQUIRED", `${key} cannot change in an ordinary release.`);
     }
   }
-  for (const value of target.values()) {
-    if (/(?:^|[\\/])bgreenly(?:[\\/]|$)/iu.test(value)) {
-      throw new ReleaseError("RELEASE_TARGET_ENV_INVALID", "Target env must never address BGreenly.");
-    }
-  }
+
 }
 
 const INSTALLATION_ROOT_KEYS = [
@@ -434,8 +430,7 @@ function validateVersionedInstallationConfig(contents, installationId) {
 }
 
 function validateComposeSafety(contents, installationId) {
-  if (/bgreenly/iu.test(contents)
-    || /^\s*(?:privileged|network_mode)\s*:/mu.test(contents)
+  if (/^\s*(?:privileged|network_mode)\s*:/mu.test(contents)
     || /^\s*external\s*:/mu.test(contents)
     || /docker\.sock/iu.test(contents)
     || /^\s*build\s*:/mu.test(contents)

@@ -298,7 +298,7 @@ describe("Codex managed App connector", () => {
   const codexBinding = (overrides: Partial<CredentialBinding> = {}): CredentialBinding => ({
     schemaVersion: 1,
     connectorId: CODEX_MANAGED_APP_CONNECTOR_ID,
-    credentialRef: "codex-app:app-arnall-files",
+    credentialRef: "codex-app:app-example-company-files",
     installationId: INSTALLATION_ID,
     userId: USER_ONE,
     scopes: [CODEX_MANAGED_APP_READ_SCOPE],
@@ -308,7 +308,7 @@ describe("Codex managed App connector", () => {
   });
 
   it("reads only the installed-app snapshot and exposes no provider reference", async () => {
-    const request = vi.fn(async () => ({ apps: [{ id: "app-arnall-files", enabled: true, callable: true }] }));
+    const request = vi.fn(async () => ({ apps: [{ id: "app-example-company-files", enabled: true, callable: true }] }));
     const provider = new CodexManagedAppProvider(async () => ({ request }), () => Date.parse("2026-08-28T10:00:00.000Z"));
     const result = await provider.inspect({ principal: principal(), binding: codexBinding() });
     expect(request).toHaveBeenCalledWith(
@@ -338,7 +338,7 @@ describe("Codex managed App connector", () => {
     const { store } = await fixture();
     await store.put(codexBinding());
     const provider = new CodexManagedAppProvider(async () => ({
-      request: async () => ({ apps: [{ id: "app-arnall-files", enabled: false, callable: false }] }),
+      request: async () => ({ apps: [{ id: "app-example-company-files", enabled: false, callable: false }] }),
     }));
     const registry = new ConnectorRegistry(store, [{ definition: codexManagedAppDefinition, credentialProvider: provider }]);
     await expect(registry.capabilities(principal(), { allowSharedCredentials: false }))
@@ -353,13 +353,13 @@ describe("Codex managed App connector", () => {
 
 describe("Codex managed App action", () => {
   const config: CodexManagedAppActionConfig = {
-    appId: "app-arnall-files",
-    server: "arnall-erp",
+    appId: "app-example-company-files",
+    server: "example-company-erp",
     tool: "sync-confirmed-export",
     arguments: { mode: "approved" },
     correlationField: "executionId",
     readback: {
-      server: "arnall-erp",
+      server: "example-company-erp",
       tool: "read-sync-status",
       arguments: { detail: "status" },
       correlationArgument: "executionId",
@@ -377,7 +377,7 @@ describe("Codex managed App action", () => {
     await store.put({
       schemaVersion: 1,
       connectorId: CODEX_MANAGED_APP_CONNECTOR_ID,
-      credentialRef: "codex-app:app-arnall-files",
+      credentialRef: "codex-app:app-example-company-files",
       installationId: INSTALLATION_ID,
       userId: USER_ONE,
       scopes: [CODEX_MANAGED_APP_READ_SCOPE, CODEX_MANAGED_APP_EXECUTE_SCOPE],
@@ -386,8 +386,8 @@ describe("Codex managed App action", () => {
       ...overrides.binding,
     });
     const responses = overrides.responses ?? [
-      { apps: [{ id: "app-arnall-files", enabled: true, callable: true }] },
-      { apps: [{ id: "app-arnall-files", enabled: true, callable: true }] },
+      { apps: [{ id: "app-example-company-files", enabled: true, callable: true }] },
+      { apps: [{ id: "app-example-company-files", enabled: true, callable: true }] },
       { structuredContent: { executionId: "execution-1" }, content: [] },
       { structuredContent: { executionId: "execution-1" }, content: [] },
     ];
@@ -430,13 +430,13 @@ describe("Codex managed App action", () => {
     await expect(action.execute(prepared)).resolves.toMatchObject({ outcome: "executed", value: { correlation: "execution-1" } });
     expect(request).toHaveBeenNthCalledWith(3, "mcpServer/tool/call", {
       threadId: locator.threadId,
-      server: "arnall-erp",
+      server: "example-company-erp",
       tool: "sync-confirmed-export",
       arguments: { mode: "approved" },
     }, "connector-codex-action", 10_000);
     expect(request).toHaveBeenNthCalledWith(4, "mcpServer/tool/call", {
       threadId: locator.threadId,
-      server: "arnall-erp",
+      server: "example-company-erp",
       tool: "read-sync-status",
       arguments: { detail: "status", executionId: "execution-1" },
     }, "connector-codex-readback", 10_000);
@@ -460,8 +460,8 @@ describe("Codex managed App action", () => {
 
   it("marks a post-dispatch readback failure indeterminate and never re-dispatches after restart", async () => {
     const postDispatchFailure = await actionFixture({ responses: [
-      { apps: [{ id: "app-arnall-files", enabled: true, callable: true }] },
-      { apps: [{ id: "app-arnall-files", enabled: true, callable: true }] },
+      { apps: [{ id: "app-example-company-files", enabled: true, callable: true }] },
+      { apps: [{ id: "app-example-company-files", enabled: true, callable: true }] },
       { structuredContent: { executionId: "execution-2" }, content: [] },
       { structuredContent: {}, content: [] },
     ] });
@@ -498,8 +498,8 @@ describe("Codex managed App action", () => {
 
 describe("installation action manifest secrets", () => {
   const manifest: CodexManagedAppActionConfig = {
-    appId: "app-arnall-files", server: "arnall-erp", tool: "sync-confirmed-export", arguments: {}, correlationField: "executionId",
-    readback: { server: "arnall-erp", tool: "read-sync-status", arguments: {}, correlationArgument: "executionId" },
+    appId: "app-example-company-files", server: "example-company-erp", tool: "sync-confirmed-export", arguments: {}, correlationField: "executionId",
+    readback: { server: "example-company-erp", tool: "read-sync-status", arguments: {}, correlationArgument: "executionId" },
   };
   const installation = (argumentsValue: Record<string, unknown>) => ({
     schemaVersion: 1, installationId: "example-lab", companyName: "Example", companySlug: "example-lab", publicUrl: "https://example.test",

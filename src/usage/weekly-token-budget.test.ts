@@ -19,7 +19,7 @@ async function fixture(limitTokens = 7_500_000, initialNow = DEFAULT_NOW) {
   const dataRoot = await mkdtemp(path.join(tmpdir(), "aibrain-weekly-budget-"));
   roots.push(dataRoot);
   let now = initialNow;
-  const options = { installationId: "arnall", dataRoot, limitTokens, now: () => now };
+  const options = { installationId: "example-company", dataRoot, limitTokens, now: () => now };
   const store = new WeeklyTokenBudgetStore(options);
   return { dataRoot, store, options, setNow: (value: number | string) => { now = typeof value === "string" ? Date.parse(value) : value; },
     seed: (overrides: Partial<WeeklyTokenBudgetSeed> = {}) => store.initializeFromHistory({
@@ -150,7 +150,7 @@ describe("WeeklyTokenBudgetStore", () => {
     expect(outcomes.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     expect(outcomes.filter((result) => result.status === "rejected")).toHaveLength(1);
     const state = JSON.parse(await readFile(store.statePath, "utf8"));
-    expect(["arnall", "other"]).toContain(state.installationId);
+    expect(["example-company", "other"]).toContain(state.installationId);
   });
 
   it("imports prior event evidence so a later duplicate cannot be recharged", async () => {

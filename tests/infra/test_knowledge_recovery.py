@@ -59,7 +59,7 @@ class RecoveryTests(unittest.TestCase):
 
     def reader(self):
         module=recovery.module('restored_retrieval','knowledge-retrieval.py')
-        return module.Retrieval(self.destination,'test','arnall',self.bindings,lambda _:True)
+        return module.Retrieval(self.destination,'test','example-company',self.bindings,lambda _:True)
 
     def test_old_leases_never_open_gate_and_real_recheck_allows_isolated_reads(self):
         with self.assertRaisesRegex(ValueError,'RECOVERY_SOURCE_CHECKS_PENDING'):

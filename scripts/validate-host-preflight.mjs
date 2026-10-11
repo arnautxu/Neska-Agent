@@ -302,10 +302,6 @@ for (let left = 0; left < isolatedRoots.length; left += 1) {
   }
 }
 
-for (const target of [envFileReal, runtimeEnv, egressEnv, alertsEnv, replicaEnv, resticPassword, configRoot, hostRoot, sourceRoot, publishRoot, replicaStateRoot]) {
-  if (/(?:^|[\\/])bgreenly(?:[\\/]|$)/iu.test(target)) fail("an AiBrain path must never address BGreenly");
-}
-
 const portText = required(env, "AIBRAIN_HTTP_PORT");
 if (!/^[0-9]+$/u.test(portText)) fail("AIBRAIN_HTTP_PORT must be numeric");
 const port = Number(portText);

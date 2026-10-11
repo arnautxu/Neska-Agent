@@ -13,7 +13,6 @@ import {
   type PredeployReleaseEvidence,
 } from "./create-predeploy-release-evidence";
 
-export const CANONICAL_LIVE_TARGET = "https://arnall.graphikai.com";
 
 export const REQUIRED_LIVE_GATES = [
   "release-identity-readiness",
@@ -570,7 +569,7 @@ async function verifyEvidenceFiles(
 
 export async function evaluateAcceptance(
   input: unknown,
-  options: { evidenceRoot?: string; checkoutRoot?: string } = {},
+  options: { evidenceRoot?: string; checkoutRoot?: string; expectedLiveTarget?: string } = {},
 ): Promise<AcceptanceEvaluation> {
   const manifestSha256 = digest(canonicalJson(input));
   if (!validator(input)) {
@@ -631,7 +630,9 @@ export async function evaluateAcceptance(
     };
   }
 
-  if (normalizedTarget !== CANONICAL_LIVE_TARGET) reasons.push("canonical_live_target_required");
+  const expectedLiveTarget = options.expectedLiveTarget ? normalizeTarget(options.expectedLiveTarget) : null;
+  if (!expectedLiveTarget || !expectedLiveTarget.startsWith("https://")) reasons.push("expected_live_target_required");
+  if (normalizedTarget !== expectedLiveTarget) reasons.push("configured_live_target_required");
   if (manifest.actors.length < 2) reasons.push("two_distinct_live_actors_required");
   for (const [source, value] of Object.entries(manifest.releaseIdentity)) {
     if (value !== manifest.releaseSha) reasons.push(`release_identity_mismatch:${source}`);
@@ -642,7 +643,7 @@ export async function evaluateAcceptance(
     else {
       if (gate.status !== "passed") reasons.push(`required_gate_not_passed:${required}`);
       if (gate.environment !== "live") reasons.push(`required_gate_not_live:${required}`);
-      if (normalizeTarget(gate.target) !== CANONICAL_LIVE_TARGET) reasons.push(`required_gate_wrong_target:${required}`);
+      if (normalizeTarget(gate.target) !== expectedLiveTarget) reasons.push(`required_gate_wrong_target:${required}`);
     }
   }
   for (const gate of manifest.gates) {
@@ -650,7 +651,7 @@ export async function evaluateAcceptance(
       if (/\b(?:localhost|127\.0\.0\.1|0\.0\.0\.0)\b/iu.test(route)) reasons.push(`local_route_in_live_gate:${gate.id}`);
       if (/^https?:\/\//iu.test(route)) {
         try {
-          if (new URL(route).origin !== CANONICAL_LIVE_TARGET) reasons.push(`foreign_route_in_live_gate:${gate.id}`);
+          if (new URL(route).origin !== expectedLiveTarget) reasons.push(`foreign_route_in_live_gate:${gate.id}`);
         } catch {
           reasons.push(`invalid_route_in_live_gate:${gate.id}`);
         }
@@ -660,7 +661,7 @@ export async function evaluateAcceptance(
       if ((evidence.kind === "http" || evidence.kind === "ui")
         && !evidence.route.startsWith("/")
         && !/^[A-Z]+\s+\//u.test(evidence.route)
-        && normalizeTarget(evidence.route) !== CANONICAL_LIVE_TARGET) {
+        && normalizeTarget(evidence.route) !== expectedLiveTarget) {
         reasons.push(`live_web_evidence_wrong_target:${gate.id}`);
       }
     }
@@ -764,9 +765,10 @@ async function main(): Promise<void> {
   const manifestPath = value("--manifest");
   const evidenceRoot = value("--evidence-root");
   const checkoutRoot = value("--checkout-root");
+  const expectedLiveTarget = value("--target");
   const format = value("--format") ?? "markdown";
   if (!manifestPath || !["markdown", "json"].includes(format)) {
-    process.stderr.write("Usage: npm run acceptance:verify -- --manifest <json> --evidence-root <dir> [--checkout-root <verified-candidate-dir>] [--format markdown|json]\n");
+    process.stderr.write("Usage: npm run acceptance:verify -- --manifest <json> --evidence-root <dir> [--target <expected-https-origin>] [--checkout-root <verified-candidate-dir>] [--format markdown|json]\n");
     process.exitCode = 64;
     return;
   }
@@ -775,7 +777,7 @@ async function main(): Promise<void> {
     throw new Error("Acceptance manifest must be a private regular file, not a link.");
   }
   const parsed = JSON.parse(await readFile(manifestPath, "utf8")) as unknown;
-  const result = await evaluateAcceptance(parsed, { evidenceRoot, checkoutRoot });
+  const result = await evaluateAcceptance(parsed, { evidenceRoot, checkoutRoot, expectedLiveTarget });
   process.stdout.write(format === "json" ? `${JSON.stringify(result, null, 2)}\n` : renderAcceptanceReport(result));
   process.exitCode = result.verdict === "accepted" ? 0 : 2;
 }

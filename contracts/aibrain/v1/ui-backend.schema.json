@@ -1402,7 +1402,7 @@
       "schema": "KnowledgeReviewGetResponse",
       "value": {
         "available": true,
-        "connectionId": "arnall",
+        "connectionId": "example-company",
         "records": [
           {
             "id": "10000000-0000-4000-8000-000000000001",
@@ -1418,7 +1418,7 @@
                 "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 "locator": "line:1",
                 "quote": "La revisión del proyecto es semanal.",
-                "path": "knowledge-arnall/f168ccdd91548c5a8c871bd4b9b757c5/Y/example.txt?sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&part=1"
+                "path": "knowledge-example-company/f168ccdd91548c5a8c871bd4b9b757c5/Y/example.txt?sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&part=1"
               }
             ],
             "conflicts": [],
@@ -1455,7 +1455,7 @@
       "schema": "KnowledgeReviewPostResponse",
       "value": {
         "available": true,
-        "connectionId": "arnall",
+        "connectionId": "example-company",
         "record": {
           "id": "10000000-0000-4000-8000-000000000001",
           "kind": "fact",
@@ -1470,7 +1470,7 @@
               "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "locator": "line:1",
               "quote": "La revisión del proyecto es semanal.",
-              "path": "knowledge-arnall/f168ccdd91548c5a8c871bd4b9b757c5/Y/example.txt?sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&part=1"
+              "path": "knowledge-example-company/f168ccdd91548c5a8c871bd4b9b757c5/Y/example.txt?sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&part=1"
             }
           ],
           "conflicts": [],

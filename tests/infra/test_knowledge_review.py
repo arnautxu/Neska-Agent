@@ -26,12 +26,12 @@ class ReviewTests(unittest.TestCase):
         finally:store.close()
 
     def request(self,operation='list',args=None,audience=None):
-        return {'schemaVersion':1,'installationId':'test','connectionId':'arnall','requestId':str(uuid.uuid4()),'actorId':ACTOR,
+        return {'schemaVersion':1,'installationId':'test','connectionId':'example-company','requestId':str(uuid.uuid4()),'actorId':ACTOR,
                 'audience':audience or fixtures.COMPANY,'operation':operation,'input':args or {'status':'proposed','cursor':0}}
 
     def execute(self,value):
         with patch.object(review.files.sync,'scope_directory',return_value=None):
-            return review.execute(value,{'installationId':'test','connectionId':'arnall'},self.bindings,self.root)
+            return review.execute(value,{'installationId':'test','connectionId':'example-company'},self.bindings,self.root)
 
     def test_confirmation_is_version_bound_and_audits_authenticated_actor(self):
         record=self.proposal()
@@ -54,7 +54,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(result['correction'],{'previousRecordId':record['id'],'previousRevision':1,'previousContent':record['content'],'reason':args['reason']})
         self.assertEqual(result['citations'][0]['quote'],'Condiciones vigentes')
         self.assertEqual(result['events'][0]['actor'],ACTOR)
-        self.assertFalse(review.valid(self.request('correct',{**args,'citations':[]}),{'installationId':'test','connectionId':'arnall'}))
+        self.assertFalse(review.valid(self.request('correct',{**args,'citations':[]}),{'installationId':'test','connectionId':'example-company'}))
         operator=review.retrieval.catalogue.Catalogue(self.root/'operator','test','operator')
         operator.withdraw('Y:\\report.txt','ACCESS_REVOKED');operator.close()
         with self.assertRaisesRegex(ValueError,'RECORD_SOURCE_UNAVAILABLE'):
@@ -79,7 +79,7 @@ class ReviewTests(unittest.TestCase):
         first=self.execute(self.request());self.assertEqual(len(first['records']),20)
         second=self.execute(self.request(args={'status':'proposed','cursor':first['nextCursor']}))
         self.assertEqual(len(second['records']),3);self.assertIsNone(second['nextCursor'])
-        manifest={'installationId':'test','connectionId':'arnall'}
+        manifest={'installationId':'test','connectionId':'example-company'}
         self.assertFalse(review.valid({**self.request(),'reviewer':True},manifest))
         self.assertFalse(review.valid({**self.request(),'actorId':'model'},manifest))
         self.assertFalse(review.valid(self.request('shell',{'command':'anything'}),manifest))
@@ -89,7 +89,7 @@ class ReviewTests(unittest.TestCase):
         record=self.proposal()
         bindings=self.root/'bindings.json';bindings.write_text(json.dumps(self.bindings));bindings.chmod(0o600)
         address=self.root/'review.sock'
-        manifest={'installationId':'test','connectionId':'arnall','appUid':os.geteuid()}
+        manifest={'installationId':'test','connectionId':'example-company','appUid':os.geteuid()}
         # This test isolates kernel peer authentication and dispatch. Its private
         # binding is fictional and owned by the test runner, not a host operator.
         # Root-ownership denial is checked separately without mocking the guard.

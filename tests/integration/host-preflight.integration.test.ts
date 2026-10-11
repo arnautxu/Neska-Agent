@@ -129,7 +129,7 @@ describe("Hetzner host preflight", () => {
     expect(result.stdout).toContain("AiBrain host preflight: PASS (company-alpha)");
   });
 
-  it("rejects mismatched ownership, overlapping paths, symlinks and BGreenly paths", async () => {
+  it("rejects mismatched ownership, overlapping paths, symlinks and foreign installation paths", async () => {
     const ownership = await fixture();
     await writeFile(path.join(ownership.hostRoot, ".aibrain-owner.json"), JSON.stringify({ schemaVersion: 1, product: "aibrain", installationId: "someone-else" }));
     await expect(run(ownership.envFile)).rejects.toThrow();
@@ -141,8 +141,12 @@ describe("Hetzner host preflight", () => {
     await writeFile(symlinked.envFile, await envWithLink);
     await expect(run(symlinked.envFile)).rejects.toThrow();
 
-    const bgreenly = await fixture("bgreenly");
-    await expect(run(bgreenly.envFile, "bgreenly")).rejects.toThrow();
+    const owned = await fixture();
+    const foreign = await fixture("another-company");
+    const envWithForeignSource = (await import("node:fs/promises")).readFile(owned.envFile, "utf8")
+      .then((text) => text.replace(`AIBRAIN_SOURCE_HOST_PATH=${owned.sourceRoot}`, `AIBRAIN_SOURCE_HOST_PATH=${foreign.sourceRoot}`));
+    await writeFile(owned.envFile, await envWithForeignSource);
+    await expect(run(owned.envFile)).rejects.toThrow(/roots must be children of the owned host root/);
   });
 
   it("rejects exposed secrets and hard-linked policy files", async () => {

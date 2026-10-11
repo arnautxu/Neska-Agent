@@ -59,10 +59,10 @@ describe("UserProvisioner", () => {
     const firstFiles = standardCompanyContextTemplates(config);
     const secondFiles = standardCompanyContextTemplates(second);
     expect([...firstFiles.keys()]).toEqual([...secondFiles.keys()]);
-    expect([...secondFiles.values()].join("\n")).not.toMatch(/Arnall|Synthetic Company/);
+    expect([...secondFiles.values()].join("\n")).not.toMatch(/Example Company|Synthetic Company/);
     expect([...secondFiles.values()].join("\n")).toContain("Unrelated Example");
-    const arnallFiles = await companyContextFiles(config, path.join(process.cwd(), "config/company-context/arnall"));
-    expect([...arnallFiles.keys()].sort()).toEqual([...firstFiles.keys()].sort());
+    const exampleCompanyFiles = await companyContextFiles(config);
+    expect([...exampleCompanyFiles.keys()].sort()).toEqual([...firstFiles.keys()].sort());
     await provisioner.provision({ userId: userId(1), email: "standard@example.test", displayName: "Standard Employee" });
     for (const area of COMPANY_KNOWLEDGE_AREAS) {
       expect((await lstat(path.join(config.paths.companyContextRoot, "knowledge", area))).isDirectory()).toBe(true);
@@ -158,15 +158,25 @@ describe("UserProvisioner", () => {
     expect(await mode(companyContext)).toBe(0o600);
   });
 
-  it("seeds the Arnall context network once and leaves edited files byte-for-byte untouched", async () => {
-    const seedRoot = path.join(process.cwd(), "config", "company-context", "arnall");
+  it("seeds the Example Company context network once and leaves edited files byte-for-byte untouched", async () => {
+    const seedRoot = await mkdtemp(path.join(tmpdir(), "neska-synthetic-seed-"));
+    roots.push(seedRoot);
     const { config, provisioner } = await fixture(seedRoot);
+    const files = standardCompanyContextTemplates(config);
+    files.set("knowledge/company/COMPANY.md", "# Synthetic Company\nFictional business used only in tests.");
+    files.set("knowledge/organization/PEOPLE.md", "# People\nExample Owner and Example Employee.");
+    files.set("knowledge/processes/PROCESSES.md", "# Processes\nNo internal process has been supplied.");
+    for (const [relative, contents] of files) {
+      const target = path.join(seedRoot, relative);
+      await mkdir(path.dirname(target), { recursive: true });
+      await writeFile(target, contents);
+    }
     await provisioner.ensureInstallationPolicy();
 
     await provisioner.provision({
       userId: userId(1),
-      email: "arnall-employee@example.test",
-      displayName: "Arnall Employee",
+      email: "example-company-employee@example.test",
+      displayName: "Example Company Employee",
     });
     const snapshot = await new LocalFileMemoryService({ config }).buildPromptSnapshot({
       installationId: config.installationId,
@@ -181,8 +191,8 @@ describe("UserProvisioner", () => {
       expect.arrayContaining(["knowledge/company/COMPANY.md"]));
     const service = new LocalFileMemoryService({ config });
     const context = { installationId: config.installationId, userId: userId(1) };
-    expect(await service.readKnowledge(context, "company/COMPANY.md")).toContain("Arnall Carniceros & Xarcuteros");
-    expect(await service.readKnowledge(context, "organization/PEOPLE.md")).toContain("Sergi, Carles, Roger, David and Arnau");
+    expect(await service.readKnowledge(context, "company/COMPANY.md")).toContain("Fictional business used only in tests.");
+    expect(await service.readKnowledge(context, "organization/PEOPLE.md")).toContain("Example Owner and Example Employee.");
     expect(await service.readKnowledge(context, "processes/PROCESSES.md")).toContain("No internal process has been supplied");
 
     for (const relativePath of [

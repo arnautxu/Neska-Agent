@@ -29,7 +29,7 @@ async function readFixture() {
 describe("InstallationConfig", () => {
   it("accepts opt-in company mail without credentials and rejects arbitrary hosts or credential fields", async () => {
     const fixture = await readFixture();
-    const companyMail = { enabled: true, host: "hc65.infoselfcloud.com", emailDomain: "arnall.cat" };
+    const companyMail = { enabled: true, host: "mail.example.invalid", emailDomain: "example.invalid" };
     expect(parseInstallationConfig({ ...fixture, connectors: { companyMail } }).connectors?.companyMail).toEqual(companyMail);
     for (const host of ["127.0.0.1", "localhost", "*.example.com", "imap.EXAMPLE.com", "imap.example.com:993", "imap.example.local"]) {
       expect(() => parseInstallationConfig({ ...fixture, connectors: { companyMail: { ...companyMail, host } } })).toThrow();
@@ -62,7 +62,7 @@ describe("InstallationConfig", () => {
     expect(qa.publicUrl).not.toBe(development.publicUrl);
     expect(qa.branding).not.toEqual(development.branding);
     expect(qa.paths).not.toEqual(development.paths);
-    expect(JSON.stringify([development, qa]).toLowerCase()).not.toMatch(/arnay|arnall|arnau/);
+    expect(JSON.stringify([development, qa]).toLowerCase()).not.toMatch(/arnay|example-company|member/);
   });
 
   it("returns immutable normalized data", async () => {

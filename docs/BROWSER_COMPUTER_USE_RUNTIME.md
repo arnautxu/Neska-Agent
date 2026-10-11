@@ -175,10 +175,6 @@ user's auto-updating desktop Chrome. `AIBRAIN_CHROME_EXECUTABLE` selects the ser
 executable. `AIBRAIN_BROWSER_GATEWAY_SECRET` must be a dedicated secret of at
 least 32 bytes.
 
-`AIBRAIN_CHROME_LANGUAGE` accepts one BCP 47 language tag. The product defaults
-to `en-US`; a company installation such as Arnall can set `es-ES`. Chrome uses
-that setting for its UI language and language preferences, while country or
-region inferred by a website from the server IP remains a separate signal.
 
 ## Operational browser boundary
 
@@ -232,7 +228,7 @@ compensating release. It cannot release a successor attachment. Clipboard text
 uses one CDP `Input.insertText`; editing keys carry Chromium virtual-key codes.
 The frame decoder allocates one bounded payload per frame and cancels its source
 on abort or parsing/callback failure. These are local implementation guarantees;
-see [R2 integration evidence](MELSO_R2_F_20260904.md) for joined application/CDP
+see the current product runbook for joined application/CDP
 fixtures and the remaining independent/live gates.
 
 Run:

@@ -197,7 +197,7 @@ export function LoginForm({
     <main data-testid="login-transition" role="status" aria-live="polite"
       className="fixed inset-0 z-50 grid min-h-[100dvh] place-items-center bg-white px-6 text-[#181816]">
       <p className="text-center text-[clamp(20px,3vw,30px)] font-medium tracking-[-0.035em]">
-        <DecryptedText text="Carregant Arnall AI" />
+        <DecryptedText text={`Carregant ${branding.productName}`} />
       </p>
     </main>
   );

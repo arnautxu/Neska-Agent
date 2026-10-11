@@ -297,7 +297,7 @@ describe("private per-user worker gateway", () => {
     });
   }
 
-  it.each([undefined, false, true])("launches immutable quota profiles only when enabled (%s)", async (quotaToolPrivacy) => {
+  it.each([undefined, false, true])("always launches immutable privacy profiles even with the legacy flag (%s)", async (quotaToolPrivacy) => {
     const argumentsPath = path.join(root, "worker-arguments.json");
     const executable = path.join(root, "codex-test.mjs");
     await writeFile(executable, [
@@ -313,15 +313,13 @@ describe("private per-user worker gateway", () => {
     }).create(context);
     try {
       await runtime.start();
-      const expectedOverrides = quotaToolPrivacy
-        ? quotaToolPermissionConfigOverrides({
+      const expectedOverrides = quotaToolPermissionConfigOverrides({
           codexHome: context.environment.CODEX_HOME,
           transportAudit: context.transportAudit,
-        }).flatMap((value) => ["-c", value])
-        : [];
+        }).flatMap((value) => ["-c", value]);
       await expect.poll(async () => JSON.parse(await readFile(argumentsPath, "utf8")))
         .toEqual(["app-server", "--stdio", ...expectedOverrides]);
-      if (quotaToolPrivacy) {
+      {
         const serialized = await readFile(argumentsPath, "utf8");
         expect(serialized).toContain(path.join(context.environment.CODEX_HOME, "sessions"));
         expect(serialized).toContain(context.transportAudit);

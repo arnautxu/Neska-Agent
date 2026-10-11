@@ -84,6 +84,10 @@ const test = base.extend<{ imageServer: { url: string; requests: Array<{ downloa
   },
 });
 
+// This cold-start test includes login, proxy navigation, two reloads and a
+// native download. Allow development compilation without relying on retries.
+test.setTimeout(60_000);
+
 async function login(page: Page, baseURL: string) {
   const response = await page.request.post("/api/auth/login", {
     headers: { Origin: new URL(baseURL).origin },

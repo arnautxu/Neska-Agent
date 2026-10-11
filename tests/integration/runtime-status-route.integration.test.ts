@@ -9,7 +9,7 @@ const mocked = vi.hoisted(() => ({
 vi.mock("server-only", () => ({}));
 vi.mock("@/auth/session", () => ({
   getSession: vi.fn(async () => ({
-    tenant: { id: "arnall-qa", name: "Arnall" },
+    tenant: { id: "example-company-qa", name: "Example Company" },
     user: { id: "00000000-0000-4000-8000-000000000001" },
   })),
 }));
@@ -61,7 +61,7 @@ describe("runtime status capability exposure", () => {
     mocked.capabilities.mockResolvedValue({ webSearch: true, imageGeneration: false });
   });
 
-  it("keeps a ready Arnall Codex runtime web-enabled for a current-hours search", async () => {
+  it("keeps a ready Example Company Codex runtime web-enabled for a current-hours search", async () => {
     const response = await GET(new Request("http://localhost/api/runtime/status"));
 
     expect(response.status).toBe(200);

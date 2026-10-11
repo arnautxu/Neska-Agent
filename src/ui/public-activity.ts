@@ -30,8 +30,8 @@ function withoutMarkdown(value: string) {
 
 function redactInternalDetails(value: string, assistantName = "el asistente") {
   return value
-    .replace(INSTALLATION_REFERENCE, "Arnall")
-    .replace(INSTALLATION_SLUG, "Arnall")
+    .replace(INSTALLATION_REFERENCE, "esta empresa")
+    .replace(INSTALLATION_SLUG, "esta empresa")
     .replace(FILE_URL, "archivo interno")
     .replace(ABSOLUTE_PATH, "archivo interno")
     .replace(RUNTIME_PATH, "entorno privado")

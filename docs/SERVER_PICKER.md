@@ -1,7 +1,5 @@
 # Server: live Windows references
 
-Candidate 2026-09-07. This extends the existing Arnall read-only broker; it does
-not mount Windows in the application or use the unrelated Studio CIFS mount.
 
 ## Behavior
 
@@ -78,19 +76,7 @@ deleted. Older application search/read/inventory behavior is preserved.
 
 ## Composio boundary
 
-Fresh inspection before this change: zero configured toolkits and no
-`AIBRAIN_COMPOSIO_API_KEY`; Google/Microsoft OAuth application IDs/secrets and
-Microsoft tenant absent; both OAuth encryption keys present. Registration for
-David/GraphikAI is separate from each employee's personal connector consent.
-Use a separate GraphikAI-Arnall project, reviewed auth configs/scopes and pinned
-read tool versions. Never reuse Melso credentials or share personal connections.
 
-The `GraphikAI_Arnall` Composio project now has managed OAuth configs for Gmail,
-Google Calendar, Google Drive and Outlook. Provider readback confirmed exact
-read-only scopes and 13 allowed, version-pinned tools. The runtime key permits
-tool definitions, auth-config reads, personal account linking/revocation and
-execution of those allowed tools. The temporary provisioning key was revoked.
-Personal OAuth and a successful app read remain separate acceptance gates.
 
 The standalone release manager must also validate the Composio manifest; the
 previous gate admitted only native Gmail/Outlook. Promote a target installation
@@ -111,4 +97,4 @@ No paid tier, card or premium tool is authorized.
 Sources: https://composio.dev/pricing and
 https://docs.composio.dev/docs/authentication/controlling-scopes.
 
-Current investigation and separate acceptance gaps: [SERVER_RELIABILITY_20260907.md](SERVER_RELIABILITY_20260907.md).
+Current investigation and separate acceptance gaps: the current product runbook.

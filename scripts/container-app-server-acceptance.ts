@@ -2,10 +2,11 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { AppServerRpcRouter } from "@/runtime/transport";
+import { createQuotaToolPermissions } from "@/runtime/quota-tool-permissions";
 import { LocalGatewayWorkerRuntimeFactory } from "@/runtime/workers/local-gateway-runtime";
 import type { ManagedWorkerRuntime, WorkerLaunchContext } from "@/runtime/workers/types";
 
-const ACCEPTANCE_TIMEOUT_MS = 20_000;
+const ACCEPTANCE_TIMEOUT_MS = 55_000;
 const EXPECTED_CODEX_VERSION = "0.153.4";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -36,7 +37,7 @@ async function installationAcceptanceConfig() {
   if (process.env.NODE_ENV === "production" && usersRoot !== "/var/lib/aibrain/data/users") {
     throw new Error("Production App Server acceptance requires the immutable users root.");
   }
-  return { usersRoot, quotaToolPrivacy: Boolean(config.usageLimits) };
+  return { usersRoot };
 }
 
 async function createContext(usersRoot: string) {
@@ -95,10 +96,53 @@ async function createContext(usersRoot: string) {
   return { context, userRoot };
 }
 
-async function acceptOneGeneration(context: WorkerLaunchContext, generation: number, quotaToolPrivacy: boolean) {
+/** Real native subprocess checks; no model, customer data or provider credentials. */
+async function acceptPrivateFilesystem(router: AppServerRpcRouter, context: WorkerLaunchContext, generation: number) {
+  const home = context.environment.CODEX_HOME;
+  const marker = `private-acceptance-${randomUUID()}`;
+  const privateFiles = [
+    path.join(home, "auth.json.acceptance"),
+    path.join(home, "sessions", "acceptance.txt"),
+    path.join(home, "state_999.sqlite"),
+    path.join(context.transportAudit, "acceptance.txt"),
+  ];
+  const skill = path.join(home, "skills", "acceptance", "SKILL.md");
+  const workspaceFile = path.join(context.workspace, "acceptance.txt");
+  for (const file of [...privateFiles, skill, workspaceFile]) {
+    await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
+    await writeFile(file, marker, { mode: 0o600 });
+  }
+  const policy = createQuotaToolPermissions({ workspace: context.workspace, codexHome: home, transportAudit: context.transportAudit });
+  const exec = async (command: string[], permissionProfile?: string) => {
+    const result = await router.request({ method: "command/exec", id: `privacy-${generation}-${randomUUID()}`,
+      params: { command, cwd: context.workspace, timeoutMs: 5_000, outputBytesCap: 4096,
+        ...(permissionProfile ? { permissionProfile } : {}) } }, 10_000);
+    if (!isRecord(result) || typeof result.exitCode !== "number" || typeof result.stdout !== "string") {
+      throw new Error("Native privacy acceptance returned an invalid result.");
+    }
+    return result;
+  };
+  // Check the startup default as well as explicit profiles used by turns.
+  for (const profile of [undefined, policy.readOnlyId, policy.workspaceWriteId]) {
+    const control = await exec(["/bin/cat", workspaceFile, skill], profile);
+    if (control.exitCode !== 0 || control.stdout !== marker + marker) {
+      throw new Error("Native privacy sandbox could not read its authorized workspace and skill.");
+    }
+    const denied = await exec(["/bin/cat", ...privateFiles], profile);
+    if (denied.exitCode === 0 || denied.stdout !== "") {
+      throw new Error("Native privacy sandbox exposed a private canary.");
+    }
+    const write = await exec(["/bin/sh", "-c", 'printf approved > "$1"', "acceptance", workspaceFile], profile);
+    if ((write.exitCode === 0) !== (profile === policy.workspaceWriteId)) {
+      throw new Error("Native privacy sandbox did not enforce workspace write permissions.");
+    }
+    await writeFile(workspaceFile, marker, { mode: 0o600 });
+  }
+}
+
+async function acceptOneGeneration(context: WorkerLaunchContext, generation: number) {
   const runtime = new LocalGatewayWorkerRuntimeFactory({
     runtimeInstanceId: "container-acceptance",
-    quotaToolPrivacy,
   }).create(context);
   const router = new AppServerRpcRouter(runtime.transport);
   try {
@@ -128,6 +172,7 @@ async function acceptOneGeneration(context: WorkerLaunchContext, generation: num
     if (!isRecord(account) || !("account" in account)) {
       throw new Error("Codex account/read returned an invalid result.");
     }
+    await acceptPrivateFilesystem(router, context, generation);
     const health = await runtime.health();
     if (!health.healthy || health.state !== "running") {
       throw new Error("Private worker gateway was not healthy after App Server RPC acceptance.");
@@ -149,11 +194,11 @@ export async function runContainerAppServerAcceptance() {
   if (process.env.AIBRAIN_CODEX_EXPECTED_VERSION?.trim() !== EXPECTED_CODEX_VERSION) {
     throw new Error(`App Server acceptance requires Codex ${EXPECTED_CODEX_VERSION}.`);
   }
-  const { usersRoot, quotaToolPrivacy } = await installationAcceptanceConfig();
+  const { usersRoot } = await installationAcceptanceConfig();
   const { context, userRoot } = await createContext(usersRoot);
   try {
-    await acceptOneGeneration(context, 1, quotaToolPrivacy);
-    await acceptOneGeneration(context, 2, quotaToolPrivacy);
+    await acceptOneGeneration(context, 1);
+    await acceptOneGeneration(context, 2);
   } finally {
     await rm(userRoot, { recursive: true, force: true });
   }

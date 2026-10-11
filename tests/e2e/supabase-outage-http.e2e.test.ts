@@ -245,7 +245,7 @@ beforeAll(async () => {
     "  if (rpc.method === \"modelProvider/capabilities/read\") return send({ id: rpc.id, result: { webSearch: false, imageGeneration: false } });",
     "  if (rpc.method === \"account/rateLimits/read\") return send({ id: rpc.id, result: { rateLimits: { primary: { usedPercent: 0 } } } });",
     "  if (rpc.method === \"account/usage/read\") return send({ id: rpc.id, result: { summary: { lifetimeTokens: 0 } } });",
-    "  if (rpc.method === \"thread/start\") return send({ id: rpc.id, result: { thread: { id: \"runtime-http-thread\" } } });",
+    "  if (rpc.method === \"thread/start\") return send({ id: rpc.id, result: { cwd: rpc.params.cwd, approvalPolicy: rpc.params.approvalPolicy, activePermissionProfile: { id: rpc.params.permissions }, thread: { id: \"runtime-http-thread\" } } });",
     "  if (rpc.method === \"turn/start\") {",
     "    turnSequence += 1;",
     "    const threadId = rpc.params.threadId;",

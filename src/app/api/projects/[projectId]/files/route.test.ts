@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
     current: {
       provider: "local",
       tenant: { id: "qa-company", name: "QA" },
-      user: { id: "00000000-0000-4000-8000-000000000001", name: "Arnau", email: "arnau@example.test" },
+      user: { id: "00000000-0000-4000-8000-000000000001", name: "Example Member", email: "member@example.test" },
     } as { provider: "local"; tenant: { id: string; name: string }; user: { id: string; name: string; email: string } } | null,
   },
   readRegularFileWithin: vi.fn(),
@@ -94,7 +94,7 @@ describe("workspace file preview route", () => {
     mocks.session.current = {
       provider: "local",
       tenant: { id: "qa-company", name: "QA" },
-      user: { id: "00000000-0000-4000-8000-000000000001", name: "Arnau", email: "arnau@example.test" },
+      user: { id: "00000000-0000-4000-8000-000000000001", name: "Example Member", email: "member@example.test" },
     };
     mocks.readRegularFileWithin.mockReset();
     mocks.readRegularFileWithin.mockResolvedValue(Buffer.from("export const ready = true;"));
@@ -313,7 +313,7 @@ describe("workspace file preview route", () => {
     mocks.session.current = {
       provider: "local",
       tenant: { id: "other-company", name: "Other" },
-      user: { id: "00000000-0000-4000-8000-000000000001", name: "Arnau", email: "arnau@example.test" },
+      user: { id: "00000000-0000-4000-8000-000000000001", name: "Example Member", email: "member@example.test" },
     };
     const response = await GET(request("src/example.ts"), { params: Promise.resolve({ projectId }) });
     expect(response.status).toBe(403);
@@ -324,7 +324,7 @@ describe("workspace file preview route", () => {
     mocks.session.current = {
       provider: "local",
       tenant: { id: "qa-company", name: "QA" },
-      user: { id: "00000000-0000-4000-8000-000000000002", name: "David", email: "david@example.test" },
+      user: { id: "00000000-0000-4000-8000-000000000002", name: "Example Employee", email: "employee@example.test" },
     };
     const response = await GET(request("documents/resultado.pdf", true, true), { params: Promise.resolve({ projectId }) });
     expect(response.status).toBe(404);
