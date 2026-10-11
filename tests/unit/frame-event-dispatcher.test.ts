@@ -4,7 +4,7 @@ import { applyChatStreamEvent, type ChatMessage, type ChatStreamEvent } from "@/
 import { buildTurnTimeline } from "@/ui/turn-timeline";
 
 describe("chat event frame dispatcher", () => {
-  it("keeps mixed public activity separate from final text through replay and snapshot replacement", () => {
+  it("keeps persisted reasoning separate from final text and out of the public timeline through replay", () => {
     let message: ChatMessage = {
       id: "answer", role: "assistant", content: "", status: "streaming",
       createdAt: "2026-09-04T00:00:00Z", activity: [], plan: [],
@@ -36,7 +36,8 @@ describe("chat event frame dispatcher", () => {
     expect(message.content).toBe("Respuesta final");
     expect(message.status).toBe("complete");
     expect(buildTurnTimeline(message.activity, message.toolResults ?? []).map((entry) => entry.key))
-      .toEqual(["activity:commentary", "tool:tool"]);
+      .toEqual(["tool:tool"]);
+    expect(message.activity).toContainEqual(commentary.item);
     expect(message.content).not.toContain("consultando");
   });
 

@@ -9,7 +9,7 @@ const TOOL_ACTIVITY_KINDS = new Set<ActivityItem["kind"]>(["command", "file", "t
 /**
  * Combines independently persisted activity and tool-result collections using
  * their transport sequence. A reviewable tool card replaces its duplicate
- * generic activity row, while public reasoning summaries remain interleaved.
+ * generic activity row. Model reasoning is excluded from this UI projection.
  */
 export function buildTurnTimeline(
   activity: readonly ActivityItem[],
@@ -20,6 +20,7 @@ export function buildTurnTimeline(
   const entries: TurnTimelineEntry[] = [];
 
   activity.forEach((item, index) => {
+    if (item.kind === "reasoning") return;
     if (toolIds.has(item.id) && TOOL_ACTIVITY_KINDS.has(item.kind)) return;
     entries.push({
       type: "activity",

@@ -828,6 +828,23 @@ describe("chat workspace simplificado", () => {
     expect(onAddDocuments).toHaveBeenCalledWith([file]);
   });
 
+  it("keeps activity closed for a multi-step task and excludes reasoning after opening", () => {
+    Object.defineProperty(window, "matchMedia", { configurable: true, value: vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })) });
+    const message: ChatMessage = { ...assistantMessage(), approvals: [], status: "streaming", plan: [{ step: "Llegir", status: "completed" }, { step: "Comparar", status: "in_progress" }], activity: [
+      { id: "public", kind: "tool", label: "Factures revisades", object: "factures.csv", status: "complete", timestamp: "2026-10-11T09:00:00.000Z" },
+      { id: "reasoning", kind: "reasoning", label: "Pensament intern", detail: "Dades privades", status: "complete" },
+    ] };
+    renderWorkspace({ id: "thread-activity", projectId: project.id, title: "Factures", status: "active", pinned: false, createdAt: message.createdAt, updatedAt: message.createdAt, messages: [message] });
+    expect(screen.queryByTestId("agent-status-panel")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Abre la actividad" }));
+    expect(screen.getByTestId("agent-status-panel")).toHaveTextContent("factures.csv");
+    expect(screen.queryByText("Pensament intern")).toBeNull();
+    expect(screen.queryByText("Dades privades")).toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("agent-status-panel")).toBeNull();
+    expect(screen.getByRole("button", { name: "Abre la actividad" })).toHaveFocus();
+  });
+
   it("keeps only copy below a response while retaining sensitive approval cards", () => {
     const thread: WorkbenchThread = {
       id: "thread-1",

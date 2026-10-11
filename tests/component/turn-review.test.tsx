@@ -81,7 +81,7 @@ describe("turn activity and Review", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(trigger).toHaveTextContent("Preparando cambios en src/components/turn-activity.tsx");
     expect(trigger.querySelector(`.${reasoningStyles.shimmer}`)).toBeInTheDocument();
-    expect(screen.getByText("Identificando el alcance exacto")).toBeInTheDocument();
+    expect(screen.queryByText("Identificando el alcance exacto")).not.toBeInTheDocument();
     expect(screen.queryByText("Contexto preparado")).not.toBeInTheDocument();
     expect(screen.queryByText(/Primer text 30508 ms/)).not.toBeInTheDocument();
 
@@ -123,10 +123,10 @@ describe("turn activity and Review", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger).toHaveTextContent("Ha trabajado durante 0m 46s");
     expect(trigger.querySelector(`.${reasoningStyles.shimmer}`)).not.toBeInTheDocument();
-    expect(screen.getByText("Identificando el alcance exacto")).not.toBeVisible();
+    expect(screen.queryByText("Identificando el alcance exacto")).not.toBeInTheDocument();
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Identificando el alcance exacto")).toBeInTheDocument();
+    expect(screen.queryByText("Identificando el alcance exacto")).not.toBeInTheDocument();
   });
 
   it("keeps runtime failures visible while hiding successful lifecycle telemetry", () => {

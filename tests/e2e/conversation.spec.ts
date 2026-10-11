@@ -305,6 +305,7 @@ test("the existing chat route streams a complete turn and persists it in preview
   await page.getByRole("textbox", { name: "Mensaje" }).fill("Resume este contenido sintético en tres ideas claras.");
   await page.getByRole("button", { name: "Enviar mensaje" }).click();
   await expect(page.getByRole("button", { name: "Detener respuesta" })).toBeVisible();
+  await expect(page.getByTestId("agent-status-panel")).toHaveCount(0);
   // The plan is the live focus; the completed plan becomes folded history.
   await expect(page.getByTestId("task-plan").last()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Vista previa" })).toBeVisible({ timeout: 10_000 });
@@ -314,6 +315,12 @@ test("the existing chat route streams a complete turn and persists it in preview
   await history.locator("summary").click();
   await expect(page.getByTestId("task-plan").last()).toBeVisible();
   await expect(page.getByTestId("task-plan").last().locator('[data-step-status="completed"]')).not.toHaveCount(0);
+
+  await page.getByRole("button", { name: "Abre la actividad" }).click();
+  await expect(page.getByTestId("agent-status-panel")).toBeVisible();
+  await expect(page.getByText("Analizando la petición", { exact: true })).toHaveCount(0);
+  await page.getByTestId("agent-status-panel").getByRole("button", { name: "Cierra la actividad" }).click();
+  await expect(page.getByTestId("agent-status-panel")).toHaveCount(0);
 
   await page.waitForTimeout(250);
   await reloadAndReopenConversation(page);
