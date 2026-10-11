@@ -319,3 +319,12 @@
   & [data-slot="permission-grant"] button { box-shadow: none; }
   & .neska-state-art { display: none; }
 }
+
+/* Task cycle: permission is the only framed content block. */
+[data-visual-theme="neska"] {
+  --danger: var(--neska-ink);
+  --danger-soft: var(--neska-sunk);
+  & .task-result-file { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  & .task-cycle [data-slot="permission-grant"][data-pending="true"] { border: 1px solid var(--neska-line); border-radius: var(--neska-radius); background: transparent; }
+  & .task-cycle { margin-top: 24px; }
+}

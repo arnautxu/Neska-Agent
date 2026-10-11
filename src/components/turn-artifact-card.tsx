@@ -11,7 +11,7 @@ import {
   FileText,
   FileXls,
   SpinnerGap,
-  WarningCircle,
+  X,
 } from "@phosphor-icons/react";
 import type { BrowserArtifact, DocumentArtifact, GeneratedArtifact } from "@/lib/chat-contract";
 import { ImageGeneration } from "@/components/assistant-ui/elements/image-generation";
@@ -56,20 +56,20 @@ function DocumentCard({ artifact, onPreview }: {
 }) {
   const t = useUiText();
   return (
-    <article className="max-w-[420px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-raised)]">
+    <article className="task-result-file max-w-[420px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-raised)]">
       <header className="flex items-center gap-2.5 px-3 py-2.5">
         <span className="grid size-8 shrink-0 place-items-center rounded-md bg-[var(--surface-muted)] text-[var(--text-secondary)]"><DocumentIcon kind={artifact.previewFormat === "spreadsheet" ? "xlsx" : artifact.kind} /></span>
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-body-2-semibold text-[var(--text)]">{artifact.name}</h3>
           <p className="mt-0.5 text-caption-1-regular text-[var(--text-muted)]">{artifact.previewFormat === "spreadsheet" ? t("Excel · vista de datos") : artifact.kind.toUpperCase()} · {Math.ceil(artifact.size / 1024)} {" "}{t("KB")}{artifact.pages ? ` · ${artifact.pages} ${artifact.pages === 1 ? t("página") : t("páginas")}` : ""}</p>
         </div>
-        {artifact.status === "ready" && artifact.previewUrl && onPreview ? <button type="button" className="touch-target grid size-8 shrink-0 place-items-center rounded-lg text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text)] active:scale-[0.98]" aria-label={`Previsualizar ${artifact.name}`} title={t("Vista previa")} onClick={() => onPreview(artifact)}><Eye size={15} /></button> : null}
-        {artifact.status === "ready" ? <a href={artifact.url} download={artifact.previewFormat === "spreadsheet" ? `${artifact.name}.preview.json` : artifact.name} className="touch-target grid size-8 shrink-0 place-items-center rounded-lg text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text)] active:scale-[0.98]" aria-label={artifact.previewFormat === "spreadsheet" ? t("Descargar datos de la vista previa") : `Descargar ${artifact.name}`} title={t("Descargar")}><TriggerIcon icon={DownloadIcon} size={15} /></a> : null}
+        {artifact.status === "ready" && artifact.previewUrl && onPreview ? <button type="button" className="touch-target grid size-8 shrink-0 place-items-center rounded-lg text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text)] active:scale-[0.98]" aria-label={t("Previsualitza {name}", { name: artifact.name })} title={t("Vista previa")} onClick={() => onPreview(artifact)}><Eye size={15} /></button> : null}
+        {artifact.status === "ready" ? <a href={artifact.url} download={artifact.previewFormat === "spreadsheet" ? `${artifact.name}.preview.json` : artifact.name} className="touch-target grid size-8 shrink-0 place-items-center rounded-lg text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text)] active:scale-[0.98]" aria-label={artifact.previewFormat === "spreadsheet" ? t("Descargar datos de la vista previa") : t("Descarrega {name}", { name: artifact.name })} title={t("Descargar")}><TriggerIcon icon={DownloadIcon} size={15} /></a> : null}
       </header>
       {artifact.status === "processing" ? (
         <div className="flex items-center gap-2 border-t border-[var(--border-subtle)] px-3 py-2 text-body-2-regular text-[var(--text-muted)]" role="status"><SpinnerGap size={14} className="motion-safe:animate-spin" />{t("Preparando una vista previa segura…")}</div>
       ) : artifact.status === "error" ? (
-        <div className="flex items-center gap-2 border-t border-[var(--border-subtle)] px-3 py-2 text-body-2-medium text-[var(--danger)]" role="alert"><WarningCircle size={15} className="shrink-0" />{artifact.error ?? t("No se ha podido generar la vista previa.")}</div>
+        <div className="flex items-center gap-2 border-t border-[var(--border-subtle)] px-3 py-2 text-body-2-medium text-[var(--danger)]" role="alert"><X size={15} className="shrink-0" />{artifact.error ?? t("No se ha podido generar la vista previa.")}</div>
       ) : artifact.previewUrl && onPreview ? (
         <button type="button" className="touch-target flex min-h-10 w-full items-center justify-between border-t border-[var(--border-subtle)] px-3 text-left text-body-2-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)] active:bg-[var(--surface-selected)]" onClick={() => onPreview(artifact)}><span>{artifact.previewFormat === "spreadsheet" ? t("Ver hojas del libro") : t("Revisar antes de descargar")}</span><span aria-hidden>›</span></button>
       ) : artifact.previewUrl ? (
@@ -96,13 +96,13 @@ export function TurnArtifactCard({ artifact, onPreviewDocument, onOpenBrowser }:
   if (artifact.type === "document") return <DocumentCard artifact={artifact} onPreview={onPreviewDocument} />;
   if (artifact.type === "browser") {
     return (
-      <article className="max-w-[420px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-raised)]">
+      <article className="task-result-file max-w-[420px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-raised)]">
         {onOpenBrowser ? (
           <button type="button" className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition hover:bg-[var(--surface-hover)] active:scale-[0.99] active:bg-[var(--surface-selected)]" onClick={onOpenBrowser} aria-label={t("Reabrir {p0}", { p0: artifact.name })}><span className="grid size-8 shrink-0 place-items-center rounded-md bg-[var(--surface-muted)]"><Browser size={16} className="text-[var(--text-secondary)]" /></span><span className="min-w-0 flex-1"><span className="block truncate text-body-2-semibold text-[var(--text)]">{artifact.name}</span><span className="mt-0.5 block text-caption-1-regular text-[var(--text-muted)]">{t(browserStatusCopy[artifact.status] ?? "")}</span></span><span className="text-caption-1-semibold text-[var(--text)]">{t("Abrir")}</span></button>
         ) : (
           <header className="flex items-center gap-2.5 px-3 py-2.5"><span className="grid size-8 shrink-0 place-items-center rounded-md bg-[var(--surface-muted)]"><Browser size={16} className="text-[var(--text-secondary)]" /></span><div className="min-w-0 flex-1"><h3 className="truncate text-body-2-semibold text-[var(--text)]">{artifact.name}</h3><p className="mt-0.5 text-caption-1-regular text-[var(--text-muted)]">{t(browserStatusCopy[artifact.status] ?? "")}</p></div>{artifact.viewerUrl ? <a href={artifact.viewerUrl} target="_blank" rel="noreferrer" className="text-caption-1-semibold text-[var(--text)] hover:underline">{t("Abrir")}</a> : null}</header>
         )}
-        {!artifact.viewerUrl && (artifact.status === "starting" || artifact.status === "reconnecting" || artifact.status === "error" || artifact.status === "disconnected" || artifact.status === "closed") ? <div className={`flex items-center gap-2 border-t border-[var(--border-subtle)] px-3 py-2 text-body-2-regular ${artifact.status === "error" ? "text-[var(--danger)]" : "text-[var(--text-muted)]"}`} role={artifact.status === "error" ? "alert" : "status"}>{artifact.status === "starting" || artifact.status === "reconnecting" ? <SpinnerGap size={14} className="shrink-0 motion-safe:animate-spin" /> : <WarningCircle size={15} className="shrink-0" />}{artifact.error ?? (artifact.status === "disconnected" ? t("La conexión se ha perdido.") : artifact.status === "closed" ? t("El viewer se ha cerrado de forma segura.") : t("Preparando la sesión aislada…"))}</div> : null}
+        {!artifact.viewerUrl && (artifact.status === "starting" || artifact.status === "reconnecting" || artifact.status === "error" || artifact.status === "disconnected" || artifact.status === "closed") ? <div className={`flex items-center gap-2 border-t border-[var(--border-subtle)] px-3 py-2 text-body-2-regular ${artifact.status === "error" ? "text-[var(--danger)]" : "text-[var(--text-muted)]"}`} role={artifact.status === "error" ? "alert" : "status"}>{artifact.status === "starting" || artifact.status === "reconnecting" ? <SpinnerGap size={14} className="shrink-0 motion-safe:animate-spin" /> : <X size={15} className="shrink-0" />}{artifact.error ?? (artifact.status === "disconnected" ? t("La conexión se ha perdido.") : artifact.status === "closed" ? t("El viewer se ha cerrado de forma segura.") : t("Preparando la sesión aislada…"))}</div> : null}
         {artifact.control || artifact.downloadUrl ? <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-subtle)] px-3 py-2 text-caption-1-regular text-[var(--text-muted)]">{artifact.control ? <span className="text-body-2-medium">{t(browserControlCopy[artifact.control] ?? "")}</span> : <span />}{artifact.downloadUrl ? <a href={artifact.downloadUrl} download className="font-medium text-[var(--text)] hover:underline">{t("Descargar resultado")}</a> : null}</footer> : null}
       </article>
     );

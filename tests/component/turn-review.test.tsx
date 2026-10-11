@@ -157,8 +157,8 @@ describe("turn activity and Review", () => {
     expect(screen.getByText("Comprobar estado")).toBeInTheDocument();
     expect(screen.getByText("Comprobación sintética terminada")).toBeInTheDocument();
     expect(screen.getByText("Cambios preparados")).toBeInTheDocument();
-    const approval = screen.getByRole("group", { name: "Aprobación: Ejecutar comprobación" });
-    fireEvent.click(within(approval).getByRole("button", { name: "Permitir" }));
+    const approval = screen.getByRole("region", { name: "Permiso: Ejecutar comprobación" });
+    fireEvent.click(within(approval).getByRole("button", { name: "Permite" }));
     expect(onResolve).toHaveBeenCalledWith(message.approvals[0], "accept");
   });
 
@@ -175,7 +175,7 @@ describe("turn activity and Review", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mostrar el proceso de trabajo" }));
     expect(screen.getByText("Comprobar estado")).toBeInTheDocument();
     expect(screen.getByText("Esperando la decisión de un editor del proyecto")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Permitir" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Permite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rechazar" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Abrir cambios y resultados" }));
     expect(onOpenReview).toHaveBeenCalledOnce();
@@ -269,8 +269,8 @@ describe("turn activity and Review", () => {
     render(<DetailsPanel message={message} open readOnly onClose={vi.fn()} onResolveApproval={onResolve} />);
 
     fireEvent.click(screen.getByRole("button", { name: /Actividad/ }));
-    expect(screen.getByText("Esperando la decisión de un editor del proyecto")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Permitir" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Permiso:/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Permite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rechazar" })).not.toBeInTheDocument();
     expect(onResolve).not.toHaveBeenCalled();
   });

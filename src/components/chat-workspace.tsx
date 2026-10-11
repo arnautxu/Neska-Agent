@@ -34,7 +34,8 @@ import { DaySeparator } from "@/components/assistant-ui/elements/day-separator";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { AgentStatusPanel, TaskStatusChip } from "@/components/agent-status-panel";
 import { isMultiStepTask, taskProgress } from "@/ui/task-progress";
-import { TaskPlan } from "@/components/task-plan";
+import { TaskCycle } from "@/components/task-cycle";
+import { ManagedAppActionControl } from "@/components/managed-app-action-control";
 import { type LiveAnswerStore, useLiveAnswer } from '@/ui/live-answer-store';
 import { StreamingResponse } from "@/components/agents/streaming-response";
 import { MessageQueue, type QueuedMessage } from "@/components/assistant-ui/elements/message-queue";
@@ -46,7 +47,7 @@ import type { ComposerExperience } from "@/lib/composer-experience";
 import { LandingTasks } from "@/components/landing-tasks";
 import { landingSuggestions } from "@/lib/landing-suggestions";
 import { isStandaloneProject, type WorkbenchProject, type WorkbenchThread } from "@/workbench/types";
-import { currentTurnStatusLabel, hasRelevantWorkProcess, TurnActivity } from "@/components/turn-activity";
+import { currentTurnStatusLabel, hasRelevantWorkProcess } from "@/components/turn-activity";
 import { publicAssistantText } from "@/ui/public-activity";
 import { TurnArtifactCard } from "@/components/turn-artifact-card";
 import { DocumentPublicationCard } from "@/components/document-publication-card";
@@ -56,7 +57,6 @@ import { StreamRecoveryBanner } from "@/components/stream-recovery-banner";
 import type { StagedComposerDocument } from "@/ui/document-ui-adapter";
 import type { DocumentPublicationDraft } from "@/ui/publication-ui-adapter";
 import type { ManagedAppActionDescriptor } from "@/ui/codex-managed-app-ui";
-import { managedAppActionKey } from "@/ui/codex-managed-app-ui";
 import type { ConnectorMention } from "@/connectors/mentions-contract";
 import { useMenuKeyboardNavigation } from "@/ui/use-menu-keyboard-navigation";
 import { restoreRequestDocument } from "@/ui/restore-request-documents";
@@ -114,6 +114,9 @@ type ChatWorkspaceProps = {
   onDecidePublication: (draftId: string, action: "confirm" | "decline") => Promise<void>;
   onComposerNotice: (message: string, kind?: VoiceNoticeKind) => void;
   onSend: (message?: string, displayMessage?: string) => void;
+  onPlanRequest?: () => void;
+  onExecutePlan?: (message: ChatMessage) => void;
+  onTaskMessageChange?: (threadId: string, message: ChatMessage) => void;
   onStop: () => void;
   onCancelQueuedMessage: (id: string) => void;
   sidebarOpen: boolean;
@@ -301,14 +304,13 @@ function AssistantMessage({
   threadId,
   message,
   assistantName,
-  projectId,
-  showActivity,
+  onTaskMessageChange,
+  onExecutePlan,
   onResolveApproval,
   publications,
   onFreezePublication,
   onDecidePublication,
   managedAppAction,
-  managedAppApprovalKeys,
   onPreviewDocument,
   onOpenReview,
   onOpenBrowser,
@@ -321,8 +323,8 @@ function AssistantMessage({
   threadId: string;
   message: ChatMessage;
   assistantName: string;
-  projectId: string | undefined;
-  showActivity: boolean;
+  onTaskMessageChange?: (threadId: string, message: ChatMessage) => void;
+  onExecutePlan?: (message: ChatMessage) => void;
   onResolveApproval: (approval: ApprovalItem, decision: ApprovalDecision) => void;
   publications: DocumentPublicationDraft[];
   onFreezePublication: (draftId: string, targetRelativePath: string) => Promise<void>;
@@ -332,7 +334,6 @@ function AssistantMessage({
     threadId: string;
     onPrepared: (descriptor: ManagedAppActionDescriptor) => void;
   } | null;
-  managedAppApprovalKeys: readonly string[];
   onPreviewDocument: (artifact: DocumentArtifact) => void;
   onOpenReview: (messageId: string) => void;
   onOpenBrowser: () => void;
@@ -351,12 +352,9 @@ function AssistantMessage({
 
   return (
     <article className="message-enter group">
-      {showActivity || managedAppAction || message.approvals.some((approval) => managedAppApprovalKeys.includes(managedAppActionKey({ ...approval, approvalId: approval.id }))) ? (
-        <TurnActivity message={message} recoveryPaused={recoveryPaused} projectId={projectId} readOnly={readOnly} onResolveApproval={onResolveApproval} onOpenReview={() => onOpenReview(message.id)} onOpenBrowser={onOpenBrowser} managedAppAction={readOnly ? null : managedAppAction} managedAppApprovalKeys={managedAppApprovalKeys} />
-      ) : message.plan.length ? (
-        // Hiding the activity log never hides the task's plan.
-        <div className="mt-4"><TaskPlan progress={taskProgress(message)} /></div>
-      ) : null}
+      {message.status === "streaming" || message.planProposal?.status === "proposed" || message.approvals.some(approval => approval.status === "pending") ? <TaskCycle message={message} threadId={threadId} readOnly={readOnly} onResolveApproval={onResolveApproval} onOpenReview={() => onOpenReview(message.id)} onMessageChange={onTaskMessageChange ? saved => onTaskMessageChange(threadId, saved) : undefined} onExecutePlan={onExecutePlan} /> : null}
+      {managedAppAction && !readOnly ? <ManagedAppActionControl enabled={managedAppAction.enabled} threadId={threadId} message={message} onPrepared={managedAppAction.onPrepared} /> : null}
+      {message.diff || message.toolResults?.length || message.activity.some(item => item.files?.length) ? <button type="button" className="mt-4 min-h-11 text-sm underline underline-offset-4" onClick={() => onOpenReview(message.id)}>{t(message.diff ? "Revisa els canvis" : "Veure els resultats")}</button> : null}
 
       {streaming && !content && !hasExecution ? (
         <div className="flex items-center gap-2 py-1 text-[15px] leading-5 text-[var(--text-muted)]" role="status">
@@ -378,8 +376,8 @@ function AssistantMessage({
       <TurnSourceChips sources={message.sources ?? []} />
 
       {message.status === "error" ? (
-        <div className="mt-3 flex max-w-xl items-start gap-2 rounded-[var(--brain-radius)] border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2.5 text-[12px] text-[var(--danger)]" role="alert">
-          <WarningCircle size={15} className="mt-0.5 shrink-0" />
+        <div className="mt-3 flex max-w-xl items-start gap-2 py-3 text-[14px] text-[var(--text)]" role="alert">
+          <X size={15} className="mt-0.5 shrink-0" />
           <div className="min-w-0">
             <p>{t("No se ha podido completar esta respuesta.")}</p>
             {!readOnly && onRestoreRequest ? <>
@@ -404,6 +402,7 @@ function AssistantMessage({
         <DocumentPublicationCard key={draft.id} draft={draft} readOnly={readOnly} onFreeze={onFreezePublication} onDecide={onDecidePublication} />
       ))}
 
+      {message.status !== "streaming" && message.planProposal?.status !== "proposed" && !message.approvals.some(approval => approval.status === "pending") ? <TaskCycle message={message} threadId={threadId} readOnly={readOnly} onResolveApproval={onResolveApproval} onOpenReview={() => onOpenReview(message.id)} onMessageChange={onTaskMessageChange ? saved => onTaskMessageChange(threadId, saved) : undefined} onExecutePlan={onExecutePlan} /> : null}
       {message.status === "complete" && publicContent ? <ResultActions content={publicContent} /> : null}
     </article>
   );
@@ -490,6 +489,9 @@ export function ChatWorkspace({
   onDecidePublication,
   onComposerNotice,
   onSend,
+  onPlanRequest,
+  onExecutePlan,
+  onTaskMessageChange,
   onStop,
   onCancelQueuedMessage,
   sidebarOpen,
@@ -497,7 +499,6 @@ export function ChatWorkspace({
   onResolveApproval,
   onEditMessage,
   managedAppActionEnabled,
-  managedAppApprovalKeys,
   onManagedAppPrepared,
   onPreviewDocument,
   onOpenReview,
@@ -976,13 +977,12 @@ export function ChatWorkspace({
                       message={message}
                       recoveryPaused={streamRecovery?.paused === true && message.status === "streaming" && message.id === latestAssistantMessageId}
                       assistantName={assistantName}
-                      projectId={project?.id}
-                      showActivity={preferences.showActivityPanel}
+                      onTaskMessageChange={onTaskMessageChange}
+                      onExecutePlan={onExecutePlan}
                       onResolveApproval={(approval, decision) => void onResolveApproval(message.id, approval, decision)}
                       publications={publications.filter((draft) => draft.turnId === message.id && draft.threadId === thread.id)}
                       onFreezePublication={onFreezePublication}
                       onDecidePublication={onDecidePublication}
-                      managedAppApprovalKeys={managedAppApprovalKeys}
                       onPreviewDocument={onPreviewDocument}
                       onOpenReview={onOpenReview}
                       onOpenBrowser={onOpenBrowser}
@@ -1182,6 +1182,7 @@ export function ChatWorkspace({
                 {canAttachImages || canAttachDocuments ? <input ref={fileInputRef} aria-label={t("Seleccionar archivos para adjuntar")} className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.docx,.xlsx,.xls,.xlsm,.pptx,.txt,.md,.csv,.json" multiple tabIndex={-1} onChange={(event) => void addFiles(event.target.files)} /> : null}
               </div>
               <div className="composer-controls-end flex shrink-0 items-center gap-2">
+                {onPlanRequest ? <button type="button" className="min-h-11 px-2 text-xs text-[var(--text-secondary)]" disabled={sending || !prompt.trim() || !project} onClick={onPlanRequest}>{t("Planifica")}</button> : null}
                 <ComposerPicker
                   ariaLabel={t("Experiencia")}
                   value={composerExperience}

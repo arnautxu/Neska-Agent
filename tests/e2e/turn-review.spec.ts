@@ -64,12 +64,9 @@ test("plan, command, diff and approval decisions consume the typed turn contract
   const resultHeading = page.getByRole("heading", { name: "Resultado de la prueba" });
   await expect(resultHeading).toBeVisible();
   const assistantTurn = resultHeading.locator("xpath=ancestor::article");
-  const activityToggle = assistantTurn.getByRole("button", { name: "Mostrar el proceso de trabajo" });
-  await expect(activityToggle).toHaveAttribute("aria-expanded", "false");
-  await activityToggle.click();
+  await assistantTurn.getByText("Ver los 2 pasos", { exact: false }).click();
   await expect(assistantTurn.getByText("Inspeccionar el proyecto", { exact: true })).toBeVisible();
-  await expect(assistantTurn.getByText("Identifying access issue", { exact: false })).toBeVisible();
-  await expect(assistantTurn.getByText("Consultando archivos del proyecto")).toBeVisible();
+  await expect(assistantTurn.getByText("Identifying access issue", { exact: false })).toHaveCount(0);
   await expect(assistantTurn).not.toContainText("/var/lib");
   await expect(assistantTurn).not.toContainText("company-qa");
   await expect(assistantTurn).not.toContainText(uuid);
@@ -79,22 +76,23 @@ test("plan, command, diff and approval decisions consume the typed turn contract
     "href",
     "/api/projects/00000000-0000-4000-8000-000000000011/artifacts/00000000-0000-4000-8000-000000000012",
   );
-  await page.getByRole("button", { name: /src\/resultado\.ts/ }).click();
-  await expect(page.getByText("export const resultado = 'listo';")).toBeVisible();
-  const reviewButton = assistantTurn.getByRole("button", { name: "Abrir cambios y resultados" });
-  await expect(reviewButton).toBeVisible();
-  await reviewButton.click();
+  await assistantTurn.getByRole("button", { name: "Revisa los cambios", exact: true }).click();
   const reviewPanel = page.locator('aside[aria-label="Cambios y resultados del turno"]');
   await expect(reviewPanel).toBeVisible();
+  await reviewPanel.getByRole("button", { name: /^Actividad/ }).click();
+  await reviewPanel.getByRole("button", { name: "Mostrar el proceso de trabajo" }).click();
+  await expect(reviewPanel.getByText("Consultando archivos del proyecto")).toBeVisible();
+  await reviewPanel.getByRole("button", { name: /src\/resultado\.ts/ }).click();
+  await expect(page.getByText("export const resultado = 'listo';")).toBeVisible();
   await reviewPanel.getByRole("button", { name: "Cerrar cambios y resultados" }).click();
   await expect(reviewPanel).toBeHidden();
 
-  const commandApproval = page.getByRole("group", { name: "Aprobación: Ejecutar comprobación" });
-  await commandApproval.getByRole("button", { name: "Permitir", exact: true }).click();
-  await expect(commandApproval.getByText("Permitido una vez")).toBeVisible();
-  const fileApproval = page.getByRole("group", { name: "Aprobación: Aplicar cambio preparado" });
-  await fileApproval.getByRole("button", { name: "Rechazar" }).click();
-  await expect(fileApproval.getByText("Acción rechazada")).toBeVisible();
+  const commandApproval = assistantTurn.getByRole("region", { name: "Permiso: Ejecutar comprobación" });
+  await commandApproval.getByRole("button", { name: "Permite", exact: true }).click();
+  await expect(commandApproval).toHaveCount(0);
+  const fileApproval = assistantTurn.getByRole("region", { name: "Permiso: Aplicar cambio preparado" });
+  await fileApproval.getByRole("button", { name: "Ahora no" }).click();
+  await expect(fileApproval).toHaveCount(0);
   expect(decisions).toEqual([
     { approvalId: "approval-command", threadId: "thread-qa", turnId: "turn-qa", itemId: "item-command-qa", decision: "accept" },
     { approvalId: "approval-file", threadId: "thread-qa", turnId: "turn-qa", itemId: "item-file-qa", decision: "decline" },
@@ -102,7 +100,6 @@ test("plan, command, diff and approval decisions consume the typed turn contract
 
   await expect(page.locator('button.result-action[aria-label="Copiar"]')).toBeVisible();
   await expect(page.getByRole("button", { name: "Revisar resultados" })).toHaveCount(0);
-  await expect(page.getByText("Incluidos en este turno")).toBeVisible();
 });
 
 test("a network failure pauses and resumes the same request without an unhandled page error", async ({ page }) => {

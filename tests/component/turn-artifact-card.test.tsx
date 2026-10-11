@@ -34,7 +34,7 @@ describe("TurnArtifactCard", () => {
     expect(screen.getByRole("button", { name: "Revisar antes de descargar" })).toBeInTheDocument();
     expect(screen.getByText("Pendiente de confirmación segura")).toBeInTheDocument();
     expect(screen.getByText("Informes/informe.pdf")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Descargar informe.pdf" })).toHaveAttribute("href", documentArtifact.url);
+    expect(screen.getByRole("link", { name: "Descarga informe.pdf" })).toHaveAttribute("href", documentArtifact.url);
   });
 
   it("announces document conversion errors", () => {
