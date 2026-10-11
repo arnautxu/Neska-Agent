@@ -47,3 +47,15 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## AICSS
+
+The streaming caret (`src/app/globals.css`, `src/components/markdown-message.tsx`)
+and the secure input card (`src/components/aicss/secure-input.tsx`) were adapted
+from AICSS (https://github.com/kvnkld/aicss, `packages/react`), restyled for the
+Neska design system and translated to Catalan.
+
+Copyright (c) 2026 AICSS
+
+Licensed under the MIT License. The permission notice above (assistant-ui)
+applies with the same terms.
