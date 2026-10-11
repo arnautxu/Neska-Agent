@@ -7,10 +7,11 @@ import { describe, expect, it } from "vitest";
 const workflowPath = path.join(process.cwd(), ".github", "workflows", "backend-ci.yml");
 type Job = {
   name: string;
+  "runs-on"?: string;
   needs?: string | string[];
   if?: string;
   "continue-on-error"?: boolean;
-  strategy?: { "fail-fast": boolean; matrix: { shard?: number[]; include?: { command: string }[] } };
+  strategy?: { "fail-fast": boolean; matrix: { runner?: string[]; shard?: number[]; include?: { command: string }[] } };
   steps: { run?: string; if?: string; "continue-on-error"?: boolean; env?: Record<string, string>; with?: Record<string, unknown> }[];
 };
 const yaml = createRequire(import.meta.url)("js-yaml") as { load(source: string): { jobs: Record<string, Job> } };
@@ -24,7 +25,7 @@ describe("backend CI contract", () => {
     const jobs = await readJobs();
     const build = jobs["quality-build"];
     const tests = jobs["quality-tests"];
-    expect(tests.strategy).toEqual({ "fail-fast": false, matrix: { shard: [1, 2, 3] } });
+    expect(tests.strategy).toEqual({ "fail-fast": false, matrix: { runner: ["ubuntu-24.04", "ubuntu-24.04-arm"], shard: [1, 2, 3] } });
     expect(tests.steps.filter((step) => step.run?.startsWith("npm test"))).toEqual([
       { name: "Unit, integration and contract test shard", run: "npm test -- --shard=${{ matrix.shard }}/3" },
     ]);
@@ -41,6 +42,21 @@ describe("backend CI contract", () => {
       expect(commands).toContain(command);
     }
     expect(commands).not.toContain("npm test");
+  });
+
+  it("requires native ARM and x86 for every execution gate", async () => {
+    const jobs = await readJobs();
+    for (const id of ["quality-build", "quality-tests", "e2e-suites", "webkit", "documents", "containers"]) {
+      expect(jobs[id]["runs-on"]).toBe("${{ matrix.runner }}");
+      expect(jobs[id].strategy?.matrix.runner).toEqual(["ubuntu-24.04", "ubuntu-24.04-arm"]);
+      expect(jobs[id]["continue-on-error"]).toBeUndefined();
+    }
+    const publish = await readFile(path.join(process.cwd(), ".github/workflows/publish-ghcr.yml"), "utf8");
+    expect(publish).toContain("platforms: linux/${{ matrix.arch }}");
+    expect(publish).toContain("arch: arm64");
+    expect(publish).toContain("arch: amd64");
+    expect(publish).toContain("buildcache-${{ matrix.arch }}");
+    expect(publish).toContain("head_sha }}-${{ matrix.arch }}");
   });
 
   it("retains the required check and fails closed for every non-success dependency result", async () => {

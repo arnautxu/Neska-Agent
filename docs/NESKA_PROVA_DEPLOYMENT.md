@@ -4,9 +4,11 @@
 
 On 2026-10-11 the operator authorized a new Hetzner server with 4 vCPU,
 8 GB RAM and approximately 80 GB disk for `https://prova.neska.cat`.
-The recurring ceiling is EUR 14/month including VAT, primary IPv4 and provider
-backups. Verify the checkout quote and availability before creating resources.
-Use Ubuntu 24.04 x86-64, matching Backend CI. Keep the existing product UI.
+The operator subsequently authorized CAX21 (4 ARM vCPU, 8 GB, 80 GB) up to
+EUR 16/month including VAT, primary IPv4 and provider backups, **only after ARM
+validation passes**. The observed Helsinki quote was EUR 15.84/month; recheck
+price and capacity at purchase. Use Ubuntu 24.04 arm64, matching native Backend
+CI. Keep the existing product UI. No server has been purchased in this revision.
 
 The provider session, destination IP, dedicated Auth project, image digests,
 live server, certificate and ChatGPT sign-in have not yet been verified.
@@ -70,3 +72,24 @@ separately. A health endpoint does not prove login, ChatGPT connectivity or a
 durable conversation. Complete the acceptance packet in
 `RELEASE_AND_ACCEPTANCE_RUNBOOK.md`, including isolation and recovery, and
 report any missing gate explicitly. Do not expose demo-mode authentication.
+
+## Native architecture gates (2026-10-11)
+
+Backend CI runs the same build, unit/integration, browser/recovery, document and
+sandboxed container gates on Ubuntu 24.04 x86 and native ARM runners. There is
+no emulation fallback and failures on either architecture block publication.
+Publication also builds natively on both architectures, with separate caches,
+full-SHA architecture-suffixed tags and release artifacts named
+`aibrain-ghcr-release-<sha>-<amd64|arm64>`. For CAX, consume **only** the arm64
+artifact. Its `architecture` must be `arm64`; verify the loaded images are
+`linux/arm64` and OCI revision matches before promotion. Existing amd64 digests
+cannot be reused on CAX. Neither a green ARM build nor a purchase accepts the
+live host sandbox, login, model turn, persistent data or recovery.
+
+Verified preceding release: main `00f67c27b8475860139b9a807ba95f043a9c2870`,
+Backend CI `38128126117`, Publish `38128616014` (amd64 only). Supabase project
+`wtycdacqvnporsxajuvs` and SMTP2GO sender domain `neska.cat` are configured;
+email delivery has not been exercised. Hetzner project `16355705` is independent
+and empty. Host, HTTPS, authenticated acceptance, real alert delivery and encrypted
+off-host backup/restore remain unverified. Detailed operator-only configuration
+and secrets stay outside Git.

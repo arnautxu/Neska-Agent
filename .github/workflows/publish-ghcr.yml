@@ -27,7 +27,15 @@ jobs:
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
     timeout-minutes: 40
     env:
       RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -59,11 +67,12 @@ jobs:
         with:
           context: .
           target: runtime
-          cache-from: type=registry,ref=${{ env.APP_REPOSITORY }}:buildcache
-          cache-to: type=registry,ref=${{ env.APP_REPOSITORY }}:buildcache,mode=max
+          platforms: linux/${{ matrix.arch }}
+          cache-from: type=registry,ref=${{ env.APP_REPOSITORY }}:buildcache-${{ matrix.arch }}
+          cache-to: type=registry,ref=${{ env.APP_REPOSITORY }}:buildcache-${{ matrix.arch }},mode=max
           push: true
           build-args: AIBRAIN_REVISION=${{ github.event.workflow_run.head_sha }}
-          tags: ${{ env.APP_REPOSITORY }}:${{ github.event.workflow_run.head_sha }}
+          tags: ${{ env.APP_REPOSITORY }}:${{ github.event.workflow_run.head_sha }}-${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
@@ -73,16 +82,18 @@ jobs:
         with:
           context: .
           target: egress-gateway
-          cache-from: type=registry,ref=${{ env.EGRESS_REPOSITORY }}:buildcache
-          cache-to: type=registry,ref=${{ env.EGRESS_REPOSITORY }}:buildcache,mode=max
+          platforms: linux/${{ matrix.arch }}
+          cache-from: type=registry,ref=${{ env.EGRESS_REPOSITORY }}:buildcache-${{ matrix.arch }}
+          cache-to: type=registry,ref=${{ env.EGRESS_REPOSITORY }}:buildcache-${{ matrix.arch }},mode=max
           push: true
           build-args: AIBRAIN_REVISION=${{ github.event.workflow_run.head_sha }}
-          tags: ${{ env.EGRESS_REPOSITORY }}:${{ github.event.workflow_run.head_sha }}
+          tags: ${{ env.EGRESS_REPOSITORY }}:${{ github.event.workflow_run.head_sha }}-${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
       - name: Record the reviewed immutable release identity
         env:
+          RELEASE_ARCH: ${{ matrix.arch }}
           APP_DIGEST: ${{ steps.app.outputs.digest }}
           EGRESS_DIGEST: ${{ steps.egress.outputs.digest }}
         run: |
@@ -91,15 +102,16 @@ jobs:
           [[ "$EGRESS_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
           jq -n \
             --arg revision "$RELEASE_SHA" \
+            --arg architecture "$RELEASE_ARCH" \
             --arg image "${APP_REPOSITORY}@${APP_DIGEST}" \
             --arg egressImage "${EGRESS_REPOSITORY}@${EGRESS_DIGEST}" \
-            '{schemaVersion:1,revision:$revision,image:$image,egressImage:$egressImage}' \
+            '{schemaVersion:1,revision:$revision,architecture:$architecture,image:$image,egressImage:$egressImage}' \
             > release.json
           chmod 0600 release.json
       - name: Publish the digest manifest for the restricted deploy workflow
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: aibrain-ghcr-release-${{ github.event.workflow_run.head_sha }}
+          name: aibrain-ghcr-release-${{ github.event.workflow_run.head_sha }}-${{ matrix.arch }}
           path: release.json
           if-no-files-found: error
           retention-days: 7
