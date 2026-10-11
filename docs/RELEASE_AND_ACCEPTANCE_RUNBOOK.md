@@ -17,7 +17,7 @@ npm run acceptance:verify -- --manifest /private/acceptance.json --evidence-root
 
 The placeholder origin must be replaced with the explicitly provisioned installation origin. The manifest cannot select its own authoritative acceptance target. Local and CI evidence remain prefilters, never live acceptance.
 
-The readback pipeline contract names its future deployment workflow `Deploy Neska`; that workflow is not installed or enabled here. CI, publication and deployment run IDs must be distinct and refer to the same SHA. Credentials, raw customer content and user cookies must not enter the public acceptance packet.
+The manual first-installation workflow is `Deploy Neska`; it requires explicit opt-in, independently verified CI/publication and an operator-staged approved ARM release. See `NESKA_PROVA_DEPLOYMENT.md`. CI, publication and deployment run IDs must be distinct and refer to the same SHA. Credentials, raw customer content and user cookies must not enter the public acceptance packet.
 
 ## Linux CI validation without deployment
 

@@ -7,11 +7,13 @@ On 2026-10-11 the operator authorized a new Hetzner server with 4 vCPU,
 The operator subsequently authorized CAX21 (4 ARM vCPU, 8 GB, 80 GB) up to
 EUR 16/month including VAT, primary IPv4 and provider backups, **only after ARM
 validation passes**. The observed Helsinki quote was EUR 15.84/month; recheck
-price and capacity at purchase. Use Ubuntu 24.04 arm64, matching native Backend
-CI. Keep the existing product UI. No server has been purchased in this revision.
+price and capacity at purchase. Ubuntu 24.04 arm64 matches native Backend CI.
+Keep the existing product UI. The server was subsequently purchased after the
+complete ARM/x86 PR gates passed; see the first-host evidence below.
 
 The independent Hetzner project and Supabase Auth/SMTP configuration have been
-verified. No server, destination IP, TLS certificate or ChatGPT sign-in is live.
+verified. The independent server is reachable by SSH; TLS, application deployment
+and ChatGPT sign-in are still pending verification.
 The preceding main revision and its separate CI/publication evidence are recorded
 below; they do not accept a newer revision or its ARM runtime.
 
@@ -114,3 +116,43 @@ a separate local directory succeeded against the trial bucket. This is provider
 compatibility evidence only. Host application snapshot/replication/restore is
 still required. Monitor the free quota and Supabase's inactivity pause policy;
 do not promise production availability from the free trial configuration.
+
+## First host and restricted deployment (2026-10-11)
+
+Native PR CI `38129982068` passed all 22 jobs on ARM and x86. PR #4 merged as
+`5e2d563072c173ea4883db71fba8fd1a437ab7c2`. This fulfilled the purchase condition:
+Hetzner CAX21 `neska-prova` was created in Helsinki with IPv4 and provider backups
+at EUR 15.84/month including VAT. SSH confirms Ubuntu 24.04 and aarch64. Provider
+backups are enabled; an actual provider snapshot and application recovery still
+need verification. Operator state is independent and outside Git.
+
+`Deploy Neska` is a manual, opt-in first-installation workflow. It verifies
+successful main Backend CI and publication run IDs against the dispatched full
+SHA and downloads only the corresponding ARM digest manifest. The operator must
+stage that exact checkout on the host, install its locked dependencies, and
+write a root-owned `deployment-approved.json` with the matching manifest before
+execution. Staged source contains a `.prepared-revision` marker. The operator
+also provisions installation configuration, fresh credentials and ownership
+markers before enabling `NESKA_DEPLOY_ENABLED`.
+
+Install `infra/hetzner/deploy-prova-restricted.sh` as the root-owned mode-0700
+`/usr/local/sbin/neska-prova-deploy`. Give the workflow a separate SSH key with
+`restrict,command="/usr/local/sbin/neska-prova-deploy"`; never give it the operator
+key. The `neska-prova` GitHub environment holds `NESKA_DEPLOY_SSH_KEY` and a pinned
+`NESKA_DEPLOY_KNOWN_HOSTS`; `NESKA_DEPLOY_HOST` is the independently verified IPv4.
+The forced command accepts only the approved SHA/digests, verifies ARM and OCI
+identity, scans both images with Trivy 0.75.0 (critical findings block startup),
+and retains SBOMs and reports on the host. It uses the job's short-lived package-read token only to pull private
+images. Temporary registry credentials are removed on exit. No GHCR package is
+made public, and no registry token reaches application containers.
+
+The command runs the complete first-host preflight and production AppArmor
+profile, starts the isolated Compose services and invokes `manage-release.mjs
+bootstrap`. Bootstrap checks running identities and health, then records a V3
+state with `previous: null`; it refuses existing history and never invents a
+rollback predecessor. Future upgrades use transactional `promote` with a verified
+backup. The first-install workflow refuses to replace an existing deployment.
+A green deployment is still separate from authenticated acceptance and recovery.
+
+Nginx uses the HTTP/2 listen option supported by Ubuntu 24.04's Nginx 1.24.
+No application UI is changed by these deployment adjustments.

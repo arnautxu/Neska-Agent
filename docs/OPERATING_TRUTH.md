@@ -16,7 +16,7 @@ The document sync broker now requires operator-provided `--installation-id`, `--
 
 ## Release status
 
-The operator has authorized a new isolated 8 GB trial server at `https://prova.neska.cat`, with a recurring ceiling of EUR 16/month including VAT, primary IPv4 and provider backups, conditional on successful native ARM validation for CAX21. Provisioning, authentication, image publication and deployment remain pending verification. Publication now has an explicit repository-variable opt-in in addition to the existing successful-main-CI gate; this does not enable or prove deployment. See [NESKA_PROVA_DEPLOYMENT.md](NESKA_PROVA_DEPLOYMENT.md).
+The operator has authorized a new isolated 8 GB trial server at `https://prova.neska.cat`, with a recurring ceiling of EUR 16/month including VAT, primary IPv4 and provider backups, conditional on successful native ARM validation for CAX21. Native ARM/x86 PR CI passed and the independent Helsinki CAX21 was purchased at EUR 15.84/month including VAT, IPv4 and provider backups. Host SSH and Ubuntu 24.04 ARM are verified. Application deployment and authenticated live acceptance remain pending. Publication now has an explicit repository-variable opt-in in addition to the existing successful-main-CI gate; this does not enable or prove deployment. See [NESKA_PROVA_DEPLOYMENT.md](NESKA_PROVA_DEPLOYMENT.md).
 
 This is local work on the fetched source revision in an isolated worktree. Validation results are recorded in the base architecture before completion. No publication, deployment, migration or authenticated production acceptance is performed by this cleanup. The customer deployment workflow and customer systemd units are removed; generic infrastructure templates and transactional release/backup tools remain.
 
