@@ -92,7 +92,9 @@ a browser engine security update; product UI is untouched. Version readback
 accepts either vendor prefix and still requires the exact numeric version.
 
 Re-run native document conversion, passive XLS, packaged App Server and browser
-isolation, encrypted backup/restore, and the raw image scan on both architectures.
+isolation, encrypted backup/restore, and the raw image scan on native ARM64 under
+the current operator-selected release policy. AMD64 is no longer executed or
+published; supporting it later requires separate native validation.
 No suppression or risk exception is enabled. Do not promote until these gates
 and the exact main CI/publication gates pass.
 
