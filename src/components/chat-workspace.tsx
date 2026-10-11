@@ -33,7 +33,7 @@ import { useStickToBottom } from "use-stick-to-bottom";
 import { DaySeparator } from "@/components/assistant-ui/elements/day-separator";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { AgentStatusPanel, TaskStatusChip } from "@/components/agent-status-panel";
-import { isMultiStepTask, taskProgress } from "@/ui/task-progress";
+import { taskProgress } from "@/ui/task-progress";
 import { TaskCycle } from "@/components/task-cycle";
 import { ManagedAppActionControl } from "@/components/managed-app-action-control";
 import { type LiveAnswerStore, useLiveAnswer } from '@/ui/live-answer-store';
@@ -599,17 +599,15 @@ export function ChatWorkspace({
   const latestAssistant = latestAssistantIndex >= 0 ? thread?.messages[latestAssistantIndex] : undefined;
   const latestRequest = latestAssistantIndex > 0 && thread?.messages[latestAssistantIndex - 1]?.role === "user" ? thread.messages[latestAssistantIndex - 1] : undefined;
   const latestProgress = latestAssistant ? taskProgress(latestAssistant) : null;
-  const multiStepTask = latestProgress !== null && isMultiStepTask(latestProgress);
-  // The agent panel only opens for long work with steps, unless the employee
-  // asks for it. Their choice applies to the current task (assistant turn).
+  // Activity opens only at the employee’s request. Their choice applies to the current task (assistant turn).
   const [agentPanelChoice, setAgentPanelChoice] = useState<{ messageId: string; open: boolean } | null>(null);
   const agentPanelTriggerRef = useRef<HTMLButtonElement>(null);
   const agentPanelCloseRef = useRef<HTMLButtonElement>(null);
   // Opening or closing swaps the focused control out of the DOM, so focus
   // follows the employee into the panel and back to the trigger.
   const agentPanelFocusRef = useRef<"panel" | "trigger" | null>(null);
-  const agentPanelOpen = Boolean(thread && latestAssistant && latestProgress && latestProgress.total > 0) &&
-    (agentPanelChoice && agentPanelChoice.messageId === latestAssistant?.id ? agentPanelChoice.open : multiStepTask);
+  const agentPanelOpen = Boolean(thread && latestAssistant && latestProgress) &&
+    (agentPanelChoice && agentPanelChoice.messageId === latestAssistant?.id ? agentPanelChoice.open : false);
   useEffect(() => {
     const target = agentPanelFocusRef.current;
     if (!target) return;
@@ -938,10 +936,10 @@ export function ChatWorkspace({
             {thread ? <h1 className="max-w-[calc(100vw-5.5rem)] truncate text-[13px] font-semibold leading-4 text-[var(--text)] sm:max-w-72">{thread.title}</h1> : null}
           </div>
         </div>
-        {thread && latestAssistant && latestProgress && latestProgress.total > 0 ? (
+        {thread && latestAssistant && latestProgress ? (
           <div className="workbench-navigation-balance col-start-3 flex items-center justify-end gap-2 pr-2">
-            <TaskStatusChip progress={latestProgress} />
-            {!agentPanelOpen ? <button type="button" className="neska-px hidden min-h-9 border-2 border-[var(--neska-ink)] px-3 text-[11px] text-[var(--text)] hover:bg-[var(--surface-hover)] xl:inline-flex xl:items-center" ref={agentPanelTriggerRef} onClick={() => { agentPanelFocusRef.current = "panel"; setAgentPanelChoice({ messageId: latestAssistant.id, open: true }); }}>{t("Estado del agente")}</button> : null}
+            {latestProgress.total > 0 || latestAssistant.queue ? <TaskStatusChip progress={latestProgress} /> : null}
+            {!agentPanelOpen ? <button type="button" aria-expanded={agentPanelOpen} aria-controls="neska-activity-panel" aria-label={t("Obre l’activitat")} className="inline-flex min-h-11 items-center px-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]" ref={agentPanelTriggerRef} onClick={() => { agentPanelFocusRef.current = "panel"; setAgentPanelChoice({ messageId: latestAssistant.id, open: true }); }}>{t("Activitat")}</button> : null}
           </div>
         ) : <div aria-hidden="true" className="workbench-navigation-balance" />}
       </header>

@@ -1405,5 +1405,20 @@
   "A la cua": "A la cua",
   "No s’ha pogut guardar el canvi. Torna a carregar la tasca.": "No s’ha pogut guardar el canvi. Torna a carregar la tasca.",
   "Vista prèvia de {name}": "Vista prèvia de {name}",
-  "Descarrega {name}": "Descarrega {name}"
+  "Descarrega {name}": "Descarrega {name}",
+  "Activitat": "Activitat",
+  "Obre l’activitat": "Obre l’activitat",
+  "Tanca l’activitat": "Tanca l’activitat",
+  "Encara no hi ha activitat publicada.": "Encara no hi ha activitat publicada.",
+  "En curs": "En curs",
+  "T’espera": "T’espera",
+  "Feta": "Feta",
+  "Aturada": "Aturada",
+  "Pas {current} de {total}": "Pas {current} de {total}",
+  "Executa": "Executa",
+  "Consulta": "Consulta",
+  "Cerca": "Cerca",
+  "Decideix": "Decideix",
+  "Actualitza": "Actualitza",
+  "Coordina": "Coordina"
 }

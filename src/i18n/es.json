@@ -132,5 +132,20 @@
   "A la cua": "En cola",
   "No s’ha pogut guardar el canvi. Torna a carregar la tasca.": "No se ha podido guardar el cambio. Vuelve a cargar la tarea.",
   "Vista prèvia de {name}": "Vista previa de {name}",
-  "Descarrega {name}": "Descarga {name}"
+  "Descarrega {name}": "Descarga {name}",
+  "Activitat": "Actividad",
+  "Obre l’activitat": "Abre la actividad",
+  "Tanca l’activitat": "Cierra la actividad",
+  "Encara no hi ha activitat publicada.": "Todavía no hay actividad publicada.",
+  "En curs": "En curso",
+  "T’espera": "Te espera",
+  "Feta": "Hecha",
+  "Aturada": "Detenida",
+  "Pas {current} de {total}": "Paso {current} de {total}",
+  "Executa": "Ejecuta",
+  "Consulta": "Consulta",
+  "Cerca": "Busca",
+  "Decideix": "Decide",
+  "Actualitza": "Actualiza",
+  "Coordina": "Coordina"
 }

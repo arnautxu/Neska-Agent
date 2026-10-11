@@ -203,6 +203,7 @@ export function activityPresentation(item: ActivityItem, t: UiText = spanishUiTe
 /** Runtime lifecycle events remain persisted for diagnostics, but they are not
  * useful steps in the employee-facing work process. Failures stay visible. */
 export function isRelevantProcessActivity(item: ActivityItem) {
+  if (item.kind === "reasoning") return false;
   if (item.status === "failed" || item.status === "stopped") return true;
   return !LIFECYCLE_ACTIVITY_IDS.has(item.id);
 }
@@ -256,7 +257,7 @@ export function TurnActivity({
   // timeline below only carries the activity log.
   const progress = taskProgress(message);
   const visibleActivity = message.activity
-    .filter((item) => item.status !== "pending" && isRelevantProcessActivity(item))
+    .filter((item) => item.kind !== "reasoning" && item.status !== "pending" && isRelevantProcessActivity(item))
     .map((item) => ({
       ...item,
       label: publicActivityText(item.label, 240) ?? t("Actividad"),

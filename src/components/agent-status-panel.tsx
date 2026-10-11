@@ -1,143 +1,50 @@
 "use client";
-import { useUiText } from "@/i18n/provider";
-
-import { FileText, X } from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
+import { useUiLocale, useUiText } from "@/i18n/provider";
+import { X } from "@phosphor-icons/react";
 import type { ChatMessage } from "@/lib/chat-contract";
-import { activityPresentation, isRelevantProcessActivity } from "@/components/turn-activity";
-import { publicActivityText } from "@/ui/public-activity";
-import { isStepDone, type TaskProgress, type TaskState } from "@/ui/task-progress";
-
-const STATE_LABEL: Record<TaskState, string> = {
-  proposed: "Pla proposat",
-  queued: "A la cua",
-  failed: "Ha fallat",
-  working: "Trabajando",
-  waiting: "Esperando tu aprobación",
-  done: "Lista",
-  stopped: "Detenida",
-};
-
-export function taskStateLabel(state: TaskState) {
-  return STATE_LABEL[state];
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-6">
-      <h3 className="neska-px mb-2.5 text-[11px] text-[var(--text-secondary)]">{title}</h3>
-      {children}
-    </section>
-  );
-}
-
-/** "Estat de l'agent": what Neska has in hand for the current task. Every
- * value comes from the persisted turn; nothing here is decorative state. */
-export function AgentStatusPanel({
-  progress,
-  message,
-  request,
-  closeButtonRef,
-  onClose,
-}: {
-  progress: TaskProgress;
-  message: ChatMessage;
-  request: ChatMessage | undefined;
-  closeButtonRef?: React.Ref<HTMLButtonElement>;
-  onClose: () => void;
+import type { TaskProgress, TaskState } from "@/ui/task-progress";
+import { publicActivityRow } from "@/ui/public-activity-row";
+import { useModalFocus } from "@/ui/use-modal-focus";
+const STATE_LABEL: Record<TaskState, string> = { working: "En curs", waiting: "T’espera", done: "Feta", stopped: "Aturada", failed: "Ha fallat", proposed: "Pla proposat", queued: "A la cua" };
+export function taskStateLabel(state: TaskState) { return STATE_LABEL[state]; }
+export function AgentStatusPanel({ message, closeButtonRef, onClose }: {
+  progress: TaskProgress; message: ChatMessage; request: ChatMessage | undefined;
+  closeButtonRef?: React.Ref<HTMLButtonElement>; onClose: () => void;
 }) {
-  const t = useUiText();
-  const files = [
-    ...(request?.attachments ?? []).map((attachment) => ({ id: attachment.id, name: attachment.name, note: t("Adjunto") })),
-    // Only produced files: a browser session is not a file.
-    ...message.artifacts.flatMap((artifact) => artifact.type !== "browser" && typeof artifact.name === "string"
-      ? [{ id: artifact.id, name: artifact.name, note: t("Nuevo") }]
-      : []),
-  ];
-  const activity = message.activity
-    .filter((item) => item.status !== "pending" && isRelevantProcessActivity(item))
-    .slice(-5)
-    .map((item) => ({ id: item.id, label: activityPresentation(item, t).title, failed: item.status === "failed" }));
-  const pendingApproval = message.approvals.find((approval) => approval.status === "pending");
-  const stepLabel = progress.current >= 0
-    ? t("Paso {current}/{total}", { current: progress.current + 1, total: progress.total })
-    : `${progress.done}/${progress.total}`;
-
-  return (
-    <aside
-      data-testid="agent-status-panel"
-      aria-label={t("Estado del agente")}
-      className="agent-status-panel scrollbar-thin inset-y-0 right-0 hidden w-[300px] overflow-y-auto border-l-2 border-[var(--neska-ink)] bg-[var(--surface)] px-5 py-5 xl:block"
-    >
-      <div className="flex items-center justify-between">
-        <h2 className="neska-px text-[11px] text-[var(--text)]">{t("Estado del agente")}</h2>
-        <button ref={closeButtonRef} type="button" aria-label={t("Ocultar estado del agente")} className="touch-target grid size-8 place-items-center text-[var(--text-secondary)] hover:text-[var(--text)]" onClick={onClose}><X size={14} /></button>
-      </div>
-
-      <figure className="mt-3 border-2 border-[var(--neska-ink)] shadow-[4px_4px_0_var(--neska-ink)]">
-        {/* Duotone halftone: a decorative state image, never content. The
-            Neska artwork is attached in neska.css only for that theme. */}
-        <div aria-hidden="true" className="neska-state-art aspect-[16/10] bg-[var(--neska-accent)] bg-cover bg-center [image-rendering:pixelated]" />
-        <figcaption className="flex items-center justify-between bg-[var(--neska-ink)] px-3 py-2 text-[11px] text-[var(--neska-paper)]">
-          <span className="neska-px">{t(taskStateLabel(progress.state))}</span>
-          <span className="neska-px">{stepLabel}</span>
-        </figcaption>
-      </figure>
-
-      <Section title={t("Progreso")}>
-        <div className="flex gap-1" role="img" aria-label={t("{done} de {total} pasos completados", { done: progress.done, total: progress.total })}>
-          {progress.steps.map((step, index) => (
-            <span key={`${step.step}-${index}`} className={`h-3 flex-1 border-2 border-[var(--neska-ink)] ${isStepDone(step, progress.state) ? "bg-[var(--neska-accent)]" : index === progress.current ? "neska-dots" : ""}`} />
-          ))}
-        </div>
-      </Section>
-
-      {pendingApproval ? (
-        <Section title={t("Aprobación pendiente")}>
-          <p className="border-l-2 border-[var(--neska-accent)] pl-3 text-[14px] leading-[21px] text-[var(--text)]">{publicActivityText(pendingApproval.title, 240) ?? t("Acción pendiente")}</p>
-        </Section>
-      ) : null}
-
-      {files.length ? (
-        <Section title={t("Archivos")}>
-          <ul>
-            {files.map((file) => (
-              <li key={file.id} className="flex items-center gap-2.5 border-b-2 border-dotted border-[var(--neska-line)] py-2 text-[14px] text-[var(--text)]">
-                <FileText size={16} className="shrink-0" aria-hidden="true" />
-                <span className="min-w-0 flex-1 truncate">{file.name}</span>
-                <span className="neska-px text-[10px] text-[var(--text-secondary)]">{file.note}</span>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      ) : null}
-
-      {activity.length ? (
-        <Section title={t("Actividad")}>
-          <ol className="space-y-1.5 font-mono text-[12px] leading-5">
-            {activity.map((item) => (
-              <li key={item.id} className={item.failed ? "text-[var(--danger)]" : "text-[var(--text)]"}>
-                <span aria-hidden="true" className="text-[var(--neska-accent)]">› </span>{item.label}
-              </li>
-            ))}
-          </ol>
-        </Section>
-      ) : null}
+  const t = useUiText(); const locale = useUiLocale();
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1279px)");
+    const update = () => setCompact(media.matches);
+    update(); media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  const panelRef = useModalFocus<HTMLElement>(compact, onClose);
+  useEffect(() => {
+    if (compact) return;
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { event.preventDefault(); onClose(); } };
+    document.addEventListener("keydown", escape);
+    return () => document.removeEventListener("keydown", escape);
+  }, [compact, onClose]);
+  const rows = message.activity.flatMap(item => { const row = publicActivityRow(item); return row ? [row] : []; });
+  return <>
+    {compact ? <button type="button" aria-label={t("Tanca l’activitat")} className="activity-backdrop fixed inset-0 z-40 bg-black/30" onClick={onClose} /> : null}
+    <aside ref={panelRef} tabIndex={-1} id="neska-activity-panel" data-testid="agent-status-panel" role={compact ? "dialog" : "complementary"} aria-modal={compact || undefined} aria-label={t("Activitat")} className="agent-status-panel scrollbar-thin fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-[12px] border-t border-[var(--border)] bg-[var(--surface)] px-6 pb-[max(24px,env(safe-area-inset-bottom))] pt-5 xl:absolute xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:z-10 xl:max-h-none xl:w-[300px] xl:rounded-none xl:border-l xl:border-t-0 xl:px-5">
+      <header className="mb-6 flex items-center justify-between"><h2 className="neska-px text-xs text-[var(--text-secondary)]">{t("Activitat")}</h2><button ref={closeButtonRef} type="button" aria-label={t("Tanca l’activitat")} className="grid size-11 place-items-center" onClick={onClose}><X size={16} /></button></header>
+      {rows.length ? <ol className="space-y-5">{rows.map(row => <li key={row.id} className="text-[13px] leading-5">
+        <div className="flex items-baseline gap-3">{row.timestamp ? <time dateTime={row.timestamp} className="shrink-0 font-mono text-[11px] text-[var(--text-muted)]">{new Date(row.timestamp).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}</time> : null}<span className="font-medium">{row.failed ? <X size={12} className="mr-1 inline" aria-label={t("Ha fallat")} /> : null}{t(row.verb)}</span></div>
+        {row.object ? <p className="mt-1 break-all font-mono text-[12px]">{row.object}</p> : null}
+        {row.detail ? <p className="mt-1 text-[var(--text-secondary)]">{row.translateDetail ? t(row.detail) : row.detail}</p> : null}
+      </li>)}</ol> : <p className="text-sm text-[var(--text-secondary)]">{t("Encara no hi ha activitat publicada.")}</p>}
     </aside>
-  );
+  </>;
 }
-
-/** Compact status for the task header: a pixel battery and a short label. */
 export function TaskStatusChip({ progress }: { progress: TaskProgress }) {
   const t = useUiText();
-  const label = progress.current >= 0
-    ? `${t(taskStateLabel(progress.state))} · ${t("Paso {current}/{total}", { current: progress.current + 1, total: progress.total })}`
-    : `${t(taskStateLabel(progress.state))} · ${progress.done}/${progress.total}`;
-  return (
-    <span data-testid="task-status-chip" role="status" className="neska-status-chip neska-px">
-      <span aria-hidden="true" className="neska-status-chip-bar">
-        {progress.steps.map((step, index) => <span key={`${step.step}-${index}`} data-done={isStepDone(step, progress.state) ? "true" : "false"} />)}
-      </span>
-      {label}
-    </span>
-  );
+  const count = progress.total ? progress.current >= 0 ? ` · ${t("Pas {current} de {total}", { current: progress.steps[progress.current].originalIndex + 1, total: progress.total })}` : ` · ${progress.done}/${progress.total}` : "";
+  return <span data-testid="task-status-chip" role="status" className="inline-flex min-h-9 items-center gap-2 text-[11px] text-[var(--text-secondary)]">
+    {progress.state === "failed" ? <X aria-hidden="true" size={12} /> : <span aria-hidden="true" className={`size-2 shrink-0 ${progress.state === "working" ? "neska-live bg-[var(--neska-accent)]" : progress.state === "done" ? "bg-[var(--text)]" : "border border-[var(--text-secondary)]"}`} />}
+    <span className="neska-px">{t(taskStateLabel(progress.state))}{count}</span>
+  </span>;
 }

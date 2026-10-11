@@ -35,10 +35,9 @@
 
 /* Overlays the right edge of the chat (which reserves the space) so the
    conversation keeps its own scroll container as a direct child of main. */
-.workbench-main > .agent-status-panel {
-  position: absolute;
-  z-index: 2;
-}
+.workbench-main > .agent-status-panel { position: fixed; z-index: 50; }
+.workbench-main > .activity-backdrop { position: fixed; z-index: 40; }
+@media (min-width: 1280px) { .workbench-main > .agent-status-panel { position: absolute; z-index: 2; } }
 
 /* Neska artwork only renders (and loads) for installations that opt into
    the theme; other installations keep just the state caption. */
@@ -328,3 +327,7 @@
   & .task-cycle [data-slot="permission-grant"][data-pending="true"] { border: 1px solid var(--neska-line); border-radius: var(--neska-radius); background: transparent; }
   & .task-cycle { margin-top: 24px; }
 }
+
+@keyframes neska-live-breathe { 50% { opacity: .3; } }
+.neska-live { animation: neska-live-breathe 1.6s steps(4) infinite; }
+@media (prefers-reduced-motion: reduce) { .neska-live { animation: none; } }
