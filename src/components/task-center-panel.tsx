@@ -7,13 +7,10 @@ import { useUiText } from "@/i18n/provider";
 import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Bell,
   BellRinging,
   Check,
   CheckCircle,
   ChatCircleDots,
-  ClockCounterClockwise,
-  GearSix,
   SpinnerGap,
   WarningCircle,
   X,
@@ -25,6 +22,10 @@ import type {
 } from "@/task-center/contracts";
 import { useModalFocus } from "@/ui/use-modal-focus";
 import { OverlayPresenceLayer } from "@/ui/overlay-presence";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { BellIcon } from "@/components/ui/bell";
+import { HistoryIcon } from "@/components/ui/history";
+import { SettingsIcon } from "@/components/ui/settings";
 
 const filters: Array<{ id: TaskCenterFilter; label: string }> = [
   { id: "all", label: "Todas" },
@@ -123,16 +124,16 @@ export function TaskCenterPanel({
         <button aria-label={t("Cerrar centro de tareas")} className="absolute inset-0" onClick={onClose} />
         <motion.section {...surfaceMotion} ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t("Centro de tareas")} className="workspace-panel relative flex h-full w-full max-w-[540px] flex-col border-l border-[var(--border-subtle)] bg-[var(--surface-raised)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-popover)]">
         <header className="workspace-panel-header flex shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] px-4 pt-[env(safe-area-inset-top)] sm:px-5 sm:pt-0">
-          <span className="grid size-9 shrink-0 place-items-center rounded-[13px] bg-[var(--accent-soft)] text-[var(--brain-accent-on-soft)]"><ClockCounterClockwise size={18} /></span>
+          <span className="grid size-9 shrink-0 place-items-center rounded-[13px] bg-[var(--accent-soft)] text-[var(--brain-accent-on-soft)]"><TriggerIcon icon={HistoryIcon} size={18} /></span>
           <div className="min-w-0 flex-1"><h2 className="workspace-panel-title text-[var(--text)]">{t("Tareas")}</h2><p className="workspace-panel-subtitle mt-0.5">{t("Sigue el trabajo de todas tus conversaciones.")}</p></div>
-          <button type="button" aria-label={t("Preferencias de notificaciones")} aria-pressed={settingsOpen} className={`touch-target grid size-10 place-items-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] ${settingsOpen ? "bg-[var(--surface-selected)]" : ""}`} onClick={() => setSettingsOpen((value) => !value)}><GearSix size={18} /></button>
+          <button type="button" aria-label={t("Preferencias de notificaciones")} aria-pressed={settingsOpen} className={`touch-target grid size-10 place-items-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] ${settingsOpen ? "bg-[var(--surface-selected)]" : ""}`} onClick={() => setSettingsOpen((value) => !value)}><TriggerIcon icon={SettingsIcon} size={18} /></button>
           <button type="button" aria-label={t("Cerrar centro de tareas")} className="touch-target grid size-10 place-items-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]" onClick={onClose}><X size={18} /></button>
         </header>
 
         {settingsOpen ? (
           <div className="border-b border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-3 sm:px-4">
             <h3 className="px-3 text-[11px] font-semibold text-[var(--text)]">{t("Notificaciones")}</h3>
-            <PreferenceRow icon={<Bell size={17} />} label={t("Avisos dentro de la aplicación")} detail={t("Muestra un aviso cuando otra conversación termina o necesita atención.")} checked={preferences.inApp} disabled={busy} onChange={(inApp) => onPreferencesChange({ ...preferences, inApp })} />
+            <PreferenceRow icon={<TriggerIcon icon={BellIcon} size={17} />} label={t("Avisos dentro de la aplicación")} detail={t("Muestra un aviso cuando otra conversación termina o necesita atención.")} checked={preferences.inApp} disabled={busy} onChange={(inApp) => onPreferencesChange({ ...preferences, inApp })} />
             <PreferenceRow icon={<BellRinging size={17} />} label={t("Avisos del navegador")} detail={notificationPermission === "denied" ? t("El navegador los ha bloqueado. Puedes reactivarlos desde sus ajustes.") : notificationPermission === "unsupported" ? t("Este navegador no admite avisos del sistema.") : t("Solo se activan después de que aceptes el permiso del navegador.")} checked={preferences.desktop && notificationPermission === "granted"} disabled={busy || notificationPermission === "denied" || notificationPermission === "unsupported"} onChange={(enabled) => {
               if (enabled && notificationPermission !== "granted") onRequestDesktopNotifications();
               else onPreferencesChange({ ...preferences, desktop: enabled });

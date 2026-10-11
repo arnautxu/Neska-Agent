@@ -3,9 +3,11 @@ import { useUiText, useUiLocale } from "@/i18n/provider";
 
 import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Folder, File, HardDrive, ArrowClockwise, X } from "@phosphor-icons/react";
+import { Folder, File, HardDrive, X } from "@phosphor-icons/react";
 import { useModalFocus } from "@/ui/use-modal-focus";
 import { isServerReference, serverDirectoryQuery, type ServerReference } from "@/documents/server-reference-contract";
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { RefreshCWIcon } from "@/components/ui/refresh-cw";
 
 const subscribe = () => () => {};
 const clientSnapshot = () => true;
@@ -57,7 +59,7 @@ export function ServerPicker({ projectId, selected, onSelect, onClose, returnFoc
       <div className="mb-3 flex items-center gap-2">
         <button type="button" className="touch-target rounded-lg border border-[var(--border)] px-3 py-2 text-sm" disabled={busy || location === "home"} onClick={() => location === "server:/" ? navigate("home") : navigate(location.replace(/\/$/, "").split("/").slice(0, -1).join("/").replace(/^server:$/, "server:/"))}>{t("Subir")}</button>
         <span className="min-w-0 flex-1 truncate text-sm" title={location}>{location === "home" ? t("Carpetas de trabajo") : location === "server:/" ? t("Unidades") : location.replace("server:/", "")}</span>
-        <button type="button" aria-label={location === "home" ? t("Actualizar carpetas de trabajo") : t("Actualizar desde Windows")} disabled={busy} className="touch-target rounded-lg border border-[var(--border)] p-2" onClick={() => { navigate(location); }}><ArrowClockwise size={19}/></button>
+        <button type="button" aria-label={location === "home" ? t("Actualizar carpetas de trabajo") : t("Actualizar desde Windows")} disabled={busy} className="touch-target rounded-lg border border-[var(--border)] p-2" onClick={() => { navigate(location); }}><TriggerIcon icon={RefreshCWIcon} size={19} /></button>
       </div>
       {location === "home" ? <button type="button" className="mb-3 w-fit rounded-lg border border-[var(--border)] px-3 py-2 text-sm" onClick={() => navigate("server:/")}>{t("Explorar unidades")}</button> : <button type="button" className="mb-3 w-fit rounded-lg px-2 py-1 text-sm text-[var(--text-muted)]" onClick={() => navigate("home")}>{t("Carpetas de trabajo")}</button>}
       <div className="min-h-40 overflow-y-auto" aria-busy={busy}>
