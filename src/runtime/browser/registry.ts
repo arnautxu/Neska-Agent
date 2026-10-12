@@ -1,3 +1,4 @@
+import type { PrivateInputPreset, PrivateInputValues } from "@/runtime/browser/secure-input-contract";
 import { availableParallelism } from "node:os";
 import type {
   ApprovalBoundManagedBrowserRuntime,
@@ -333,6 +334,39 @@ export class BrowserRuntimeRegistry {
       throw new Error("Browser viewer is unavailable in the current lifecycle state.");
     }
     return runtime.resizeViewport(threadId, viewport);
+  }
+
+  async requestPrivateInput(userId: string, threadId: string, preset: PrivateInputPreset) {
+    validateBrowserThreadId(threadId);
+    const runtime = this.requireAgentRuntime(userId);
+    const state = await this.recoverExpired(userId);
+    this.assertAgentControl(userId, state);
+    if (!runtime.requestPrivateInput) throw new Error("Private input is unavailable.");
+    return runtime.requestPrivateInput(threadId, preset);
+  }
+
+  async privateInputStatus(userId: string, threadId: string) {
+    validateBrowserThreadId(threadId);
+    const runtime = this.requireInteractiveRuntime(userId);
+    this.assertCurrentSession(userId, await this.recoverExpired(userId));
+    if (!runtime.privateInputStatus) throw new Error("Private input is unavailable.");
+    return runtime.privateInputStatus(threadId);
+  }
+
+  async privateInputAction(userId: string, threadId: string, action: "start" | "fill" | "dismiss" | "finish", requestId: string, values: PrivateInputValues, preset: PrivateInputPreset = "login") {
+    validateBrowserThreadId(threadId);
+    const runtime = this.requireInteractiveRuntime(userId);
+    const state = await this.recoverExpired(userId);
+    this.assertCurrentSession(userId, state);
+    if (action === "start" && runtime.requestPrivateInput) return runtime.requestPrivateInput(threadId, preset, true);
+    if (action === "fill" && runtime.fillPrivateInput) return runtime.fillPrivateInput(threadId, requestId, values);
+    if (action === "finish" && runtime.finishPrivateInput) await runtime.finishPrivateInput();
+    else if (action === "dismiss" && runtime.dismissPrivateInput) await runtime.dismissPrivateInput(threadId, requestId);
+    else throw new Error("Private input is unavailable.");
+    if (state.lifecycle === "human-control") {
+      await this.releaseTakeover(userId);
+      this.viewerOwners.delete(userId);
+    }
   }
 
   async readPage(userId: string, threadId: string) {

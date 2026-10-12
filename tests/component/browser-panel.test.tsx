@@ -103,6 +103,21 @@ afterEach(() => {
 });
 
 describe("BrowserPanel", () => {
+  it("starts a session-bound private request from the viewer and returns to the chat without handling credentials", async () => {
+    const fetcher = vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true }));
+    vi.stubGlobal("fetch", fetcher);
+    const close = vi.fn();
+    render(<BrowserPanel threadId={THREAD_ID} open onClose={close} initialStatus={readyStatus} />);
+    await screen.findByAltText("Vista actual del navegador privado");
+    fireEvent.click(screen.getByRole("button", { name: "Datos protegidos" }));
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
+    expect(fetcher).toHaveBeenCalledWith("/api/runtime/browser/secure-input", expect.objectContaining({ method: "POST", cache: "no-store" }));
+    const body = JSON.parse(fetcher.mock.calls[0]?.[1]?.body as string);
+    expect(body).toMatchObject({ action: "start", preset: "login", threadId: THREAD_ID, browserSessionId: SESSION_ID });
+    expect(Object.keys(body).sort()).toEqual(["action", "browserSessionId", "preset", "requestId", "threadId"]);
+    expect(browser.send).not.toHaveBeenCalled();
+  });
+
   it("renders the exact viewer controls announced to the runtime", async () => {
     const view = render(<BrowserPanel threadId={THREAD_ID} open onClose={vi.fn()} initialStatus={readyStatus} />);
     await screen.findByAltText("Vista actual del navegador privado");

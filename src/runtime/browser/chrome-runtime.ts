@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+import { discoverPrivateInputs, privateInputFunction } from "@/runtime/browser/private-input-page";
+import { validPrivateInputValues, type PrivateInputPreset, type PrivateInputValues, type PrivateInputView } from "@/runtime/browser/secure-input-contract";
 import { constants } from "node:fs";
 import { access, chmod, link, lstat, mkdir, readdir, realpath, unlink } from "node:fs/promises";
 import { spawn, type SpawnOptions } from "node:child_process";
@@ -139,6 +142,7 @@ type ThreadPage = {
   navigationPhase: BrowserViewerNavigationState["phase"];
   navigationSequence: number;
   closed: boolean;
+  privateInputProtected: boolean;
 };
 
 type BrowserMutationCommand = Readonly<{
@@ -509,6 +513,12 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
   private startPromise: Promise<void> | null = null;
   private stopPromise: Promise<void> | null = null;
   private stderrTail = "";
+  private privateKeeper: ThreadPage | null = null;
+  private privateInput = false;
+  private privateRequest: {
+    view: PrivateInputView; page: ThreadPage; generation: number; url: string;
+    fields: { key: string; index: number | null; type: string; backendNodeId: number }[];
+  } | null = null;
   private running = false;
   private takenOver = false;
   private controlGeneration = 0;
@@ -942,6 +952,150 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
     }, false);
   }
 
+  async requestPrivateInput(threadId: string, preset: PrivateInputPreset, employeeInitiated = false): Promise<PrivateInputView> {
+    return this.withExclusiveBrowserOperation(async () => {
+      if (employeeInitiated && this.privateInput) {
+        if (this.privateRequest?.view.threadId === threadId) return { ...this.privateRequest.view };
+        throw new ChromeRuntimeError("CHROME_PRIVATE_INPUT_ACTIVE", "Private input is already active.");
+      }
+      if (!employeeInitiated) this.assertAgentControl();
+      const page = await this.requireThreadPage(threadId);
+      const url = validateBrowserNavigationUrl(await this.currentUrl(threadId));
+      const parsed = new URL(url);
+      // Loopback is reachable only in the development private-network fixture.
+      if (parsed.protocol !== "https:" && !["127.0.0.1", "localhost", "[::1]"].includes(parsed.hostname)) {
+        throw new ChromeRuntimeError("CHROME_PRIVATE_INPUT_HTTPS", "Private input requires HTTPS.");
+      }
+      const evaluated = await this.requireBrowser().send<{ result?: { value?: unknown }; exceptionDetails?: unknown }>("Runtime.evaluate", {
+        expression: discoverPrivateInputs(preset, randomUUID()), returnByValue: true,
+      }, { sessionId: page.sessionId });
+      const found = evaluated.result?.value;
+      const foundFields = !evaluated.exceptionDetails && isRecord(found) && found.url === url &&
+        Array.isArray(found.fields) && found.fields.length > 0 && found.fields.length <= 6 ? found.fields : [];
+      const fields = [];
+      for (const entry of foundFields) {
+        if (!isRecord(entry) || typeof entry.key !== "string" || !["email", "password", "code", "pin"].includes(entry.key) ||
+            typeof entry.selector !== "string" || typeof entry.type !== "string" ||
+            !(entry.index === null || Number.isInteger(entry.index) && Number(entry.index) >= 0 && Number(entry.index) < 6)) {
+          throw new ChromeRuntimeError("CHROME_PRIVATE_INPUT_FIELDS", "Private input target is invalid.");
+        }
+        const nodeId = await this.querySelector(page, entry.selector);
+        const node = await this.requireBrowser().send<{ node?: { backendNodeId?: number } }>("DOM.describeNode", { nodeId }, { sessionId: page.sessionId });
+        const backendNodeId = node.node?.backendNodeId;
+        if (backendNodeId === undefined || !Number.isSafeInteger(backendNodeId) || backendNodeId < 1) {
+          throw new ChromeRuntimeError("CHROME_PRIVATE_INPUT_FIELDS", "Private input node is invalid.");
+        }
+        fields.push({ key: entry.key, index: entry.index as number | null, type: entry.type, backendNodeId });
+      }
+      if (!employeeInitiated) this.assertAgentControl();
+      // Fence before publishing the form. Abort any read that began before this point.
+      this.privateInput = true;
+      for (const owned of this.threadPages.values()) {
+        owned.privateInputProtected = true;
+        owned.latestScreenshot = null;
+      }
+      await this.navigationStore.setPrivateInputActive(true);
+      await Promise.allSettled([...this.navigationWrites]);
+      await this.navigationStore.clear();
+      const view: PrivateInputView = { id: randomUUID(), threadId, preset, origin: parsed.origin,
+        expiresAt: new Date(this.now() + 5 * 60_000).toISOString(), phase: fields.length ? "form" : "failed" };
+      this.privateRequest = { view, page, url, fields, generation: page.documentGeneration };
+      return { ...view };
+    });
+  }
+
+  privateInputStatus(threadId: string) {
+    const request = this.privateRequest?.view;
+    if (request?.phase === "form" && Date.parse(request.expiresAt) <= this.now()) request.phase = "expired";
+    return { protected: this.privateInput, request: request?.threadId === threadId ? { ...request } : null };
+  }
+
+  async fillPrivateInput(threadId: string, requestId: string, values: PrivateInputValues) {
+    await this.withExclusiveBrowserOperation(async () => {
+      const request = this.privateRequest;
+      if (!request || request.view.threadId !== threadId || request.view.id !== requestId ||
+          request.view.phase !== "form" || Date.parse(request.view.expiresAt) <= this.now() ||
+          !validPrivateInputValues(request.view.preset, values)) {
+        throw new ChromeRuntimeError("CHROME_PRIVATE_INPUT_STALE", "Private input request is invalid or expired.");
+      }
+      // Consume before dispatch: partial/uncertain writes are never replayed.
+      request.view.phase = "failed";
+      const page = request.page;
+      try {
+        if (!this.privateInput || page.closed || this.threadPages.get(threadId) !== page ||
+            page.documentGeneration !== request.generation) throw new Error("stale");
+        const browser = this.requireBrowser();
+        const objects: string[] = [];
+        for (const field of request.fields) {
+          const resolved = await browser.send<{ object?: { objectId?: string } }>("DOM.resolveNode", { backendNodeId: field.backendNodeId }, { sessionId: page.sessionId });
+          const objectId = resolved.object?.objectId;
+          if (!objectId) throw new Error("stale");
+          const checked = await browser.send<{ result?: { value?: unknown }; exceptionDetails?: unknown }>("Runtime.callFunctionOn", {
+            objectId, functionDeclaration: privateInputFunction,
+            arguments: [{ value: request.url }, { value: field.type }, { value: null }], returnByValue: true,
+          }, { sessionId: page.sessionId });
+          if (checked.exceptionDetails || checked.result?.value !== true) throw new Error("stale");
+          objects.push(objectId);
+        }
+        for (let index = 0; index < request.fields.length; index++) {
+          const field = request.fields[index];
+          const raw = values[field.key];
+          const value = field.index === null ? raw : raw[field.index];
+          const filled = await browser.send<{ result?: { value?: unknown }; exceptionDetails?: unknown }>("Runtime.callFunctionOn", {
+            objectId: objects[index], functionDeclaration: privateInputFunction,
+            arguments: [{ value: request.url }, { value: field.type }, { value }], returnByValue: true,
+          }, { sessionId: page.sessionId });
+          if (filled.exceptionDetails || filled.result?.value !== true) throw new Error("uncertain");
+        }
+        request.view.phase = "filled";
+        page.latestScreenshot = null;
+      } catch {
+        // Never retain an exception/cause that a page could populate with secrets.
+        throw new ChromeRuntimeError("CHROME_PRIVATE_INPUT_FAILED", "Private input could not be verified. Check the page manually; do not replay.");
+      }
+    });
+  }
+
+  async dismissPrivateInput(threadId: string, requestId: string) {
+    await this.withExclusiveBrowserOperation(async () => {
+      const request = this.privateRequest;
+      if (!request || request.view.threadId !== threadId || request.view.id !== requestId || request.view.phase !== "form") {
+        throw new ChromeRuntimeError("CHROME_PRIVATE_INPUT_STALE", "Private input request is stale.");
+      }
+      await this.closePrivatePages();
+    });
+  }
+
+  async finishPrivateInput() {
+    await this.withExclusiveBrowserOperation(() => this.closePrivatePages());
+  }
+
+  private async closePrivatePages() {
+    if (!this.privateInput) return;
+    const previous = [...this.threadPages.values()];
+    // Headless Chromium can exit when its last page closes. Keep a fresh blank
+    // owned target alive without restoring any private URL.
+    await Promise.allSettled([...this.navigationWrites]);
+    await this.navigationStore.clear();
+    const keeper = this.privateKeeper && !this.privateKeeper.closed
+      ? this.privateKeeper : await this.createThreadPage(randomUUID());
+    this.privateKeeper = keeper;
+    for (const page of previous) {
+      if (page === keeper) continue;
+      const closed = await this.requireBrowser().send<{ success?: boolean }>("Target.closeTarget", { targetId: page.targetId });
+      if (closed.success !== true) throw new ChromeRuntimeError("CHROME_PRIVATE_INPUT_CLOSE", "Private page closure could not be verified.");
+      await this.closeThreadPage(page);
+      this.threadPages.delete(page.threadId);
+    }
+    this.pointerTrails.clear();
+    await Promise.allSettled([...this.navigationWrites]);
+    await this.navigationStore.clear();
+    this.privateRequest = null;
+    keeper.privateInputProtected = false;
+    await this.navigationStore.setPrivateInputActive(false);
+    this.privateInput = false;
+  }
+
   async readPage(threadId: string): Promise<BrowserPageSnapshot> {
     const marker = `aibrain-${threadId.replaceAll("-", "")}`;
     this.assertAgentControl();
@@ -1104,6 +1258,7 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
     await this.withThreadPageRecovery(threadId, async (page) => {
       this.assertAgentControl();
       const nodeId = await this.querySelector(page, safeSelector);
+      await this.actionResource(page, { action: "type", selector: safeSelector });
       const browser = this.requireBrowser();
       await browser.send("DOM.focus", { nodeId }, { sessionId: page.sessionId });
       if (clear) {
@@ -1281,6 +1436,8 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
           name: name.slice(0, 240),
           href: element instanceof HTMLAnchorElement ? element.href : '',
           inputType: element instanceof HTMLInputElement ? element.type : '',
+          sensitive: element instanceof HTMLInputElement && (element.type === 'password' || element.autocomplete === 'one-time-code' ||
+            /(?:^|[\\s_-])(?:password|passcode|otp(?:code)?|one.?time(?:.?code)?|verification.?code|codi|pin(?:code)?)(?:$|[\\s_-]|\\d)/i.test([element.name, element.id, element.autocomplete].join(' '))),
         };
       })()`,
       returnByValue: true,
@@ -1291,6 +1448,9 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
       throw new ChromeRuntimeError("CHROME_ACTION_EVIDENCE_UNAVAILABLE", "Browser action evidence is unavailable.");
     }
     const value = evaluated.result.value;
+    if (command.action === "type" && value.sensitive === true) {
+      throw new ChromeRuntimeError("CHROME_PRIVATE_INPUT_REQUIRED", "Passwords and codes require secure_input; they cannot be typed by the model.");
+    }
     if (value.missing) {
       throw new ChromeRuntimeError("CHROME_ELEMENT_NOT_FOUND", "Browser selector did not match an element.");
     }
@@ -1529,6 +1689,7 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
 
   private async startOnce() {
     await this.assertRoots();
+    this.privateInput = await this.navigationStore.privateInputActive();
     const executable = await resolveChromeExecutable(this.configuredExecutable);
     this.downloadQuarantine = await ensurePrivateSubdirectory(
       this.context.roots.browserRoot,
@@ -1923,6 +2084,7 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
         navigationPhase: "complete",
         navigationSequence: 0,
         closed: false,
+        privateInputProtected: this.privateInput,
       };
       await browser.send("Page.enable", {}, { sessionId });
       await browser.send("Network.enable", {
@@ -1994,6 +2156,12 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
         throw new ChromeRuntimeError("CHROME_NOT_RUNNING", "Chrome stopped while creating a thread target.");
       }
       this.threadPages.set(threadId, page);
+      if (!this.privateInput && this.privateKeeper && this.privateKeeper !== page) {
+        const keeper = this.privateKeeper;
+        this.privateKeeper = null;
+        await this.closeThreadPage(keeper);
+        this.threadPages.delete(keeper.threadId);
+      }
       return page;
     } catch (error) {
       page?.fetchUnsubscribe?.();
@@ -2050,6 +2218,9 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
   }
 
   private assertAgentControl() {
+    if (this.privateInput) {
+      throw new ChromeRuntimeError("CHROME_PRIVATE_INPUT_ACTIVE", "Private input is employee-only. Finish on screen and return control before using agent browser tools.");
+    }
     if (this.takenOver) {
       throw new ChromeRuntimeError(
         "CHROME_HUMAN_CONTROL_ACTIVE",
@@ -2059,7 +2230,7 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
   }
 
   private async persistNavigation(page: ThreadPage, url: string) {
-    if (page.closed) return;
+    if (page.closed || this.privateInput) return;
     try {
       await this.navigationStore.set(page.threadId, url);
       if (!page.closed) this.lastNavigationFailure = null;
@@ -2269,6 +2440,8 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
   }
 
   private registerDownload(page: ThreadPage, value: unknown) {
+    // Private-session downloads never become model-visible metadata or artifacts.
+    if (this.privateInput || page.privateInputProtected) return;
     if (!value || typeof value !== "object" || Array.isArray(value)) return;
     const record = value as Record<string, unknown>;
     const guid = record.guid;
@@ -2379,6 +2552,10 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
         "Completed Chrome download is not a private regular quarantine file.",
       );
     }
+    if (this.privateInput || page.privateInputProtected || page.closed) {
+      await unlink(source).catch(() => undefined);
+      throw new ChromeRuntimeError("CHROME_PRIVATE_DOWNLOAD", "Private-page downloads cannot be exposed to the agent.");
+    }
     await assertPrivateDirectory(this.context.roots.browserRoot, page.downloadsPath, "thread downloads root");
     const parsed = path.parse(fileName);
     const alternatives = [
@@ -2388,7 +2565,12 @@ export class ChromeCdpRuntime implements ApprovalBoundManagedBrowserRuntime {
     for (const candidate of alternatives) {
       const destination = path.join(page.downloadsPath, candidate);
       try {
+        if (this.privateInput || page.privateInputProtected || page.closed) throw new ChromeRuntimeError("CHROME_PRIVATE_DOWNLOAD", "Private download is fenced.");
         await link(source, destination);
+        if (this.privateInput || page.privateInputProtected || page.closed) {
+          await unlink(destination);
+          throw new ChromeRuntimeError("CHROME_PRIVATE_DOWNLOAD", "Private download is fenced.");
+        }
         await chmod(destination, 0o600);
         await unlink(source);
         return metadata.size;

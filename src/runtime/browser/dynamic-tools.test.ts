@@ -157,8 +157,33 @@ describe("closed browser dynamic tools", () => {
       name: "aibrain_browser",
     });
     expect((BROWSER_DYNAMIC_TOOLS[0] as { tools: Array<{ name: string }> }).tools.map(({ name }) => name))
-      .toEqual(["capabilities", "open", "read", "screenshot", "scroll", "click", "type", "tabs", "downloads"]);
+      .toEqual(["secure_input", "capabilities", "open", "read", "screenshot", "scroll", "click", "type", "tabs", "downloads"]);
     expect(BROWSER_DYNAMIC_TOOLS[0]?.description).toContain("without interactive approval");
+  });
+
+  it("creates a replay-safe private request with no secret-valued arguments, response, call record or audit", async () => {
+    const { userRoot, approvalStore } = await fixture();
+    const callStore = new BrowserToolCallStore({ userRoot });
+    const execute = vi.fn(async (_input: ExecutedBrowserCommand) => ({ id: "11a11111-1111-4111-8111-111111111199", threadId: BROWSER_THREAD_A,
+      preset: "login", origin: "https://example.test", expiresAt: "2099-01-01T00:00:00.000Z", phase: "form" }));
+    const ctx = context(approvalStore, execute, [], { callStore });
+    const input = request("secure_input", { preset: "login" });
+    const first = await handleBrowserDynamicToolCall(input, ctx);
+    expect(first.success).toBe(true);
+    expect(await handleBrowserDynamicToolCall(input, ctx)).toEqual(first);
+    expect(execute).toHaveBeenCalledOnce();
+    expect(execute.mock.calls[0]?.[0]?.command).toEqual({ action: "secure_input", preset: "login" });
+    expect(ctx.prepare).not.toHaveBeenCalled();
+    const deniedExecute = vi.fn(async () => null);
+    const denied = await handleBrowserDynamicToolCall(request("secure_input", { preset: "otp" }, { callId: "denied-private" }),
+      context(approvalStore, deniedExecute, [], { permissions: permissions(false) }));
+    expect(denied.success).toBe(false);
+    expect(deniedExecute).not.toHaveBeenCalled();
+    await expect(handleBrowserDynamicToolCall(request("secure_input", { preset: "login", password: "synthetic-private-sentinel" }), ctx))
+      .rejects.toMatchObject({ code: "BROWSER_TOOL_ARGUMENTS_INVALID" });
+    const records = (await readdir(callStore.recordsRoot)).filter(name => name.endsWith(".json"));
+    const saved = await Promise.all(records.map(name => readFile(path.join(callStore.recordsRoot, name), "utf8")));
+    expect(JSON.stringify([first, saved, await callStore.readAudit()])).not.toContain("synthetic-private-sentinel");
   });
 
   it("runs permissioned reads without approval and returns the durable cached result on replay", async () => {
@@ -197,7 +222,7 @@ describe("closed browser dynamic tools", () => {
     const callStore = new BrowserToolCallStore({ userRoot });
     const execute = vi.fn(async () => ({
       schemaVersion: 1,
-      agentTools: ["capabilities", "open", "read", "screenshot", "scroll", "click", "type", "tabs", "downloads"],
+      agentTools: ["secure_input", "capabilities", "open", "read", "screenshot", "scroll", "click", "type", "tabs", "downloads"],
       viewerControls: ["url", "back", "forward", "reload", "continuous-scroll", "fullscreen"],
       notes: {
         fullscreen: "Fullscreen is a viewer control available to the employee, not an agent page mutation.",

@@ -58,3 +58,14 @@ Manual `clean_build=true` retains a no-cache diagnostic path. This changes CI
 construction only; GHCR publication, deployment and authenticated acceptance
 remain independent and unproven by a cache hit. See the release runbook for
 cache scope, timeouts and evidence boundaries.
+
+## Secure Input (2026-10-12)
+
+The private card is integrated with chat and the employee browser through a
+separate authenticated same-origin route. The model requests a preset only;
+passwords/codes go directly to server-bound browser nodes. A durable per-employee
+privacy fence blocks all agent browser observation and mutations until the
+employee returns control, closing private pages while retaining their profile.
+See [SECURE_INPUT.md](SECURE_INPUT.md) for the supported forms, restart behavior,
+manual fallback, validation and release boundaries. Payment-card entry remains
+preview-only. This implementation does not publish or deploy a release.

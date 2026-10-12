@@ -1,4 +1,5 @@
 "use client";
+import { PrivateBrowserInput } from "@/components/private-browser-input";
 import { MAX_FILES_PER_MESSAGE } from "@/lib/chat-attachment-limits";
 import { useUiLocale, useUiText } from "@/i18n/provider";
 
@@ -19,6 +20,7 @@ import {
   File as FileIcon,
   Image as ImageIcon,
   ImagesSquare,
+  ListChecks,
   Plus,
   SpinnerGap,
   Stop,
@@ -165,6 +167,19 @@ function nextEnabledConnectorIndex(
     if (options[index]?.canRead || options[index]?.connectUrl) return index;
   }
   return Math.max(0, Math.min(current, options.length - 1));
+}
+
+type SlashCommand = { id: "pla" | "fitxer" | "eines" | "imatge" | "servidor" | "esforc" | "projecte" | "atura"; label: string; detail: string };
+
+/** "/" opens commands only as the first thing typed, up to the caret. */
+function slashQueryAt(text: string, caret: number) {
+  const match = /^\/([\p{L}·]*)$/u.exec(text.slice(0, caret));
+  return match ? match[1].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("ca") : null;
+}
+
+/** Effort as three pixel bars: quick, normal, deep. */
+function EffortBars({ level }: { level: 1 | 2 | 3 }) {
+  return <span className="composer-effort-bars" aria-hidden="true">{[1, 2, 3].map((bar) => <i key={bar} data-on={bar <= level} />)}</span>;
 }
 
 function ComposerPicker({
@@ -556,6 +571,10 @@ export function ChatWorkspace({
   const [catalogActiveIndex, setCatalogActiveIndex] = useState(0);
   const [composerMultiline, setComposerMultiline] = useState(false);
   const [composerFocused, setComposerFocused] = useState(false);
+  const neska = branding?.visualTheme === "neska";
+  const [planFirst, setPlanFirst] = useState(false);
+  const [slashActiveIndex, setSlashActiveIndex] = useState(0);
+  const [slashDismissed, setSlashDismissed] = useState(false);
   const [restoringThreadId, setRestoringThreadId] = useState<string | null>(null);
   const restoringRequest = Boolean(thread && restoringThreadId === thread.id);
   const restoreControllerRef = useRef<AbortController | null>(null);
@@ -834,6 +853,52 @@ export function ChatWorkspace({
   };
   const selectCatalogConnector = (mention: ConnectorMention) => insertMention(mention, composerCaretRef.current, composerSelectionEndRef.current);
 
+  // Neska: everything the old toggles did is one "/" away; buttons stay as doors to the same actions.
+  const slashQuery = neska && !composing && !slashDismissed ? slashQueryAt(prompt, composerCaret) : null;
+  const slashCommands: SlashCommand[] = !neska ? [] : [
+    ...(onPlanRequest && !sending ? [{ id: "pla" as const, label: "/pla", detail: t("Muéstrame el plan antes de empezar") }] : []),
+    ...((canAttachImages || canAttachDocuments) && !sending && !documentUploading ? [{ id: "fitxer" as const, label: "/fitxer", detail: t("Adjuntar archivos") }] : []),
+    ...(!sending ? [{ id: "eines" as const, label: "/eines", detail: t("Usar una herramienta o un conector") }] : []),
+    ...(canGenerateImages && !sending ? [{ id: "imatge" as const, label: "/imatge", detail: t("Crear imagen") }] : []),
+    ...(project && onServerReferencesChange && !sending ? [{ id: "servidor" as const, label: "/servidor", detail: t("Añadir archivos del servidor") }] : []),
+    ...(!sending ? [{ id: "esforc" as const, label: "/esforç", detail: t("Cambiar cuánto piensa") }] : []),
+    ...(!hasMessages && !sending ? [{ id: "projecte" as const, label: "/projecte", detail: t("Elegir el proyecto") }] : []),
+    ...(sending && !stopping ? [{ id: "atura" as const, label: "/atura", detail: t("Detener la tarea en curso") }] : []),
+  ];
+  const slashOptions = slashQuery === null ? [] : slashCommands.filter((command) => command.id.startsWith(slashQuery) || command.label.slice(1).normalize("NFD").replace(/[\u0300-\u036f]/g, "").startsWith(slashQuery));
+  const slashOpen = slashQuery !== null && composerFocused;
+  const visibleSlashActiveIndex = Math.min(slashActiveIndex, Math.max(slashOptions.length - 1, 0));
+  const runSlashCommand = (command: SlashCommand) => {
+    const rest = prompt.slice(composerCaretRef.current).replace(/^\s+/u, "");
+    const textarea = composerRef.current;
+    if (textarea) {
+      textarea.value = rest;
+      textarea.setSelectionRange(0, 0);
+      syncCaret(textarea);
+    }
+    changeComposerText(rest);
+    setSlashActiveIndex(0);
+    switch (command.id) {
+      case "pla": setPlanFirst(true); break;
+      case "fitxer": fileInputRef.current?.click(); break;
+      case "eines": openAuthorizedConnectors(composerAddButtonRef.current); break;
+      case "imatge": onImageGenerationChange(true); break;
+      case "servidor": serverReturnFocusRef.current = composerAddButtonRef.current; setServerOpenKey(serverSelectionKey); break;
+      case "esforc": setComposerPickerOpen("experience"); break;
+      case "projecte": setComposerPickerOpen("destination"); break;
+      case "atura": onStop(); break;
+    }
+  };
+  const submitComposer = () => {
+    jumpToBottom();
+    if (planFirst && onPlanRequest && prompt.trim()) {
+      setPlanFirst(false);
+      onPlanRequest();
+      return;
+    }
+    onSend();
+  };
+
   useEffect(() => {
     if (!composerMenuOpen && !composerPickerOpen && !mentionOpen && !connectorCatalogOpen) return;
     const closeOnOutside = (event: PointerEvent) => {
@@ -1012,6 +1077,7 @@ export function ChatWorkspace({
             <div className="h-8" aria-hidden="true" />
           </div>
         ) : <section className={`chat-empty-state mx-auto min-h-full w-full ${composerEngaged ? "chat-empty-state-engaged" : ""}`} aria-label={t("Conversación vacía")} />}
+        {hydrated && thread && !readOnly ? <div className={`mx-auto w-full max-w-[768px] px-5 md:px-8 ${!hasMessages ? "absolute inset-x-0 top-16 z-20 max-h-[calc(100dvh-5rem)] overflow-y-auto bg-[var(--surface)]" : ""}`}><PrivateBrowserInput key={thread.id} threadId={thread.id} onOpenBrowser={onOpenBrowser} /></div> : null}
       </div>
 
       {readOnly ? (
@@ -1047,7 +1113,7 @@ export function ChatWorkspace({
             data-testid="composer"
             data-layout={hasMessages ? "conversation" : "landing"}
             data-focused={composerFocused ? "true" : "false"}
-            className={`composer-shadow relative flex flex-col rounded-2xl border bg-[var(--surface-raised)] p-2 ${hasMessages ? "composer-conversation" : "composer-landing"} ${composerFocused ? "composer-focused" : ""} ${hasMessages && !composerMultiline && !attachments.length && !documents.length && !serverReferences.length && !imageGeneration ? "composer-compact" : ""} ${dragActive ? "border-[var(--border-strong)] ring-2 ring-[var(--border)]" : "border-transparent"}`}
+            className={`composer-shadow relative flex flex-col rounded-2xl border bg-[var(--surface-raised)] p-2 ${hasMessages ? "composer-conversation" : "composer-landing"} ${composerFocused ? "composer-focused" : ""} ${!neska && hasMessages && !composerMultiline && !attachments.length && !documents.length && !serverReferences.length && !imageGeneration ? "composer-compact" : ""} ${dragActive ? "border-[var(--border-strong)] ring-2 ring-[var(--border)]" : "border-transparent"}`}
             onPaste={(event) => {
               if (!event.clipboardData.files.length) return;
               event.preventDefault();
@@ -1064,23 +1130,38 @@ export function ChatWorkspace({
               <div ref={composerMenuRef} id="composer-add-menu" role="menu" aria-label={t("Añadir al mensaje")} className={`absolute inset-x-0 z-30 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-2 shadow-[var(--shadow-lg)] ${hasMessages ? "bottom-full mb-2 origin-bottom" : "top-full mt-2 origin-top"}`} onKeyDown={onComposerMenuKeyDown}>
                 {(canAttachImages || canAttachDocuments) ? <button role="menuitem" tabIndex={-1} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] hover:bg-[var(--surface-hover)] active:scale-[.99]" disabled={sending || documentUploading} onClick={() => { setComposerMenuOpen(false); fileInputRef.current?.click(); }}><TriggerIcon icon={AttachFileIcon} size={17} />{t("Adjuntar archivos")}</button> : null}
                 {canGenerateImages ? <button role="menuitemcheckbox" tabIndex={-1} aria-checked={imageGeneration} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] hover:bg-[var(--surface-hover)] active:scale-[.99] disabled:opacity-45" disabled={sending} onClick={() => { onImageGenerationChange(!imageGeneration); setComposerMenuOpen(false); requestAnimationFrame(() => composerAddButtonRef.current?.focus()); }}><ImagesSquare size={17} /><span className="min-w-0 flex-1">{t("Crear imagen")}</span>{imageGeneration ? <Check size={13} weight="bold" /> : null}</button> : null}
-                <button role="menuitem" tabIndex={-1} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] hover:bg-[var(--surface-hover)] active:scale-[.99] disabled:opacity-45" disabled={sending} onClick={() => openAuthorizedConnectors(composerAddButtonRef.current)}><TriggerIcon icon={AtSignIcon} size={17} />{t("Tools")}</button>
+                    {neska && onPlanRequest ? <button role="menuitemcheckbox" tabIndex={-1} aria-checked={planFirst} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] hover:bg-[var(--surface-hover)] disabled:opacity-45" disabled={sending} onClick={() => { setPlanFirst(!planFirst); setComposerMenuOpen(false); requestAnimationFrame(() => composerRef.current?.focus({ preventScroll: true })); }}><ListChecks size={17} /><span className="min-w-0 flex-1">{t("Primero el plan")}</span>{planFirst ? <Check size={13} weight="bold" /> : null}</button> : null}
+                    <button role="menuitem" tabIndex={-1} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] hover:bg-[var(--surface-hover)] active:scale-[.99] disabled:opacity-45" disabled={sending} onClick={() => openAuthorizedConnectors(composerAddButtonRef.current)}><TriggerIcon icon={AtSignIcon} size={17} />{t("Tools")}</button>
                 <button role="menuitem" tabIndex={-1} className="touch-target flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[var(--text)] disabled:opacity-45" disabled={!project || sending || !onServerReferencesChange} onClick={() => { serverReturnFocusRef.current = composerAddButtonRef.current; setComposerMenuOpen(false); setServerOpenKey(serverSelectionKey); }}><FileIcon size={17} />{t("Server")}</button>
               </div>
             ) : null}
             {serverOpen && project && onServerReferencesChange ? <ServerPicker key={project.id + (thread?.id ?? "")} projectId={project.id} selected={serverReferences} onSelect={onServerReferencesChange} onClose={() => setServerOpenKey(null)} returnFocus={serverReturnFocusRef} /> : null}
-            {serverReferences.length ? <div className="flex flex-wrap gap-2 px-2 py-1" aria-label={t("Referencias Server")}>{serverReferences.map(item => <span key={item.path} title={item.path} className="flex max-w-full items-center gap-2 rounded-lg bg-[var(--surface-hover)] px-2 py-1 text-xs"><FileIcon size={14}/><span className="truncate">{item.name}{item.kind === "directory" ? " · carpeta" : ""}</span><button type="button" aria-label={t("Quitar referencia {p0}", { p0: item.name })} className="touch-target" onClick={() => onServerReferencesChange?.(serverReferences.filter(ref => ref.path !== item.path))}><X size={14}/></button></span>)}</div> : null}
+                <div className="composer-context contents" aria-label={neska ? t("Lo que se enviará con el mensaje") : undefined}>
+                {neska && !hasMessages ? <span className="composer-context-project"><span className="neska-px">{t("Proyecto")}</span><ComposerPicker
+                  ariaLabel={t("Destino de la conversación")}
+                  value={project?.id ?? ""}
+                  valueLabel={noProject ? t("Sin proyecto") : project?.name ?? t("Proyecto")}
+                  options={destinationOptions}
+                  open={composerPickerOpen === "destination"}
+                  placement="below"
+                  className="composer-destination"
+                  disabled={sending}
+                  onOpenChange={(open) => { setComposerMenuOpen(false); setMentionOpen(false); setConnectorCatalogOpen(false); setComposerPickerOpen(open ? "destination" : null); }}
+                  onSelect={onDestinationChange}
+                /></span> : null}
+                {planFirst ? <span className="composer-mode-chip"><span className="neska-px">{t("Primero el plan")}</span><button type="button" aria-label={t("Quitar {p0}", { p0: t("Primero el plan") })} className="composer-chip-remove touch-target" onClick={() => { setPlanFirst(false); composerRef.current?.focus({ preventScroll: true }); }}><X size={10} /></button></span> : null}
+                {serverReferences.length ? <div className="flex flex-wrap gap-2 px-2 py-1" aria-label={t("Referencias Server")}>{serverReferences.map(item => <span key={item.path} title={item.path} className="composer-chip flex max-w-full items-center gap-2 rounded-lg bg-[var(--surface-hover)] px-2 py-1 text-xs"><FileIcon size={14}/><span className="truncate">{item.name}{item.kind === "directory" ? " · carpeta" : ""}</span><button type="button" aria-label={t("Quitar referencia {p0}", { p0: item.name })} className="touch-target" onClick={() => onServerReferencesChange?.(serverReferences.filter(ref => ref.path !== item.path))}><X size={14}/></button></span>)}</div> : null}
             {attachments.length || documents.length ? (
               <div className="flex gap-2 overflow-x-auto px-2 pb-1 pt-1">
                 {attachments.map((attachment) => (
-                  <div key={attachment.id} className="group/attachment flex min-w-0 max-w-56 shrink-0 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-1.5">
+                  <div key={attachment.id} className="composer-chip group/attachment flex min-w-0 max-w-56 shrink-0 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-1.5">
                     <span className="grid size-6 shrink-0 place-items-center rounded-md bg-[var(--surface-raised)] text-[var(--text-muted)]"><NextImage unoptimized src={attachment.dataUrl} width={32} height={32} alt={t("Vista previa de {p0}", { p0: attachment.name })} className="size-6 object-contain" /></span>
                     <span className="min-w-0"><span className="block truncate text-[12px] font-medium text-[var(--text-secondary)]">{attachment.name}</span><span className="block text-[11px] text-[var(--text-subtle)]">{t("Lista ·")}{" "}{Math.ceil(attachment.size / 1024)} {" "}{t("KB")}</span></span>
                     <button type="button" aria-label={t("Quitar {p0}", { p0: attachment.name })} className="touch-target ml-auto grid size-5 shrink-0 place-items-center rounded-md text-[var(--text-subtle)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]" onClick={() => onAttachmentsChange(attachments.filter((item) => item.id !== attachment.id))}><X size={10} /></button>
                   </div>
                 ))}
                 {documents.map((document) => (
-                  <div key={document.uploadId} className={`group/attachment flex min-w-0 max-w-64 shrink-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 ${document.status === "error" ? "border-[var(--danger)] bg-[var(--danger-soft)]" : "border-[var(--border)] bg-[var(--surface-muted)]"}`}>
+                  <div key={document.uploadId} data-state={document.status} className={`composer-chip group/attachment flex min-w-0 max-w-64 shrink-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 ${document.status === "error" ? "border-[var(--danger)] bg-[var(--danger-soft)]" : "border-[var(--border)] bg-[var(--surface-muted)]"}`}>
                     <span className="grid size-6 shrink-0 place-items-center rounded-md bg-[var(--surface-raised)] text-[var(--text-muted)]">{document.kind === "image" && document.status === "ready" && document.previewFiles[0] ? <NextImage unoptimized src={document.previewFiles[0].url} width={32} height={32} alt={t("Vista previa de {p0}", { p0: document.name })} className="size-6 object-contain" /> : document.status === "uploading" ? <SpinnerGap size={12} className="motion-safe:animate-spin" /> : <FileIcon size={12} />}</span>
                     <span className="min-w-0"><span className="block truncate text-[12px] font-medium text-[var(--text-secondary)]">{document.name}</span><span className={`block truncate text-[11px] ${document.status === "error" ? "text-[var(--danger)]" : "text-[var(--text-subtle)]"}`}>{document.status === "uploading" ? t("Preparando vista previa…") : document.status === "error" ? document.error : document.processingUnavailable ? t("Original guardado · procesamiento no disponible") : document.passive ? t("Copia pasiva · datos sin verificar") : document.previewUnavailable ? t("Guardado · vista previa no disponible") : `Lista · ${document.kind.toUpperCase()}${document.pages ? t(" · {p0} pág.", { p0: document.pages }) : ""}`}</span></span>
                     {document.status === "ready" && document.previewFiles[0] ? <a href={document.previewFiles[0].url} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-[var(--brain-accent)] hover:underline">{t("Abrir")}</a> : null}
@@ -1090,9 +1171,10 @@ export function ChatWorkspace({
               </div>
             ) : null}
             {imageGeneration ? <div className="flex px-2 pt-1" aria-label={t("Generación de imágenes activada")}>
-              <span className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-2 py-1 text-[11px] text-[var(--text-secondary)]"><ImagesSquare size={11} />{t("Crear imagen")}<button type="button" aria-label={t("Desactivar generación de imágenes")} disabled={sending} className="touch-target grid place-items-center rounded-full hover:bg-[var(--surface-raised)] disabled:opacity-40" onClick={() => onImageGenerationChange(false)}><X size={10} /></button></span>
+              <span className="composer-chip composer-mode-chip flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-2 py-1 text-[11px] text-[var(--text-secondary)]"><ImagesSquare size={11} />{t("Crear imagen")}<button type="button" aria-label={t("Desactivar generación de imágenes")} disabled={sending} className="touch-target grid place-items-center rounded-full hover:bg-[var(--surface-raised)] disabled:opacity-40" onClick={() => onImageGenerationChange(false)}><X size={10} /></button></span>
             </div> : null}
-            {restoringRequest ? <p className="px-3 py-2 text-xs text-[var(--text-secondary)]" role="status">{t("Recuperando solicitud…")}</p> : documents.some((document) => document.status === "error") ? <p className="px-3 py-2 text-xs text-[var(--danger)]" role="alert">{t("Hay archivos no disponibles. Vuelve a adjuntarlos o quítalos antes de enviar.")}</p> : null}
+                </div>
+                {restoringRequest ? <p className="px-3 py-2 text-xs text-[var(--text-secondary)]" role="status">{t("Recuperando solicitud…")}</p> : documents.some((document) => document.status === "error") ? <p className="px-3 py-2 text-xs text-[var(--danger)]" role="alert">{t("Hay archivos no disponibles. Vuelve a adjuntarlos o quítalos antes de enviar.")}</p> : null}
             <div
               ref={composerMeasurementRef}
               aria-hidden="true"
@@ -1105,15 +1187,15 @@ export function ChatWorkspace({
               ref={composerRef}
               aria-label={t("Mensaje")}
               aria-autocomplete="list"
-              aria-controls={mentionOpen ? "connector-mention-options" : undefined}
-              aria-activedescendant={mentionOpen && activeMentionOption ? connectorOptionId("mention", activeMentionOption.id) : undefined}
+aria-controls={slashOpen ? "composer-slash-options" : mentionOpen ? "connector-mention-options" : undefined}
+                  aria-activedescendant={slashOpen && slashOptions[visibleSlashActiveIndex] ? `composer-slash-${slashOptions[visibleSlashActiveIndex].id}` : mentionOpen && activeMentionOption ? connectorOptionId("mention", activeMentionOption.id) : undefined}
               autoFocus={false}
               className={`composer-textarea max-h-52 w-full resize-none overflow-y-auto bg-transparent px-2.5 py-2.5 text-[14px] leading-[24px] text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)] ${hasMessages ? "min-h-8" : "min-h-12"}`}
               style={hasInlineMentions ? { color: "transparent", caretColor: "var(--text)" } : undefined}
-              placeholder={imageGeneration ? t("Describe la imagen que quieres crear…") : t("Escribe a {name}…", { name: placeholderName })}
+placeholder={imageGeneration ? t("Describe la imagen que quieres crear…") : neska ? (!networkOnline ? t("Sin conexión. Puedes seguir escribiendo.") : sending ? t("Añade contexto mientras trabajo…") : hasMessages ? t("Añade contexto o pide un cambio…") : t("¿Qué quieres que haga?")) : t("Escribe a {name}…", { name: placeholderName })}
               rows={1}
               defaultValue={prompt}
-              onChange={(event) => { changeComposerText(event.target.value); syncCaret(event.target); setConnectorCatalogOpen(false); setMentionActiveIndex(0); const inputType = (event.nativeEvent as InputEvent).inputType ?? ""; setMentionOpen(!inputType.startsWith("delete") && Boolean(mentionQueryAt(event.target.value, event.target.selectionStart))); }}
+onChange={(event) => { changeComposerText(event.target.value); syncCaret(event.target); setConnectorCatalogOpen(false); setMentionActiveIndex(0); setSlashDismissed(false); setSlashActiveIndex(0); const inputType = (event.nativeEvent as InputEvent).inputType ?? ""; setMentionOpen(!inputType.startsWith("delete") && Boolean(mentionQueryAt(event.target.value, event.target.selectionStart))); }}
               onSelect={(event) => syncCaret(event.currentTarget)}
               onClick={(event) => { syncCaret(event.currentTarget); setMentionOpen(Boolean(mentionQueryAt(event.currentTarget.value, event.currentTarget.selectionStart))); }}
               onScroll={(event) => { if (mentionOverlayRef.current) mentionOverlayRef.current.scrollTop = event.currentTarget.scrollTop; }}
@@ -1121,8 +1203,32 @@ export function ChatWorkspace({
               onCompositionEnd={(event) => { setComposing(false); syncCaret(event.currentTarget); }}
               onBlur={() => setMentionOpen(false)}
               onKeyDown={(event) => {
-                if (event.nativeEvent.isComposing || event.keyCode === 229) return;
-                if (mentionOpen) {
+                    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+                    if (slashOpen) {
+                      if ((event.key === "ArrowDown" || event.key === "ArrowUp") && slashOptions.length) {
+                        event.preventDefault();
+                        const step = event.key === "ArrowDown" ? 1 : -1;
+                        setSlashActiveIndex((visibleSlashActiveIndex + step + slashOptions.length) % slashOptions.length);
+                        return;
+                      }
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setSlashDismissed(true);
+                        return;
+                      }
+                      if ((event.key === "Enter" || event.key === "Tab") && slashOptions[visibleSlashActiveIndex]) {
+                        event.preventDefault();
+                        runSlashCommand(slashOptions[visibleSlashActiveIndex]);
+                        return;
+                      }
+                    }
+                    if (event.key === "Backspace" && planFirst && !prompt && event.currentTarget.selectionStart === 0) {
+                      event.preventDefault();
+                      setPlanFirst(false);
+                      return;
+                    }
+                    if (mentionOpen) {
                   if (event.key === "ArrowDown" && mentionOptions.length) {
                     event.preventDefault();
                     setMentionActiveIndex((current) => (current + 1) % Math.max(mentionOptions.length, 1));
@@ -1147,14 +1253,19 @@ export function ChatWorkspace({
                 }
                 if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault();
-                  if (!documentUploading && !documentsBlocked && hasSendableContent && runtimeReady) {
-                    jumpToBottom();
-                    onSend();
-                  }
+                      if (!documentUploading && !documentsBlocked && hasSendableContent && runtimeReady) submitComposer();
                 }
               }}
             />
-            {mentionOpen && mentionQuery !== null ? <ConnectorPopover anchor={composerRef} caret={composerCaret}><div id="connector-mention-options" role="listbox" aria-label={t("Conectores disponibles")} className="max-h-[inherit] overflow-y-auto overscroll-contain outline-none">
+                {slashOpen ? <div id="composer-slash-options" role="listbox" aria-label={t("Órdenes")} className={`composer-slash-menu absolute inset-x-0 z-30 ${hasMessages ? "bottom-full" : "top-full"}`} onClick={(event) => {
+                  const id = (event.target as HTMLElement).closest("[data-command]")?.getAttribute("data-command");
+                  const command = slashOptions.find((option) => option.id === id);
+                  if (command) runSlashCommand(command);
+                }}>
+                  {slashOptions.length ? slashOptions.map((command, index) => <button key={command.id} id={`composer-slash-${command.id}`} type="button" role="option" tabIndex={-1} aria-selected={index === visibleSlashActiveIndex} className="composer-slash-option" onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setSlashActiveIndex(index)} data-command={command.id}><span className="composer-slash-label">{command.label}</span><span className="composer-slash-detail">{command.detail}</span></button>) : <p className="composer-slash-empty">{t("Ninguna orden empieza así.")}</p>}
+                  <p className="composer-slash-keys" aria-hidden="true"><span><kbd>↑↓</kbd> {t("elige")}</span><span><kbd>⏎</kbd> {t("hazlo")}</span><span><kbd>esc</kbd> {t("cierra")}</span></p>
+                </div> : null}
+                {mentionOpen && mentionQuery !== null ? <ConnectorPopover anchor={composerRef} caret={composerCaret}><div id="connector-mention-options" role="listbox" aria-label={t("Conectores disponibles")} className="max-h-[inherit] overflow-y-auto overscroll-contain outline-none">
               {mentionOptions.length ? mentionOptions.map((mention, index) => <button key={mention.id} id={connectorOptionId("mention", mention.id)} type="button" role="option" aria-selected={index === visibleMentionActiveIndex} tabIndex={-1} disabled={(!mention.canRead && !mention.connectUrl) || sending} className={`touch-target flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-[var(--text)] ${index === visibleMentionActiveIndex ? "bg-[var(--surface-selected)]" : "hover:bg-[var(--surface-hover)]"} disabled:cursor-not-allowed disabled:opacity-55`} onMouseDown={(event) => event.preventDefault()} onMouseMove={() => setMentionActiveIndex(index)} onClick={() => selectConnectorMention(mention)}><ConnectorLogo id={mention.id} /><span className="min-w-0 flex-1"><span className="block truncate font-medium">{mention.label}</span><span className="mt-0.5 block truncate text-[11px] text-[var(--text-subtle)]">{connectorPresentation(mention.id).description}</span></span><span className="text-[11px] text-[var(--text-subtle)]">{mention.status === "connected" ? mention.requiresApprovalForWrites ? t("conectado · escritura con aprobación") : "conectado" : mention.status === "requires_login" ? t("Conectar") : mention.status === "admin_setup_required" ? t("falta configuración administrativa") : t("no disponible")}</span>{selectedConnectorMentionIds.includes(mention.id) ? <Check size={13} weight="bold" aria-label={t("Seleccionado")} /> : null}</button>) : <p className="px-3 py-2 text-[12px] text-[var(--text-subtle)]">{t("No hay conectores autorizados que coincidan.")}</p>}
             </div></ConnectorPopover> : null}
             {connectorCatalogOpen ? <ConnectorPopover anchor={connectorTriggerRef} triggerAligned avoidOverlapWith={composerShellRef}><>
@@ -1192,26 +1303,31 @@ export function ChatWorkspace({
                 {canAttachImages || canAttachDocuments ? <input ref={fileInputRef} aria-label={t("Seleccionar archivos para adjuntar")} className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.docx,.xlsx,.xls,.xlsm,.pptx,.txt,.md,.csv,.json" multiple tabIndex={-1} onChange={(event) => void addFiles(event.target.files)} /> : null}
               </div>
               <div className="composer-controls-end flex shrink-0 items-center gap-2">
-                {onPlanRequest ? <button type="button" className="min-h-11 px-2 text-xs text-[var(--text-secondary)]" disabled={sending || !prompt.trim() || !project} onClick={onPlanRequest}>{t("Planifica")}</button> : null}
+{onPlanRequest && !neska ? <button type="button" className="min-h-11 px-2 text-xs text-[var(--text-secondary)]" disabled={sending || !prompt.trim() || !project} onClick={onPlanRequest}>{t("Planifica")}</button> : null}
                 <ComposerPicker
                   ariaLabel={t("Experiencia")}
                   value={composerExperience}
-                  valueLabel={composerExperience === "fast" ? t("Rápido") : composerExperience === "expert" ? t("Experto") : t("Inteligente")}
-                  options={[
+                  valueLabel={composerExperience === "fast" ? t("Rápido") : composerExperience === "expert" ? t(neska ? "A fondo" : "Experto") : t(neska ? "Normal" : "Inteligente")}
+                  options={neska ? [
+                    { value: "fast", label: t("Rápido"), detail: t("Consultas y respuestas cortas"), icon: <EffortBars level={1} /> },
+                    { value: "smart", label: t("Normal"), detail: t("Redacción y trabajo del día a día"), icon: <EffortBars level={2} /> },
+                    { value: "expert", label: t("A fondo"), detail: t("Análisis largos y problemas complejos"), icon: <EffortBars level={3} /> },
+                  ] : [
                     { value: "fast", label: t("Rápido"), detail: t("Resúmenes breves y consultas") },
                     { value: "smart", label: t("Inteligente"), detail: t("Redacción y planificación diaria") },
                     { value: "expert", label: t("Experto"), detail: t("Análisis y problemas complejos") },
                   ]}
                   open={composerPickerOpen === "experience"}
                   placement={hasMessages ? "above" : "below"}
-                  align="end"
-                  anchor="controls"
+                  align={neska ? "start" : "end"}
+                  anchor={neska ? "self" : "controls"}
                   className="composer-experience"
-                  icon={<TriggerIcon icon={BrainIcon} size={15} />}
+                  icon={neska ? <EffortBars level={composerExperience === "fast" ? 1 : composerExperience === "expert" ? 3 : 2} /> : <TriggerIcon icon={BrainIcon} size={15} />}
                   disabled={sending}
                   onOpenChange={(open) => { setComposerMenuOpen(false); setMentionOpen(false); setConnectorCatalogOpen(false); setComposerPickerOpen(open ? "experience" : null); }}
                   onSelect={(value) => onComposerExperienceChange(value as ComposerExperience)}
                 />
+                {neska ? <span className="composer-hint" aria-hidden="true">{queueingMessage ? <><kbd>⏎</kbd> {t("lo tendré en cuenta en el siguiente paso")}</> : sending ? t("Puedes añadir contexto mientras trabajo") : <><kbd>⏎</kbd> {t("envía")} · <kbd>⇧⏎</kbd> {t("línea")} · <kbd>/</kbd> {t("órdenes")}</>}</span> : null}
                 <VoiceDictationControl
                   value={prompt}
                   disabled={!project || sending || documentUploading}
@@ -1223,6 +1339,7 @@ export function ChatWorkspace({
                   active={!thread && !sending && !readOnly}
                   aria-label={queueingMessage ? t("Añadir mensaje a la cola") : sending ? (stopping ? t("Deteniendo respuesta") : t("Detener respuesta")) : t("Enviar mensaje")}
                   aria-busy={(!queueingMessage && stopping) || undefined}
+                  data-kind={queueingMessage ? "queue" : sending ? "stop" : "send"}
                   className="composer-submit grid size-11 place-items-center rounded-xl bg-[var(--send-button)] text-[var(--send-button-text)] transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 sm:rounded-full"
                   disabled={queueingMessage ? !project || !runtimeReady || documentUploading || documentsBlocked : sending ? stopping : !project || !hasSendableContent || !runtimeReady || documentUploading || documentsBlocked}
                   onClick={() => {
@@ -1231,10 +1348,9 @@ export function ChatWorkspace({
                       else onStop();
                       return;
                     }
-                    jumpToBottom();
-                    onSend();
-                  }}
-                >
+                      submitComposer();
+                    }}
+                  >
                   <span key={queueingMessage ? "queue" : sending ? "stop" : "send"} className="composer-submit-icon" aria-hidden="true">
                     {queueingMessage ? <ArrowUp size={13} weight="bold" /> : sending ? <Stop size={11} weight="fill" /> : <ArrowUp size={13} weight="bold" />}
                   </span>
@@ -1242,7 +1358,7 @@ export function ChatWorkspace({
               </div>
             </div>
           </div>
-          {!hasMessages ? <div ref={landingBandRef} className="landing-band" aria-label={t("Opciones para empezar")}>
+{!hasMessages && !neska ? <div ref={landingBandRef} className="landing-band" aria-label={t("Opciones para empezar")}>
             <div className="landing-project"><FolderOpen size={15} aria-hidden="true" />
                 {!hasMessages ? (
                   <ComposerPicker

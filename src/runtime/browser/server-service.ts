@@ -1,4 +1,5 @@
 import "server-only";
+import type { PrivateInputPreset, PrivateInputValues } from "@/runtime/browser/secure-input-contract";
 
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
@@ -17,6 +18,7 @@ import {
   BrowserRegistryBackpressureError,
   BrowserRuntimeRegistry,
 } from "@/runtime/browser/registry";
+import { BrowserNavigationStore } from "@/runtime/browser/navigation-store";
 import { BrowserSessionStore } from "@/runtime/browser/state-store";
 import type {
   BrowserFrame,
@@ -778,6 +780,7 @@ export async function sendBrowserViewerCommand(input: {
 }
 
 export type BrowserAgentCommand =
+  | { action: "secure_input"; preset: PrivateInputPreset }
   | { action: "capabilities" }
   | { action: "open"; url: string }
   | { action: "read" }
@@ -891,6 +894,10 @@ export async function executeBrowserAgentCommand(input: {
     return browserRuntimeCapabilityInventory();
   }
   const registry = await agentRegistry(input);
+  if (input.command.action === "secure_input") {
+    const preset = input.command.preset;
+    return withBrowserOperationDeadline(() => registry.requestPrivateInput(input.userId, input.threadId, preset), input.signal);
+  }
   if (isBrowserMutation(input.command)) {
     const command = input.command;
     if (!input.expectedResource) {
@@ -986,6 +993,36 @@ export async function executeBrowserAgentCommand(input: {
     () => registry.listDownloads(input.userId, input.threadId),
     input.signal,
   );
+}
+
+/** Employee-only control plane. Never called by model tools with values. */
+export async function privateBrowserInputStatus(input: { installationId: string; userId: string; threadId: string }) {
+  const state = await serviceState();
+  ensureBinding(state, input.installationId, input.userId);
+  await ensureBrowserEnabled(input.installationId, input.userId);
+  await ensureEnabledUser(state, input.userId);
+  let handle = state.registry.get(input.userId);
+  if (!handle) {
+    const roots = await state.registry.store.roots(input.userId);
+    const recovery = new BrowserNavigationStore({ browserRoot: roots.browserRoot, installationId: input.installationId, userId: input.userId });
+    if (!await recovery.privateInputActive()) return { protected: false, request: null, browserSessionId: null };
+    handle = await state.registry.start(input.userId);
+  }
+  const status = await state.registry.privateInputStatus(input.userId, input.threadId);
+  return { ...status, browserSessionId: handle.browserSessionId };
+}
+
+export async function privateBrowserInputAction(input: {
+  installationId: string; userId: string; threadId: string;
+  browserSessionId: string; action: "start" | "fill" | "dismiss" | "finish";
+  requestId: string; values: PrivateInputValues; preset?: PrivateInputPreset;
+}) {
+  const registry = await agentRegistry(input);
+  if (registry.get(input.userId)?.browserSessionId !== input.browserSessionId) {
+    throw new BrowserServiceError("BROWSER_PRIVATE_INPUT_SESSION", "Private input session changed.", 409);
+  }
+  await withBrowserOperationDeadline(() => registry.privateInputAction(input.userId, input.threadId, input.action, input.requestId, input.values, input.preset));
+  return registry.privateInputStatus(input.userId, input.threadId);
 }
 
 /** Stops only the selected employee browser without creating a service instance. */

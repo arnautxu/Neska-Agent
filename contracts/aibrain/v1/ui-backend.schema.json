@@ -20,6 +20,94 @@
       "required": ["status", "localCredentialDeleted"],
       "properties": { "status": { "const": "revoked" }, "localCredentialDeleted": { "const": true } }
     },
+    "BrowserPrivateInputActionResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok"
+      ],
+      "properties": {
+        "ok": {
+          "const": true
+        }
+      }
+    },
+    "BrowserPrivateInputStatusResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protected",
+        "request",
+        "browserSessionId"
+      ],
+      "properties": {
+        "protected": {
+          "type": "boolean"
+        },
+        "request": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "threadId",
+                "preset",
+                "origin",
+                "expiresAt",
+                "phase"
+              ],
+              "properties": {
+                "id": {
+                  "$ref": "#/$defs/Uuid"
+                },
+                "threadId": {
+                  "$ref": "#/$defs/Uuid"
+                },
+                "preset": {
+                  "enum": [
+                    "login",
+                    "otp",
+                    "secret",
+                    "pin"
+                  ]
+                },
+                "origin": {
+                  "type": "string",
+                  "minLength": 8,
+                  "maxLength": 8192,
+                  "pattern": "^https?://[^/?#@]+$"
+                },
+                "expiresAt": {
+                  "$ref": "#/$defs/IsoDate"
+                },
+                "phase": {
+                  "enum": [
+                    "form",
+                    "filled",
+                    "failed",
+                    "expired"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "browserSessionId": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/Uuid"
+            }
+          ]
+        }
+      }
+    },
     "JsonObject": { "type": "object" },
     "Uuid": {
       "type": "string",
@@ -1395,6 +1483,8 @@
     }
   },
   "x-examples": [
+    {"schema": "BrowserPrivateInputStatusResponse", "value": {"protected": true, "request": {"id": "0198b9f0-6631-7000-8000-000000000411", "threadId": "0198b9f0-6631-7000-8000-000000000412", "preset": "login", "origin": "https://login.example.test", "expiresAt": "2026-10-12T12:00:00.000Z", "phase": "form"}, "browserSessionId": "0198b9f0-6631-7000-8000-000000000413"}},
+    {"schema": "BrowserPrivateInputActionResponse", "value": {"ok": true}},
     { "schema": "CompanyMailConnectionResponse", "value": { "status": "connected", "accountEmail": "invoices@example.test", "connectionVersion": 1 } },
     { "schema": "CompanyMailDisconnectResponse", "value": { "status": "revoked", "localCredentialDeleted": true } },
     {
