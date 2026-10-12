@@ -48,7 +48,7 @@ import type { RuntimeStatus } from "@/lib/runtime-status";
 import type { ComposerExperience } from "@/lib/composer-experience";
 import type { PublicInstallationBranding } from "@/config/installation-branding";
 import type { TaskCenterItem } from "@/task-center/contracts";
-import { NeskaHomeHeader, NeskaCurrentTasks } from "@/components/neska-home";
+import { NeskaHomeHeader } from "@/components/neska-home";
 import { LandingTasks } from "@/components/landing-tasks";
 import { landingSuggestions } from "@/lib/landing-suggestions";
 import { isStandaloneProject, type WorkbenchProject, type WorkbenchThread } from "@/workbench/types";
@@ -74,6 +74,8 @@ import { CopyIcon } from "@/components/ui/copy";
 import { PanelLeftCloseIcon } from "@/components/ui/panel-left-close";
 import { PlusIcon } from "@/components/ui/plus";
 import { SquarePenIcon } from "@/components/ui/square-pen";
+import { ConnectIcon } from "@/components/ui/connect";
+import { ChevronDownIcon, FolderIcon, SendArrowIcon, StopSquareIcon } from "@/components/ui/neska-animated-icons";
 
 type ChatWorkspaceProps = {
   liveAnswers?: LiveAnswerStore;
@@ -193,6 +195,7 @@ function ComposerPicker({
   anchor = "self",
   className,
   icon,
+  caret,
   disabled = false,
   onOpenChange,
   onSelect,
@@ -207,6 +210,7 @@ function ComposerPicker({
   anchor?: "self" | "controls";
   className?: string;
   icon?: ReactNode;
+  caret?: ReactNode;
   disabled?: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (value: string) => void;
@@ -251,7 +255,7 @@ function ComposerPicker({
       >
         {icon}
         <span className="max-w-32 truncate">{valueLabel}</span>
-        <CaretDown size={11} className={`shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        {caret ?? <CaretDown size={11} className={`shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />}
       </button>
       {open ? (
         <div
@@ -790,7 +794,9 @@ export function ChatWorkspace({
     window.addEventListener("resize", sync);
     return () => { observer?.disconnect(); window.removeEventListener("resize", sync); };
   }, [prompt, hasInlineMentions, composerFocused, composerMultiline]);
-  const runningMessage = thread?.messages.findLast((message) => message.role === "user")?.content ?? t("Respuesta en curso");
+  const runningRequest = thread?.messages.findLast((message) => message.role === "user")?.content ?? t("Respuesta en curso");
+  const runningStep = neska ? thread?.messages.findLast((message) => message.role === "assistant")?.plan.find((step) => step.status === "in_progress") : undefined;
+  const runningMessage = runningStep ? `${runningStep.step}${runningStep.progress ? ` · ${t("{done} de {total}", { done: runningStep.progress.done, total: runningStep.progress.total })}` : ""}` : runningRequest;
   const queueingMessage = sending && hasMessages && Boolean(prompt.trim());
   const visibleMentionActiveIndex = Math.min(mentionActiveIndex, Math.max(mentionOptions.length - 1, 0));
   const activeMentionOption = mentionOptions[visibleMentionActiveIndex] ?? null;
@@ -829,6 +835,8 @@ export function ChatWorkspace({
     setConnectorCatalogOpen(true);
   };
 
+  const connectedToolNames = connectorMentions.filter((mention) => mention.canRead).map((mention) => mention.label);
+  const toolList = connectedToolNames.length <= 1 ? connectedToolNames.join("") : `${connectedToolNames.slice(0, -1).join(", ")} ${t("i")} ${connectedToolNames.at(-1)}`;
   const connectMention = (mention: ConnectorMention) => {
     if (mention.connectUrl?.startsWith("/api/connectors/") && !mention.connectUrl.startsWith("//")) window.location.assign(mention.connectUrl);
   };
@@ -1017,7 +1025,7 @@ export function ChatWorkspace({
             {latestProgress.total > 0 || latestAssistant.queue ? <TaskStatusChip progress={latestProgress} /> : null}
             {!agentPanelOpen ? <button type="button" aria-expanded={agentPanelOpen} aria-controls="neska-activity-panel" aria-label={t("Obre l’activitat")} className="inline-flex min-h-11 items-center px-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]" ref={agentPanelTriggerRef} onClick={() => { agentPanelFocusRef.current = "panel"; setAgentPanelChoice({ messageId: latestAssistant.id, open: true }); }}>{t("Activitat")}</button> : null}
           </div>
-        ) : branding?.visualTheme === "neska" && onOpenInbox ? <button type="button" className="neska-mobile-inbox workbench-navigation-balance min-h-11 px-3 text-sm text-[var(--text-secondary)]" onClick={onOpenInbox}>{t("Safata")}{tasks.some(task => task.status === "needs_attention") ? ` · ${tasks.filter(task => task.status === "needs_attention").length}` : ""}</button> : <div aria-hidden="true" className="workbench-navigation-balance" />}
+        ) : branding?.visualTheme === "neska" && onOpenInbox ? <button type="button" className="neska-mobile-inbox workbench-navigation-balance min-h-11 px-3 text-sm text-[var(--text-secondary)]" onClick={onOpenInbox}>{t("Et necessita")}{tasks.some(task => task.status === "needs_attention") ? ` · ${tasks.filter(task => task.status === "needs_attention").length}` : ""}</button> : <div aria-hidden="true" className="workbench-navigation-balance" />}
       </header>
 
 
@@ -1097,12 +1105,13 @@ export function ChatWorkspace({
           }}
         ><ArrowDown size={13} />{t("Volver al final")}</button></div> : null}
         <div className="relative mx-auto max-w-[768px]">
-          {!hasMessages && branding?.visualTheme === "neska" && !imageGeneration ? <NeskaHomeHeader userName={userName} tasks={tasks} onOpenInbox={onOpenInbox} /> : !hasMessages ? <h1 className="mb-10 text-center text-balance text-[24px] font-medium leading-8 tracking-[-0.15px] text-[var(--text)]">{landingHeadline}</h1> : null}
+          {!hasMessages && branding?.visualTheme === "neska" && !imageGeneration ? <NeskaHomeHeader userName={userName} tasks={tasks} onOpenInbox={onOpenInbox} onOpenTask={onOpenTask} /> : !hasMessages ? <h1 className="mb-10 text-center text-balance text-[24px] font-medium leading-8 tracking-[-0.15px] text-[var(--text)]">{landingHeadline}</h1> : null}
           {sending && hasMessages ? <MessageQueue
             running={runningMessage}
             queued={queuedMessages}
             onCancel={onCancelQueuedMessage}
-            onStop={queueingMessage ? onStop : undefined}
+            onStop={neska || queueingMessage ? onStop : undefined}
+            stopLabel={neska ? <><TriggerIcon icon={StopSquareIcon} size={14} />{t("Atura")}</> : undefined}
             stopping={stopping}
             language={locale}
             className="mb-2 max-w-none"
@@ -1137,18 +1146,7 @@ export function ChatWorkspace({
             ) : null}
             {serverOpen && project && onServerReferencesChange ? <ServerPicker key={project.id + (thread?.id ?? "")} projectId={project.id} selected={serverReferences} onSelect={onServerReferencesChange} onClose={() => setServerOpenKey(null)} returnFocus={serverReturnFocusRef} /> : null}
                 <div className="composer-context contents" aria-label={neska ? t("Lo que se enviará con el mensaje") : undefined}>
-                {neska && !hasMessages ? <span className="composer-context-project"><span className="neska-px">{t("Proyecto")}</span><ComposerPicker
-                  ariaLabel={t("Destino de la conversación")}
-                  value={project?.id ?? ""}
-                  valueLabel={noProject ? t("Sin proyecto") : project?.name ?? t("Proyecto")}
-                  options={destinationOptions}
-                  open={composerPickerOpen === "destination"}
-                  placement="below"
-                  className="composer-destination"
-                  disabled={sending}
-                  onOpenChange={(open) => { setComposerMenuOpen(false); setMentionOpen(false); setConnectorCatalogOpen(false); setComposerPickerOpen(open ? "destination" : null); }}
-                  onSelect={onDestinationChange}
-                /></span> : null}
+                
                 {planFirst ? <span className="composer-mode-chip"><span className="neska-px">{t("Primero el plan")}</span><button type="button" aria-label={t("Quitar {p0}", { p0: t("Primero el plan") })} className="composer-chip-remove touch-target" onClick={() => { setPlanFirst(false); composerRef.current?.focus({ preventScroll: true }); }}><X size={10} /></button></span> : null}
                 {serverReferences.length ? <div className="flex flex-wrap gap-2 px-2 py-1" aria-label={t("Referencias Server")}>{serverReferences.map(item => <span key={item.path} title={item.path} className="composer-chip flex max-w-full items-center gap-2 rounded-lg bg-[var(--surface-hover)] px-2 py-1 text-xs"><FileIcon size={14}/><span className="truncate">{item.name}{item.kind === "directory" ? " · carpeta" : ""}</span><button type="button" aria-label={t("Quitar referencia {p0}", { p0: item.name })} className="touch-target" onClick={() => onServerReferencesChange?.(serverReferences.filter(ref => ref.path !== item.path))}><X size={14}/></button></span>)}</div> : null}
             {attachments.length || documents.length ? (
@@ -1192,7 +1190,7 @@ aria-controls={slashOpen ? "composer-slash-options" : mentionOpen ? "connector-m
               autoFocus={false}
               className={`composer-textarea max-h-52 w-full resize-none overflow-y-auto bg-transparent px-2.5 py-2.5 text-[14px] leading-[24px] text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)] ${hasMessages ? "min-h-8" : "min-h-12"}`}
               style={hasInlineMentions ? { color: "transparent", caretColor: "var(--text)" } : undefined}
-placeholder={imageGeneration ? t("Describe la imagen que quieres crear…") : neska ? (!networkOnline ? t("Sin conexión. Puedes seguir escribiendo.") : sending ? t("Añade contexto mientras trabajo…") : hasMessages ? t("Añade contexto o pide un cambio…") : t("¿Qué quieres que haga?")) : t("Escribe a {name}…", { name: placeholderName })}
+placeholder={imageGeneration ? t("Describe la imagen que quieres crear…") : neska ? (!networkOnline ? t("Sin conexión. Puedes seguir escribiendo.") : sending ? t("Afegeix alguna cosa. No m’aturaré.") : hasMessages ? t("Añade contexto o pide un cambio…") : t("Què vols que faci? Per exemple, «concilia les factures d’octubre amb el banc»")) : t("Escribe a {name}…", { name: placeholderName })}
               rows={1}
               defaultValue={prompt}
 onChange={(event) => { changeComposerText(event.target.value); syncCaret(event.target); setConnectorCatalogOpen(false); setMentionActiveIndex(0); setSlashDismissed(false); setSlashActiveIndex(0); const inputType = (event.nativeEvent as InputEvent).inputType ?? ""; setMentionOpen(!inputType.startsWith("delete") && Boolean(mentionQueryAt(event.target.value, event.target.selectionStart))); }}
@@ -1299,12 +1297,29 @@ onChange={(event) => { changeComposerText(event.target.value); syncCaret(event.t
             </div></></ConnectorPopover> : null}
             <div data-testid="composer-controls" className="composer-controls relative flex items-center justify-between gap-3 px-1 pb-0.5">
               <div className="composer-controls-start flex min-w-0 items-center gap-1 overflow-visible">
-                <button ref={composerAddButtonRef} aria-label={t("Añadir al mensaje")} aria-haspopup="menu" aria-controls={composerMenuOpen ? "composer-add-menu" : undefined} aria-expanded={composerMenuOpen} className={`composer-add-button composer-tool !grid !size-11 !place-items-center !rounded-xl sm:!rounded-full ${composerMenuOpen ? "composer-tool-active" : ""}`} disabled={sending || !project} onClick={() => { setComposerPickerOpen(null); setMentionOpen(false); setConnectorCatalogOpen(false); setComposerMenuOpen((current) => !current); }}><span className="composer-add-icon" aria-hidden="true"><Plus size={15} /></span></button>
+                {neska ? <>
+                  {canAttachImages || canAttachDocuments ? <button type="button" className="composer-labelled composer-labelled-boxed" disabled={!project || sending || documentUploading} onClick={() => { setComposerPickerOpen(null); setConnectorCatalogOpen(false); fileInputRef.current?.click(); }}><TriggerIcon icon={AttachFileIcon} size={16} />{t("Adjunta")}</button> : null}
+                  {!hasMessages ? <ComposerPicker
+                    ariaLabel={t("Destino de la conversación")}
+                    value={project?.id ?? ""}
+                    valueLabel={noProject ? t("Sin proyecto") : project?.name ?? t("Proyecto")}
+                    options={destinationOptions}
+                    open={composerPickerOpen === "destination"}
+                    placement="below"
+                    className="composer-project"
+                    icon={<TriggerIcon icon={FolderIcon} size={16} />}
+                    caret={<TriggerIcon icon={ChevronDownIcon} size={13} className="composer-picker-caret" />}
+                    disabled={sending}
+                    onOpenChange={(open) => { setComposerMenuOpen(false); setMentionOpen(false); setConnectorCatalogOpen(false); setComposerPickerOpen(open ? "destination" : null); }}
+                    onSelect={onDestinationChange}
+                  /> : null}
+                  {!sending ? <button type="button" className="composer-labelled composer-tools" aria-haspopup="listbox" aria-expanded={connectorCatalogOpen} onClick={(event) => { setComposerPickerOpen(null); if (connectorCatalogOpen) setConnectorCatalogOpen(false); else openAuthorizedConnectors(event.currentTarget); }}><TriggerIcon icon={ConnectIcon} size={16} />{connectedToolNames.length ? <span className="truncate">{t("Pot fer servir")} <b>{toolList}</b></span> : <span>{t("Connecta eines")}</span>}</button> : null}
+                </> : <button ref={composerAddButtonRef} aria-label={t("Añadir al mensaje")} aria-haspopup="menu" aria-controls={composerMenuOpen ? "composer-add-menu" : undefined} aria-expanded={composerMenuOpen} className={`composer-add-button composer-tool !grid !size-11 !place-items-center !rounded-xl sm:!rounded-full ${composerMenuOpen ? "composer-tool-active" : ""}`} disabled={sending || !project} onClick={() => { setComposerPickerOpen(null); setMentionOpen(false); setConnectorCatalogOpen(false); setComposerMenuOpen((current) => !current); }}><span className="composer-add-icon" aria-hidden="true"><Plus size={15} /></span></button>}
                 {canAttachImages || canAttachDocuments ? <input ref={fileInputRef} aria-label={t("Seleccionar archivos para adjuntar")} className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.docx,.xlsx,.xls,.xlsm,.pptx,.txt,.md,.csv,.json" multiple tabIndex={-1} onChange={(event) => void addFiles(event.target.files)} /> : null}
               </div>
               <div className="composer-controls-end flex shrink-0 items-center gap-2">
 {onPlanRequest && !neska ? <button type="button" className="min-h-11 px-2 text-xs text-[var(--text-secondary)]" disabled={sending || !prompt.trim() || !project} onClick={onPlanRequest}>{t("Planifica")}</button> : null}
-                <ComposerPicker
+                {!neska ? <ComposerPicker
                   ariaLabel={t("Experiencia")}
                   value={composerExperience}
                   valueLabel={composerExperience === "fast" ? t("Rápido") : composerExperience === "expert" ? t(neska ? "A fondo" : "Experto") : t(neska ? "Normal" : "Inteligente")}
@@ -1326,16 +1341,23 @@ onChange={(event) => { changeComposerText(event.target.value); syncCaret(event.t
                   disabled={sending}
                   onOpenChange={(open) => { setComposerMenuOpen(false); setMentionOpen(false); setConnectorCatalogOpen(false); setComposerPickerOpen(open ? "experience" : null); }}
                   onSelect={(value) => onComposerExperienceChange(value as ComposerExperience)}
-                />
-                {neska ? <span className="composer-hint" aria-hidden="true">{queueingMessage ? <><kbd>⏎</kbd> {t("lo tendré en cuenta en el siguiente paso")}</> : sending ? t("Puedes añadir contexto mientras trabajo") : <><kbd>⏎</kbd> {t("envía")} · <kbd>⇧⏎</kbd> {t("línea")} · <kbd>/</kbd> {t("órdenes")}</>}</span> : null}
-                <VoiceDictationControl
+                /> : null}
+                
+                {!neska ? <VoiceDictationControl
                   value={prompt}
                   disabled={!project || sending || documentUploading}
                   language={locale === "en" ? "en-US" : locale === "ca" ? "ca-ES" : "es-ES"}
                   onChange={onPromptChange}
                   onNotice={onComposerNotice}
-                />
-                <RadialGlowButton
+                /> : null}
+                {neska ? <button
+                  type="button"
+                  aria-label={queueingMessage ? t("Añadir mensaje a la cola") : t("Enviar mensaje")}
+                  data-kind={queueingMessage ? "queue" : "send"}
+                  className="composer-send"
+                  disabled={queueingMessage ? !project || !runtimeReady || documentUploading || documentsBlocked : sending || !project || !hasSendableContent || !runtimeReady || documentUploading || documentsBlocked}
+                  onClick={() => { if (queueingMessage) onSend(); else submitComposer(); }}
+                ><span>{t("Envia")}</span><TriggerIcon icon={SendArrowIcon} size={15} /></button> : <RadialGlowButton
                   active={!thread && !sending && !readOnly}
                   aria-label={queueingMessage ? t("Añadir mensaje a la cola") : sending ? (stopping ? t("Deteniendo respuesta") : t("Detener respuesta")) : t("Enviar mensaje")}
                   aria-busy={(!queueingMessage && stopping) || undefined}
@@ -1354,11 +1376,32 @@ onChange={(event) => { changeComposerText(event.target.value); syncCaret(event.t
                   <span key={queueingMessage ? "queue" : sending ? "stop" : "send"} className="composer-submit-icon" aria-hidden="true">
                     {queueingMessage ? <ArrowUp size={13} weight="bold" /> : sending ? <Stop size={11} weight="fill" /> : <ArrowUp size={13} weight="bold" />}
                   </span>
-                </RadialGlowButton>
+                </RadialGlowButton>}
               </div>
             </div>
           </div>
-{!hasMessages && !neska ? <div ref={landingBandRef} className="landing-band" aria-label={t("Opciones para empezar")}>
+{neska && !sending ? <div className="composer-under">
+            <button type="button" className="composer-under-slash" onClick={() => { const next = prompt.startsWith("/") ? prompt : `/${prompt}`; changeComposerText(next); setSlashDismissed(false); setSlashActiveIndex(0); requestAnimationFrame(() => { const field = composerRef.current; if (!field) return; field.value = next; field.focus({ preventScroll: true }); field.setSelectionRange(1, 1); syncCaret(field); }); }}>{t("Escriu")} <kbd>/</kbd> {t("per veure tot el que pot fer Neska")}</button>
+            <ComposerPicker
+              ariaLabel={t("Experiencia")}
+              value={composerExperience}
+              valueLabel={composerExperience === "fast" ? t("Ràpid") : composerExperience === "expert" ? t("A fons") : t("Normal")}
+              options={[
+                { value: "fast", label: t("Ràpid"), detail: t("Consultas y respuestas cortas"), icon: <EffortBars level={1} /> },
+                { value: "smart", label: t("Normal"), detail: t("Redacción y trabajo del día a día"), icon: <EffortBars level={2} /> },
+                { value: "expert", label: t("A fons"), detail: t("Análisis largos y problemas complejos"), icon: <EffortBars level={3} /> },
+              ]}
+              open={composerPickerOpen === "experience"}
+              placement={hasMessages ? "above" : "below"}
+              align="end"
+              className="composer-experience composer-under-effort"
+              icon={<span className="composer-under-effort-label">{t("Quant hi pensa:")}</span>}
+              caret={<TriggerIcon icon={ChevronDownIcon} size={12} className="composer-picker-caret" />}
+              onOpenChange={(open) => { setComposerMenuOpen(false); setMentionOpen(false); setConnectorCatalogOpen(false); setComposerPickerOpen(open ? "experience" : null); }}
+              onSelect={(value) => onComposerExperienceChange(value as ComposerExperience)}
+            />
+          </div> : null}
+          {!hasMessages && !neska ? <div ref={landingBandRef} className="landing-band" aria-label={t("Opciones para empezar")}>
             <div className="landing-project"><FolderOpen size={15} aria-hidden="true" />
                 {!hasMessages ? (
                   <ComposerPicker
@@ -1380,9 +1423,10 @@ onChange={(event) => { changeComposerText(event.target.value); syncCaret(event.t
             <button type="button" className="landing-band-item" disabled={sending} aria-haspopup="listbox" aria-expanded={connectorCatalogOpen} onClick={(event) => { setComposerPickerOpen(null); if (connectorCatalogOpen) setConnectorCatalogOpen(false); else openAuthorizedConnectors(event.currentTarget); }}><TriggerIcon icon={AtSignIcon} size={15} />{t("Tools")}</button>
           </div> : null}
           {!hasMessages ? <div className="landing-suggestions mx-auto mt-5 w-full max-w-[720px]" aria-label={t("Sugerencias para empezar")}>
+            {neska ? <p className="neska-try-label">{t("Prova amb")}</p> : null}
             <LandingTasks tasks={suggestions} disabled={sending} onSelect={selectSuggestion} />
           </div> : null}
-          {!hasMessages && branding?.visualTheme === "neska" ? <NeskaCurrentTasks tasks={tasks} onOpenTask={onOpenTask} /> : null}
+          
         </div>
       </div>}
       {agentPanelOpen && thread && latestAssistant && latestProgress ? (
