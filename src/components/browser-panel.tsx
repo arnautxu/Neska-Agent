@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowsIn,
+  LockKey,
   SpinnerGap,
   X,
 } from "@phosphor-icons/react";
@@ -712,6 +713,21 @@ function BrowserPanelAttachment({ threadId, open, onClose, initialStatus = null 
     });
   };
 
+  const startPrivateInput = async () => {
+    const token = viewerTokenRef.current;
+    if (!threadId || !token) return;
+    try {
+      const response = await fetch("/api/runtime/browser/secure-input", {
+        method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
+        body: JSON.stringify({ action: "start", preset: "login", threadId,
+          browserSessionId: token.browserSessionId, requestId: crypto.randomUUID() }),
+      });
+      if (!response.ok) { setError("No s’ha pogut activar el mode privat."); return; }
+      closePanel();
+    } catch { setError("No s’ha pogut activar el mode privat."); }
+  };
+
+
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
     const query = window.matchMedia("(max-width: 1279px)");
@@ -780,6 +796,8 @@ function BrowserPanelAttachment({ threadId, open, onClose, initialStatus = null 
         </form>
         <span aria-label={indicator} title={metrics ? `${indicator} · captura ${Math.round(metrics.captureMs)} ms` : indicator}
           className={`mx-1 size-2 shrink-0 rounded-full ${live ? "bg-[var(--positive)]" : connection === "reconnecting" ? "bg-[var(--warning)] motion-safe:animate-pulse" : "bg-[var(--text-subtle)] motion-safe:animate-pulse"}`} role="status" />
+        <button type="button" aria-label={t("Dades protegides")} title={t("Dades protegides")} disabled={!viewerToken}
+          className="browser-action size-8 justify-center p-0" onClick={() => { void startPrivateInput(); }}><LockKey size={15} /></button>
         <button data-browser-capability="fullscreen" type="button" aria-label={fullscreen ? t("Salir de pantalla completa") : t("Pantalla completa")} title={fullscreen ? t("Salir de pantalla completa") : t("Pantalla completa")} className="browser-action size-8 justify-center p-0" onClick={() => setFullscreen((current) => !current)}>{fullscreen ? <ArrowsIn size={15} /> : <TriggerIcon icon={ExpandIcon} size={15} />}</button>
         <button ref={closeButtonRef} type="button" aria-label={t("Cerrar navegador")} title={t("Cerrar")} className="browser-action size-8 justify-center p-0" onClick={closePanel}><X size={15} /></button>
       </header>

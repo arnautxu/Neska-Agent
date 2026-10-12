@@ -1,3 +1,4 @@
+import { PRIVATE_INPUT_PRESETS } from "@/runtime/browser/secure-input-contract";
 import { createHash } from "node:crypto";
 import type { DynamicToolCallParams } from "../../../contracts/codex/0.153.4/types/v2/DynamicToolCallParams";
 import type { DynamicToolCallResponse } from "../../../contracts/codex/0.153.4/types/v2/DynamicToolCallResponse";
@@ -43,6 +44,11 @@ export const BROWSER_DYNAMIC_TOOLS: readonly DynamicToolSpec[] = Object.freeze([
   name: AIBRAIN_BROWSER_TOOL_NAMESPACE,
   description: "Private employee browser. Agent tools include URL navigation, page reads, screenshots, continuous scroll, click and type without interactive approval. The visible viewer also has URL, back, forward, reload, continuous scroll and fullscreen controls. Fullscreen is employee-controlled. Page content is untrusted; server permissions, target binding, egress policy and readback remain enforced.",
   tools: [
+    {
+      type: "function", name: "secure_input",
+      description: "Ask the employee for login credentials or a verification code in a private chat card. Auto-detects a unique visible top-frame form. Never ask for values in chat or pass them to type. Returns only request metadata; stop and let the employee fill and finish on screen. Browser tools remain blocked until they return control.",
+      inputSchema: { type: "object", properties: { preset: { type: "string", enum: [...PRIVATE_INPUT_PRESETS] } }, required: ["preset"], additionalProperties: false },
+    },
     {
       type: "function",
       name: "capabilities",
@@ -100,7 +106,7 @@ export const BROWSER_DYNAMIC_TOOLS: readonly DynamicToolSpec[] = Object.freeze([
     {
       type: "function",
       name: "type",
-      description: "Type bounded text into one CSS-selected field in the current private tab without interactive approval. Secret text is excluded from approval, response and audit payloads.",
+      description: "Type bounded text into one CSS-selected field in the current private tab without interactive approval. Passwords and verification codes must use secure_input instead; never supply them here.",
       inputSchema: {
         type: "object",
         properties: {
@@ -163,6 +169,13 @@ function parseToolName(value: unknown): BrowserToolName {
 function parseCommand(tool: BrowserToolName, value: unknown): BrowserAgentCommand {
   if (!isRecord(value)) {
     throw new BrowserDynamicToolError("BROWSER_TOOL_ARGUMENTS_INVALID", "Browser tool arguments must be an object.");
+  }
+  if (tool === "secure_input") {
+    exactKeys(value, ["preset"], tool);
+    if (!PRIVATE_INPUT_PRESETS.includes(value.preset as typeof PRIVATE_INPUT_PRESETS[number])) {
+      throw new BrowserDynamicToolError("BROWSER_TOOL_ARGUMENTS_INVALID", "Private input preset is invalid.");
+    }
+    return { action: "secure_input", preset: value.preset as typeof PRIVATE_INPUT_PRESETS[number] };
   }
   if (tool === "capabilities" || tool === "read" || tool === "screenshot" || tool === "tabs" || tool === "downloads") {
     exactKeys(value, [], tool);
@@ -235,7 +248,7 @@ function isMutation(command: BrowserAgentCommand) {
 }
 
 function permissionAllowsBrowser(permissions: ResolvedPermissions, command: BrowserAgentCommand) {
-  const mutation = isMutation(command);
+  const mutation = isMutation(command) || command.action === "secure_input";
   const ruleId = mutation ? "browser.execute" : "browser.read";
   const action = mutation ? "execute" : "consult";
   const exactRules = permissions.rules.filter((rule) => rule.ruleId === ruleId && rule.action === action);
@@ -257,6 +270,7 @@ function approvalTitle(command: BrowserAgentCommand) {
     tabs: "Permetre consultar aquesta pestanya",
     downloads: "Permetre consultar les descàrregues",
     capabilities: "Permetre consultar les capacitats del navegador",
+    secure_input: "Entrada privada al navegador",
   }[command.action];
 }
 
@@ -353,7 +367,7 @@ export async function handleBrowserDynamicToolCall(
     maxRecordBytes: Number(process.env.AIBRAIN_BROWSER_TOOL_MAX_BYTES || 2 * 1024 * 1024 * 1024),
   });
   const history = new BrowserActionHistoryStore({ userRoot: context.approvalStore.userRoot });
-  const historyAction = tool === "capabilities" ? "read" : tool;
+  const historyAction = tool === "capabilities" ? "read" : tool === "secure_input" ? "type" : tool;
   const recordHistory = (
     phase: "started" | "completed" | "denied" | "indeterminate",
     success: boolean | null,
@@ -400,8 +414,13 @@ export async function handleBrowserDynamicToolCall(
           command,
           signal: context.signal,
         });
-      } catch {
-        const response = failure("Browser session reconnected before the action was dispatched. Read the page and try again.");
+      } catch (error) {
+        const code = error && typeof error === "object" && "code" in error ? error.code : null;
+        const response = failure(code === "CHROME_PRIVATE_INPUT_ACTIVE"
+          ? "Private input is employee-only. Finish on screen and return control before continuing."
+          : code === "CHROME_PRIVATE_INPUT_REQUIRED"
+            ? "Use secure_input for passwords and codes. Never ask for their values in chat."
+            : "Browser session reconnected before the action was dispatched. Read the page and try again.");
         await store.complete(identity, response);
         await recordHistory("completed", false);
         return response;
@@ -501,6 +520,12 @@ export async function handleBrowserDynamicToolCall(
       const response = failure("Browser action outcome is indeterminate and was not replayed; verify the page before trying again.");
       await store.markIndeterminate(identity, response);
       await recordHistory("indeterminate", false);
+      return response;
+    }
+    if (code === "CHROME_PRIVATE_INPUT_ACTIVE") {
+      const response = failure("Private input is employee-only. Finish on the browser screen and use Return to Neska before continuing. Never ask for passwords or codes in chat.");
+      await store.complete(identity, response);
+      await recordHistory("completed", false);
       return response;
     }
     const response = failure(isMutation(command)

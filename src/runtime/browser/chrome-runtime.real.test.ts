@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -112,6 +112,115 @@ afterAll(async () => {
 });
 
 describe.runIf(enabled)("real Chrome per-user isolation", () => {
+  it("Secure Input fills real login and split OTP fields without exposing values to model reads, even after restart", async () => {
+    if (!executablePath) throw new Error("A pinned Chrome executable is required.");
+    const root = await mkdtemp(path.join(tmpdir(), "neska-secure-input-real-"));
+    temporaryRoots.push(root);
+    const server = createServer((request, response) => {
+      response.setHeader("Content-Type", "text/html; charset=utf-8");
+      if (request.url === "/account") {
+        response.end(`<title>Account</title>${request.headers.cookie?.includes("private-fixture=authenticated") ? "Signed in" : "Signed out"}`);
+      } else if (request.url === "/otp") {
+        response.end('<title>OTP</title><form>' + Array.from({ length: 6 }, (_, index) => `<input name="otp${index}" autocomplete="one-time-code" maxlength="1">`).join('') + '</form>');
+      } else if (request.url === "/pin") {
+        response.end('<title>PIN</title><form>' + Array.from({ length: 4 }, (_, index) => `<input name="pin${index}" maxlength="1">`).join('') + '</form>');
+      } else if (request.url === "/sms") {
+        response.end('<title>SMS</title><input name="code" autocomplete="one-time-code">');
+      } else if (request.url === "/ambiguous") {
+        response.end('<title>Ambiguous</title><input type="password"><input type="password">');
+      } else {
+        response.end('<title>Login</title><form><input name="email" autocomplete="username"><input name="password" type="password" autocomplete="current-password"></form><script>document.querySelector("input[type=password]").addEventListener("input",e=>{document.title=e.target.value;document.body.append(document.createTextNode(e.target.value));document.cookie="private-fixture=authenticated;path=/;max-age=3600";})</script>');
+      }
+    });
+    await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("Missing fixture port.");
+    const origin = `http://127.0.0.1:${address.port}`;
+    const context = await runtimeContext(root, "0198b9f0-6631-7000-8000-000000000481", "0198b9f0-6631-7000-8000-000000000482");
+    let clockOffset = 0;
+    let runtime = new ChromeCdpRuntime(context, { executablePath, expectedVersion: process.env.AIBRAIN_CHROME_EXPECTED_VERSION, allowPrivateNetwork: true, now: () => Date.now() + clockOffset });
+    const secret = "synthetic-private-password-sentinel";
+    try {
+      await runtime.start();
+      await runtime.agentNavigate(THREAD_A, `${origin}/login`);
+      await expect(runtime.agentType(THREAD_A, 'input[type="password"]', secret, true)).rejects.toMatchObject({ code: "CHROME_PRIVATE_INPUT_REQUIRED" });
+      const request = await runtime.requestPrivateInput(THREAD_A, "login");
+      expect(request.phase).toBe("form");
+      expect(request.origin).toBe(origin);
+      expect(JSON.stringify(request)).not.toContain(secret);
+      await expect(runtime.fillPrivateInput(THREAD_B, request.id, { email: "employee", password: secret })).rejects.toMatchObject({ code: "CHROME_PRIVATE_INPUT_STALE" });
+      await runtime.fillPrivateInput(THREAD_A, request.id, { email: "employee", password: secret });
+      expect(runtime.privateInputStatus(THREAD_A).request?.phase).toBe("filled");
+      expect(runtime.privateInputStatus(THREAD_B).request).toBeNull();
+      await Promise.all([runtime.readPage(THREAD_A), runtime.agentCaptureFrame(THREAD_A), runtime.listTabs(THREAD_A), runtime.listDownloads(THREAD_A), runtime.readPage(THREAD_B)]
+        .map(blocked => expect(blocked).rejects.toMatchObject({ code: "CHROME_PRIVATE_INPUT_ACTIVE" })));
+      await expect(runtime.fillPrivateInput(THREAD_A, request.id, { email: "employee", password: secret })).rejects.toMatchObject({ code: "CHROME_PRIVATE_INPUT_STALE" });
+      // The employee still has a live view. Its image never goes to the model tool.
+      expect((await runtime.captureFrame(THREAD_A)).mediaType).toBe("image/png");
+      const navigation = await readFile(path.join(context.roots.browserRoot, "navigation.json"), "utf8");
+      expect(JSON.parse(navigation).entries).toEqual([]);
+      expect(navigation).not.toContain(secret);
+      const marker = await readFile(path.join(context.roots.browserRoot, "private-input.json"), "utf8");
+      expect(marker).not.toContain(secret);
+      await runtime.stop();
+      runtime = new ChromeCdpRuntime(context, { executablePath, expectedVersion: process.env.AIBRAIN_CHROME_EXPECTED_VERSION, allowPrivateNetwork: true, now: () => Date.now() + clockOffset });
+      await runtime.start();
+      expect(runtime.privateInputStatus(THREAD_A)).toEqual({ protected: true, request: null });
+      await expect(runtime.readPage(THREAD_A)).rejects.toMatchObject({ code: "CHROME_PRIVATE_INPUT_ACTIVE" });
+      await runtime.finishPrivateInput();
+      await runtime.agentNavigate(THREAD_A, `${origin}/account`);
+      const account = await runtime.readPage(THREAD_A);
+      expect(account.text).toContain("Signed in");
+      expect(JSON.stringify(account)).not.toContain(secret);
+      await runtime.agentNavigate(THREAD_A, `${origin}/otp`);
+      const otp = await runtime.requestPrivateInput(THREAD_A, "otp");
+      expect(otp.phase).toBe("form");
+      await runtime.fillPrivateInput(THREAD_A, otp.id, { code: "482913" });
+      expect(runtime.privateInputStatus(THREAD_A).request?.phase).toBe("filled");
+      await runtime.finishPrivateInput();
+      await runtime.agentNavigate(THREAD_A, `${origin}/ambiguous`);
+      const manual = await runtime.requestPrivateInput(THREAD_A, "login");
+      expect(manual.phase).toBe("failed");
+      expect(runtime.privateInputStatus(THREAD_A).protected).toBe(true);
+      await runtime.finishPrivateInput();
+      await runtime.agentNavigate(THREAD_A, `${origin}/login`);
+      const stale = await runtime.requestPrivateInput(THREAD_A, "login");
+      await runtime.takeOver();
+      await runtime.navigate(THREAD_A, `${origin}/account`);
+      await expect(runtime.fillPrivateInput(THREAD_A, stale.id, { email: "employee", password: secret })).rejects.toMatchObject({ code: "CHROME_PRIVATE_INPUT_FAILED" });
+      expect(runtime.privateInputStatus(THREAD_A).protected).toBe(true);
+      await runtime.finishPrivateInput();
+      await runtime.releaseTakeover();
+      for (const [path, preset, values] of [
+        ["/pin", "pin", { pin: "9137" }], ["/sms", "secret", { code: "synthetic-sms-code" }],
+      ] as const) {
+        await runtime.agentNavigate(THREAD_A, `${origin}${path}`);
+        const entry = await runtime.requestPrivateInput(THREAD_A, preset);
+        expect(entry.phase).toBe("form");
+        await runtime.fillPrivateInput(THREAD_A, entry.id, values);
+        expect(runtime.privateInputStatus(THREAD_A).request?.phase).toBe("filled");
+        await runtime.finishPrivateInput();
+      }
+      await runtime.agentNavigate(THREAD_A, `${origin}/login`);
+      const expired = await runtime.requestPrivateInput(THREAD_A, "login");
+      clockOffset = 301_000;
+      await expect(runtime.fillPrivateInput(THREAD_A, expired.id, { email: "employee", password: secret })).rejects.toMatchObject({ code: "CHROME_PRIVATE_INPUT_STALE" });
+      expect(runtime.privateInputStatus(THREAD_A).request?.phase).toBe("expired");
+      await runtime.finishPrivateInput();
+      clockOffset = 0;
+      await runtime.agentNavigate(THREAD_A, `${origin}/login`);
+      await runtime.takeOver();
+      const manualLogin = await runtime.requestPrivateInput(THREAD_A, "login", true);
+      expect(manualLogin.phase).toBe("form");
+      await runtime.dismissPrivateInput(THREAD_A, manualLogin.id);
+      await runtime.releaseTakeover();
+      expect((await runtime.readPage(THREAD_A)).url).toBe("about:blank");
+    } finally {
+      await runtime.stop();
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    }
+  }, 45_000);
+
   it("roundtrips Unicode paste and editing keys through the real CDP adapter", async () => {
     if (!executablePath) throw new Error("A pinned Chrome executable is required.");
     const root = await mkdtemp(path.join(tmpdir(), "aibrain-input-real-"));

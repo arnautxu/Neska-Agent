@@ -1,4 +1,5 @@
 "use client";
+import { PrivateBrowserInput } from "@/components/private-browser-input";
 import { MAX_FILES_PER_MESSAGE } from "@/lib/chat-attachment-limits";
 import { useUiLocale, useUiText } from "@/i18n/provider";
 
@@ -1012,6 +1013,7 @@ export function ChatWorkspace({
             <div className="h-8" aria-hidden="true" />
           </div>
         ) : <section className={`chat-empty-state mx-auto min-h-full w-full ${composerEngaged ? "chat-empty-state-engaged" : ""}`} aria-label={t("Conversación vacía")} />}
+        {hydrated && thread && !readOnly ? <div className={`mx-auto w-full max-w-[768px] px-5 md:px-8 ${!hasMessages ? "absolute inset-x-0 top-16 z-20 max-h-[calc(100dvh-5rem)] overflow-y-auto bg-[var(--surface)]" : ""}`}><PrivateBrowserInput key={thread.id} threadId={thread.id} onOpenBrowser={onOpenBrowser} /></div> : null}
       </div>
 
       {readOnly ? (

@@ -80,4 +80,32 @@ describe("BrowserNavigationStore", () => {
       code: "BROWSER_NAVIGATION_BINDING_MISMATCH",
     });
   });
+  it("retains a bound private-input fence across restart and clears recovery URLs independently of the profile", async () => {
+    const files = await fixture();
+    expect(await files.store.privateInputActive()).toBe(false);
+    await files.store.set(THREAD_A, "https://safe.example.test/login");
+    await files.store.setPrivateInputActive(true);
+    await files.store.clear();
+    const restarted = new BrowserNavigationStore({ browserRoot: files.browserRoot, installationId: "chrome-lab", userId: USER });
+    expect(await restarted.privateInputActive()).toBe(true);
+    expect(await restarted.get(THREAD_A)).toBeNull();
+    const marker = path.join(files.browserRoot, "private-input.json");
+    expect((await stat(marker)).mode & 0o077).toBe(0);
+    expect(Object.keys(JSON.parse(await readFile(marker, "utf8"))).sort()).toEqual(["active", "installationId", "schemaVersion", "userId"]);
+    await restarted.setPrivateInputActive(false);
+    expect(await restarted.privateInputActive()).toBe(false);
+    await link(marker, path.join(files.root, "fence-hardlink"));
+    await expect(restarted.privateInputActive()).rejects.toMatchObject({ code: "BROWSER_PRIVATE_INPUT_UNSAFE" });
+  });
+
+  it("rejects a private fence belonging to another employee", async () => {
+    const files = await fixture();
+    await files.store.setPrivateInputActive(true);
+    const marker = path.join(files.browserRoot, "private-input.json");
+    const state = JSON.parse(await readFile(marker, "utf8"));
+    state.userId = "0198b9f0-6631-7000-8000-000000000499";
+    await writeFile(marker, JSON.stringify(state), { mode: 0o600 });
+    await expect(files.store.privateInputActive()).rejects.toMatchObject({ code: "BROWSER_PRIVATE_INPUT_BINDING" });
+  });
+
 });

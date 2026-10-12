@@ -4,6 +4,7 @@ import {
   atomicWriteJson,
   defineVersionedSchema,
   expectArray,
+  expectLiteral,
   expectIsoDate,
   expectString,
   recoverAtomicJsonFile,
@@ -93,6 +94,22 @@ const browserNavigationStateSchema = defineVersionedSchema<BrowserNavigationStat
       entries,
       createdAt,
       updatedAt,
+    };
+  },
+});
+
+const privateInputSchema = defineVersionedSchema<{
+  schemaVersion: 1; installationId: string; userId: string; active: boolean;
+}>({
+  name: "BrowserPrivateInput", schemaVersion: 1,
+  keys: ["installationId", "userId", "active"],
+  parse(record, context) {
+    if (typeof record.active !== "boolean") context.at("active").fail("expected boolean");
+    return {
+      schemaVersion: expectLiteral(record.schemaVersion, 1, context.at("schemaVersion")),
+      installationId: expectString(record.installationId, context.at("installationId"), { pattern: INSTALLATION_ID_PATTERN }),
+      userId: expectString(record.userId, context.at("userId"), { pattern: UUID_PATTERN }),
+      active: record.active as boolean,
     };
   },
 });
@@ -198,6 +215,46 @@ export class BrowserNavigationStore {
     }
     await atomicWriteJson(this.stateFile, validated, browserNavigationStateSchema, { mode: 0o600 });
     await chmod(this.stateFile, 0o600);
+  }
+
+  /** Durable privacy fence: contains no values, URL or request payload. */
+  async privateInputActive() {
+    await this.prepare();
+    const file = path.join(this.options.browserRoot, "private-input.json");
+    try {
+      const metadata = await lstat(file);
+      if (!metadata.isFile() || metadata.isSymbolicLink() || metadata.nlink !== 1 ||
+          metadata.size > 1024 || (metadata.mode & 0o077) !== 0) {
+        throw new BrowserNavigationStoreError("BROWSER_PRIVATE_INPUT_UNSAFE", "Private input fence is unsafe.");
+      }
+    } catch (error) {
+      if (isNodeError(error, "ENOENT")) return false;
+      throw error;
+    }
+    const state = (await recoverAtomicJsonFile(file, privateInputSchema)).value;
+    if (state.installationId !== this.options.installationId || state.userId !== this.options.userId) {
+      throw new BrowserNavigationStoreError("BROWSER_PRIVATE_INPUT_BINDING", "Private input fence binding is invalid.");
+    }
+    return state.active;
+  }
+
+  async setPrivateInputActive(active: boolean) {
+    await this.prepare();
+    // Revalidate an existing fence before replacement, including symlink/hardlink checks.
+    await this.privateInputActive();
+    await atomicWriteJson(path.join(this.options.browserRoot, "private-input.json"), {
+      schemaVersion: 1, installationId: this.options.installationId, userId: this.options.userId, active,
+    }, privateInputSchema, { mode: 0o600 });
+  }
+
+  async clear() {
+    await this.prepare();
+    await this.locks.withLock(`browser-navigation:${this.options.installationId}:${this.options.userId}`, async () => {
+      const state = await this.readUnlocked();
+      state.entries = [];
+      state.updatedAt = this.iso();
+      await this.writeUnlocked(state);
+    });
   }
 
   async get(threadId: string) {

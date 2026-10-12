@@ -1,3 +1,4 @@
+import type { PrivateInputPreset, PrivateInputValues, PrivateInputView, PrivateInputStatus } from "@/runtime/browser/secure-input-contract";
 import type {
   BrowserActionReadback,
   BrowserActionResourceSnapshot,
@@ -169,6 +170,11 @@ export type BrowserDownloadSnapshot = Readonly<{
 
 /** Optional interactive surface implemented by the concrete private CDP adapter. */
 export interface InteractiveManagedBrowserRuntime extends ManagedBrowserRuntime {
+  requestPrivateInput?(threadId: string, preset: PrivateInputPreset, employeeInitiated?: boolean): Promise<PrivateInputView>;
+  privateInputStatus?(threadId: string): PrivateInputStatus;
+  fillPrivateInput?(threadId: string, requestId: string, values: PrivateInputValues): Promise<void>;
+  dismissPrivateInput?(threadId: string, requestId: string): Promise<void>;
+  finishPrivateInput?(): Promise<void>;
   captureFrame(threadId: string): Promise<BrowserFrame>;
   agentCaptureFrame(threadId: string): Promise<BrowserFrame>;
   navigate(threadId: string, url: string): Promise<void>;

@@ -579,6 +579,34 @@ describe("BrowserRuntimeRegistry", () => {
     await registry.close();
   });
 
+  it("returns from private mode by releasing only the current employee takeover, fencing late viewer cleanup", async () => {
+    const { store } = await fixture();
+    const factory = new FakeBrowserFactory();
+    const registry = new BrowserRuntimeRegistry({ store, factory });
+    const handleA = await registry.start(USER_A);
+    const handleB = await registry.start(USER_B);
+    const finish = vi.fn(async () => undefined);
+    const request = vi.fn(async () => ({ id: THREAD_A, threadId: THREAD_A, preset: "login" as const,
+      origin: "https://example.test", expiresAt: "2099-01-01T00:00:00.000Z", phase: "form" as const }));
+    Object.assign(factory.runtimes[0], { finishPrivateInput: finish, requestPrivateInput: request });
+    const binding = { browserSessionId: handleA.browserSessionId, attachmentId: THREAD_B };
+    await registry.controlViewer(USER_A, "takeover", binding);
+    await registry.privateInputAction(USER_A, THREAD_A, "start", THREAD_A, {}, "login");
+    expect(request).toHaveBeenCalledWith(THREAD_A, "login", true);
+    finish.mockRejectedValueOnce(new Error("unverified private page close"));
+    await expect(registry.privateInputAction(USER_A, THREAD_A, "finish", THREAD_A, {})).rejects.toThrow("unverified");
+    expect((await registry.state(USER_A)).controller).toBe("human");
+    await registry.privateInputAction(USER_A, THREAD_A, "finish", THREAD_A, {});
+    const returned = await registry.state(USER_A);
+    expect(returned.controller).toBe("agent");
+    expect(returned.browserSessionId).not.toBe(binding.browserSessionId);
+    await registry.controlViewer(USER_A, "release", binding);
+    expect((await registry.state(USER_A)).browserSessionId).toBe(returned.browserSessionId);
+    expect((await registry.state(USER_B)).browserSessionId).toBe(handleB.browserSessionId);
+    expect(factory.runtimes[0].human).toBe(false);
+    await registry.close();
+  });
+
   it("allows viewing while ready but fences navigation and input behind human takeover", async () => {
     const { store } = await fixture();
     const factory = new FakeBrowserFactory();
