@@ -96,3 +96,9 @@ production webpack build passed. Default Turbopack compilation encountered
 `next/font/google` Rubik URL-resolution errors; the font layout and build
 configuration were not changed by this feature. This default-build issue must
 be checked separately in Backend CI before any release is accepted.
+
+The versioned HTTP catalog and strict response schemas also cover both private
+input methods. Contract tests reject secret-valued properties in responses.
+Native ARM CI successfully compiled the default Turbopack build for the first
+PR head; its failed route-inventory assertion exposed the missing catalog
+entries, now corrected without weakening that check.

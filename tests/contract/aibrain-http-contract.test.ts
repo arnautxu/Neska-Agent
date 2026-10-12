@@ -54,6 +54,19 @@ describe("versioned AiBrain UI/backend contract", () => {
     }
   });
 
+  it("publishes Secure Input response metadata without accepting values or credentials", () => {
+    const example = uiContract["x-examples"].find(item => item.schema === "BrowserPrivateInputStatusResponse")!;
+    expect(uiContractErrors(example.schema, example.value)).toBeNull();
+    const status = example.value as { request: Record<string, unknown> };
+    for (const field of ["password", "code", "pin", "values"]) {
+      expect(uiContractErrors(example.schema, { ...status, [field]: "synthetic-secret" })).not.toBeNull();
+      expect(uiContractErrors(example.schema, { ...status, request: { ...status.request, [field]: "synthetic-secret" } })).not.toBeNull();
+      expect(uiContractErrors("BrowserPrivateInputActionResponse", { ok: true, [field]: "synthetic-secret" })).not.toBeNull();
+    }
+    expect(uiContractErrors(example.schema, { protected: false, request: null, browserSessionId: null })).toBeNull();
+    expect(uiContractErrors("BrowserPrivateInputActionResponse", { ok: true })).toBeNull();
+  });
+
   it("matches every real Next API method and route exactly", async () => {
     expect(routeCatalog.schemaVersion).toBe(1);
     expect(await exportedOperations()).toEqual(Object.keys(routeCatalog.operations).sort());

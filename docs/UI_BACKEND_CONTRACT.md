@@ -1528,6 +1528,29 @@ Los tokens por empleado se registran únicamente desde
 `account/usage/read` son globales de la suscripción compartida y no se reparten
 ni estiman por empleado.
 
+### 14.7 Secure Input privado
+
+`GET /api/runtime/browser/secure-input?threadId={uuid}` devuelve únicamente
+`BrowserPrivateInputStatusResponse`: `protected`, `browserSessionId` y una
+petición opcional con `id`, `threadId`, `preset`, `origin`, `expiresAt` y `phase`.
+No devuelve valores de campos. Los presets son `login`, `otp`, `secret` y `pin`;
+las fases son `form`, `filled`, `failed` y `expired`.
+
+`POST /api/runtime/browser/secure-input` es un canal exclusivo del empleado,
+ligado a cookie local, mismo origen, thread autorizado, permisos actuales y
+browser session. Todos los bodies contienen `action`, `threadId`,
+`browserSessionId` y `requestId`. `start` añade `preset`; `fill` añade `values`
+con las claves exactas del preset; `dismiss` y `finish` no admiten valores.
+La respuesta de éxito `BrowserPrivateInputActionResponse` es solo `{ok:true}`.
+El body de entrada nunca se refleja en respuestas, errores, auditoría, mensajes
+ni eventos del modelo. El límite de petición es 16 KiB.
+
+El agente solo llama `aibrain_browser.secure_input({preset})`. La valla durable
+bloquea toda observación y mutación del navegador por el modelo hasta que el
+empleado devuelve el control, cerrando las páginas privadas y conservando el
+perfil. Véase [SECURE_INPUT.md](SECURE_INPUT.md) para binding de nodos, caducidad,
+replay, fallback manual y límites de aceptación.
+
 ## 15. Estados degradados y errores recuperables
 
 Durante un drain operativo, un chat nuevo devuelve `503` con
