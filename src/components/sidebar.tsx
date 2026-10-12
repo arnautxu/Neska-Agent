@@ -51,6 +51,7 @@ import { PlusIcon } from "@/components/ui/plus";
 import { SearchIcon } from "@/components/ui/search";
 import { SettingsIcon } from "@/components/ui/settings";
 import { SquarePenIcon } from "@/components/ui/square-pen";
+import { ChevronDownIcon, ClockIcon, HomeIcon } from "@/components/ui/neska-animated-icons";
 
 export type ProjectMenuAction = "settings" | "rename" | "pin" | "unpin" | "archive" | "restore";
 export type ThreadMenuAction = "rename" | "pin" | "unpin" | "archive" | "restore";
@@ -257,7 +258,7 @@ export function Sidebar({
   const disclosure = useSidebarDisclosure(`${branding.installationId}:${session.tenant.id}:${session.user.id}`);
   const pinnedOpen = disclosure.isOpen("pinned", true);
   const chatsOpen = disclosure.isOpen("chats", true);
-  const projectsOpen = disclosure.isOpen("projects", true);
+  const projectsOpen = disclosure.isOpen("projects", branding.visualTheme !== "neska");
   const [recentLimit, setRecentLimit] = useState(8);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const railOpenButtonRef = useRef<HTMLButtonElement>(null);
@@ -290,6 +291,18 @@ export function Sidebar({
     ["running", "needs_attention", "failed"].includes(threadActivityById[thread.id]?.state ?? "idle") ||
     Boolean(threadActivityById[thread.id]?.unreadCount));
   const contextMenuOpen = Boolean(projectMenuId || threadMenuId);
+  // Neska groups every task by what it needs from the person, not by where it lives.
+  const neska = branding.visualTheme === "neska";
+  const [doneLimit, setDoneLimit] = useState(6);
+  const taskGroups = useMemo(() => {
+    const all = threads.filter((thread) => thread.status === "active" && activeProjectIds.has(thread.projectId)).sort(byPriority);
+    const state = (thread: WorkbenchThread) => threadActivityById[thread.id]?.state ?? "idle";
+    return {
+      waiting: all.filter((thread) => state(thread) === "needs_attention" || state(thread) === "failed"),
+      running: all.filter((thread) => state(thread) === "running"),
+      done: all.filter((thread) => !["needs_attention", "failed", "running"].includes(state(thread))),
+    };
+  }, [activeProjectIds, threadActivityById, threads]);
   const closeProfileMenuAndRestore = useCallback(() => {
     setProfileMenuOpen(false);
     setHelpOpen(false);
@@ -371,22 +384,51 @@ export function Sidebar({
         <nav aria-label={t("Navegación principal")} className="px-3 pb-2">
           <SidebarMenu className="gap-1">
             <SidebarMenuItem>
-              <SidebarMenuButton icon={NotePencil} className={styles.newConversation} disabled={!standaloneProject || busy} render={<button onClick={() => onNewThread()} />}>
-                {" "}{branding.visualTheme === "neska" ? t("Nova tasca") : t("Nueva conversación")}{" "}</SidebarMenuButton>
+              {neska ? <SidebarMenuButton className={`${styles.newConversation} neska-new-task`} disabled={!standaloneProject || busy} render={<button onClick={() => onNewThread()} />}>
+                <TriggerIcon icon={PlusIcon} size={16} />{t("Nova tasca")}<kbd className="neska-kbd">⌘N</kbd></SidebarMenuButton> : <SidebarMenuButton icon={NotePencil} className={styles.newConversation} disabled={!standaloneProject || busy} render={<button onClick={() => onNewThread()} />}>
+                {" "}{t("Nueva conversación")}{" "}</SidebarMenuButton>}
             </SidebarMenuItem>
-            {onOpenInbox ? <>
+            {neska ? <SidebarMenuItem><SidebarMenuButton isActive={activeThreadId === null} render={<button onClick={() => { onNewThread(); onCloseMobile(); }} />}><TriggerIcon icon={HomeIcon} size={16} />{t("Inici")}</SidebarMenuButton></SidebarMenuItem> : onOpenInbox ? <>
               <SidebarMenuItem><SidebarMenuButton isActive={activeThreadId === null} render={<button onClick={() => { onNewThread(); onCloseMobile(); }} />}>{t("Inici")}</SidebarMenuButton></SidebarMenuItem>
               <SidebarMenuItem><SidebarMenuButton aria-label={t("Safata")} render={<button onClick={() => { onCloseMobile(); onOpenInbox(); }} />}>{t("Safata")}{pendingTasks !== undefined && pendingTasks > 0 ? <span className="ml-auto font-mono text-xs text-[var(--text-secondary)]" aria-label={t("{count} tasques pendents", { count: pendingTasks })}>{pendingTasks}</span> : null}</SidebarMenuButton></SidebarMenuItem>
             </> : null}
-            <SidebarMenuItem>
+            {neska ? null : <SidebarMenuItem>
               <SidebarMenuButton icon={CalendarBlank} aria-label={t("Automatizaciones")} title={t("Gestionar automatizaciones")} render={<button onClick={onOpenAutomations} />}>
                 {" "}{t("Automatizaciones")}{" "}</SidebarMenuButton>
-            </SidebarMenuItem>
+            </SidebarMenuItem>}
           </SidebarMenu>
         </nav>
 
         <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3 pb-3">
-          {pinnedThreads.length > 0 ? (
+          {neska ? <>
+            {([
+              ["waiting", t("Et necessita"), taskGroups.waiting],
+              ["running", t("En marxa"), taskGroups.running],
+              ["done", t("Fetes"), taskGroups.done.slice(0, doneLimit)],
+            ] as const).map(([key, label, items]) => items.length ? <section key={key} aria-label={label} className="neska-task-group" data-group={key}>
+              <h2 className="neska-task-group-label"><span>{label}</span>{key === "waiting" ? <span>{items.length}</span> : null}</h2>
+              <SidebarMenu size="compact" className="gap-0.5">
+                {items.map((thread) => {
+                  const project = projects.find((candidate) => candidate.id === thread.projectId) ?? null;
+                  const access = workbenchThreadAccess(thread, project);
+                  const menuOpen = threadMenuId === thread.id;
+                  const failed = threadActivityById[thread.id]?.state === "failed";
+                  return <SidebarMenuItem key={thread.id} className={`group/thread ${menuOpen ? "z-40" : ""}`}>
+                    <SidebarMenuButton isActive={thread.id === activeThreadId} className={`sidebar-touch-row ${styles.threadRow} neska-task-row`} render={<button onClick={() => selectThread(thread.id)} />}>
+                      <span aria-hidden="true" className="neska-task-state" data-state={key === "waiting" && failed ? "failed" : key} />
+                      <span className="min-w-0 flex-1 truncate">{thread.title}</span>
+                      <span className="neska-task-meta">{key === "waiting" ? t(failed ? "Ha fallat" : "T’espera") : key === "running" ? t("En marxa") : relativeDate(thread.updatedAt, locale)}</span>
+                    </SidebarMenuButton>
+                    <button aria-label={t("Acciones de {p0}", { p0: thread.title })} aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuOpen ? `sidebar-thread-actions-${thread.id}` : undefined} className={`sidebar-item-action absolute right-0 top-1/2 z-20 grid size-11 -translate-y-1/2 place-items-center text-[var(--text-subtle)] opacity-0 hover:text-[var(--text)] group-hover/thread:opacity-100 focus:opacity-100 ${contextMenuOpen && !menuOpen ? "context-menu-suppressed" : ""}`} onClick={() => { setProjectMenuId(null); setThreadMenuId(menuOpen ? null : thread.id); }}><DotsThree size={14} weight="bold" /></button>
+                    {menuOpen ? <ItemActions kind="thread" item={thread} canEdit={access?.canEdit ?? true} canPin canArchive={access?.canEdit ?? true} onClose={closeMenus} onAction={(action, returnFocus) => { closeMenus(); onThreadAction(thread, action as ThreadMenuAction, returnFocus); }} /> : null}
+                  </SidebarMenuItem>;
+                })}
+              </SidebarMenu>
+              {key === "done" && taskGroups.done.length > doneLimit ? <button type="button" className="neska-show-more" onClick={() => setDoneLimit((limit) => limit + 10)}>{t("Veure-les totes")}</button> : null}
+            </section> : null)}
+            {!taskGroups.waiting.length && !taskGroups.running.length && !taskGroups.done.length ? <p className="neska-task-empty">{t("Les teves tasques apareixeran aquí.")}</p> : null}
+          </> : null}
+          {!neska && pinnedThreads.length > 0 ? (
             <section aria-labelledby="pinned-conversations-label" className="group/pinned">
               <div className="flex items-center justify-between pb-1 pt-3">
                 <button data-testid="sidebar-pinned-label" id="pinned-conversations-label" type="button" aria-expanded={pinnedOpen} aria-controls="pinned-conversations" className={`${styles.sectionLabel} sidebar-section-label flex items-center gap-1 px-2 py-1 text-[var(--text-subtle)]`} onClick={() => disclosure.setOpen("pinned", !pinnedOpen)}>{t("Anclados")}{pinnedOpen ? <CaretDown size={11} /> : <CaretRight size={11} />}</button>
@@ -415,7 +457,7 @@ export function Sidebar({
 
           <section aria-labelledby="projects-label" className={`group/projects ${styles.section}`}>
             <div className="flex items-center justify-between pb-1 pt-2">
-              <button data-testid="sidebar-projects-label" id="projects-label" type="button" aria-expanded={projectsOpen} aria-controls="projects-list" className={`${styles.sectionLabel} sidebar-section-label flex items-center gap-1 px-2 py-1 text-[var(--text-subtle)]`} onClick={() => disclosure.setOpen("projects", !projectsOpen)}>{t("Proyectos")}{projectsOpen ? <CaretDown size={11} /> : <CaretRight size={11} />}</button>
+              <button data-testid="sidebar-projects-label" id="projects-label" type="button" aria-expanded={projectsOpen} aria-controls="projects-list" className={`${styles.sectionLabel} sidebar-section-label flex items-center gap-1 px-2 py-1 text-[var(--text-subtle)]`} onClick={() => disclosure.setOpen("projects", !projectsOpen)}>{t("Proyectos")}{neska ? <TriggerIcon icon={ChevronDownIcon} size={12} className={projectsOpen ? "" : "-rotate-90"} /> : projectsOpen ? <CaretDown size={11} /> : <CaretRight size={11} />}</button>
               <button aria-label={t("Crear proyecto")} className="touch-target grid size-7 place-items-center text-[var(--text-subtle)] opacity-0 transition hover:text-[var(--text)] group-hover/projects:opacity-100 group-focus-within/projects:opacity-100" onClick={(event) => onNewProject(event.currentTarget)}><TriggerIcon icon={PlusIcon} size={14} /></button>
             </div>
             {projectsOpen ? <SidebarMenu id="projects-list" className="gap-0.5">
@@ -473,7 +515,7 @@ export function Sidebar({
             </SidebarMenu> : null}
           </section>
 
-          <section aria-labelledby="standalone-conversations-label" className={`group/chats ${styles.section}`}>
+          {neska ? null : <section aria-labelledby="standalone-conversations-label" className={`group/chats ${styles.section}`}>
             <div className="flex items-center justify-between pb-1 pt-3">
               <button data-testid="sidebar-chats-label" id="standalone-conversations-label" type="button" aria-expanded={chatsOpen} aria-controls="standalone-conversations" className={`${styles.sectionLabel} sidebar-section-label flex items-center gap-1 px-2 py-1 text-[var(--text-subtle)]`} onClick={() => disclosure.setOpen("chats", !chatsOpen)}>{t("Conversaciones recientes")}{chatsOpen ? <CaretDown size={11} /> : <CaretRight size={11} />}</button>
 	              <button disabled={!standaloneProject || busy} aria-label={t("Nueva conversación independiente")} className="touch-target grid size-7 place-items-center text-[var(--text-subtle)] opacity-0 transition hover:text-[var(--text)] group-hover/chats:opacity-100 group-focus-within/chats:opacity-100 disabled:opacity-40" onClick={() => onNewThread()}><TriggerIcon icon={PlusIcon} size={14} /></button>
@@ -501,11 +543,12 @@ export function Sidebar({
             {chatsOpen && visibleStandaloneThreads.length < activeStandaloneThreads.length ? (
               <button className={styles.showMore} onClick={() => setRecentLimit((limit) => limit + 8)}>{t("Ver más conversaciones")}</button>
             ) : null}
-          </section>
+          </section>}
 
 
         </div>
 
+        {neska ? <div className="neska-sidebar-foot shrink-0 px-3 pt-2"><button type="button" className="neska-foot-link" onClick={onOpenAutomations}><TriggerIcon icon={ClockIcon} size={16} />{t("Automatitzacions")}</button></div> : null}
         <div ref={profileMenuRef} className={`${styles.account} relative shrink-0 p-2`} onKeyDown={(event) => {
           // Escape can arrive before the next-frame focus enters the menu.
           if (event.key === "Escape" && profileMenuOpen) {

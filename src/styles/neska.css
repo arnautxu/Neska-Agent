@@ -391,6 +391,151 @@
     display: none;
   }
 
+  /* Intuitive bar (/design/ux-intuitiu): every control says what it does in a
+     word. Adjunta · project · tools on the left, Envia on the right. */
+  & .composer-controls .composer-labelled,
+  & .composer-controls .composer-project .composer-picker-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 12px 0 10px;
+    border-radius: var(--neska-radius) !important;
+    background: transparent;
+    color: var(--neska-ink-2);
+    font-size: 14px;
+    font-weight: 400;
+    white-space: nowrap;
+    transition: background 120ms, color 120ms, border-color 120ms;
+  }
+  & .composer-controls .composer-project .composer-picker-button { max-height: 36px; }
+  & .composer-under .composer-picker-button { max-height: 32px; white-space: nowrap; }
+  & .composer-under .composer-picker-button .max-w-32,
+  & .composer-controls .composer-project .composer-picker-button .max-w-32 { max-width: 220px; }
+  & .composer-controls .composer-labelled-boxed,
+  & .composer-controls .composer-project .composer-picker-button { border: 1px solid var(--neska-line); }
+  & .composer-controls .composer-project .composer-picker-button { color: var(--neska-ink); }
+  & .composer-controls .composer-labelled:hover:not(:disabled),
+  & .composer-controls .composer-project .composer-picker-button:hover:not(:disabled),
+  & .composer-controls .composer-project .composer-picker-button-active { background: var(--neska-sunk); color: var(--neska-ink); border-color: var(--neska-ink-3); }
+  & .composer-controls .composer-labelled:disabled { color: var(--neska-ink-3); opacity: .6; }
+  & .composer-controls .composer-project .composer-picker-button > span:last-child,
+  & .composer-under .composer-picker-button > span:last-child { display: inline-grid !important; }
+  & .composer-controls .composer-tools { min-width: 0; max-width: 340px; }
+  & .composer-controls .composer-tools b { font-weight: 400; color: var(--neska-ink); }
+  & .composer-controls-start { margin-left: -6px; gap: 6px; min-width: 0; }
+  & .composer-controls-end { flex: 0 0 auto; }
+  & .composer-send {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 38px;
+    padding: 0 14px 0 16px;
+    border-radius: var(--neska-radius);
+    background: #6b3a1e;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+    transition: background 120ms;
+  }
+  & .composer-send:hover:not(:disabled) { background: #8a4d29; }
+  & .composer-send:disabled { background: transparent; color: var(--neska-ink-3); box-shadow: inset 0 0 0 1px var(--neska-line); cursor: not-allowed; }
+  & .composer-landing .composer-send:disabled { background: #6b3a1e; color: #fff; box-shadow: none; opacity: .7; }
+  & .composer-context { border-bottom: 0; margin-bottom: 0; padding-bottom: 4px; }
+
+  /* the line under the box: the "/" door and how much Neska thinks */
+  & .composer-under {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--neska-ink-3);
+  }
+  & .composer-under-slash { min-height: 32px; color: var(--neska-ink-3); text-align: left; }
+  & .composer-under-slash:hover { color: var(--neska-ink); }
+  & .composer-under-slash kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin: 0 2px; padding: 0 4px; border: 1px solid var(--neska-line); border-radius: var(--neska-radius); font-family: var(--font-geist-mono), monospace; font-size: 12px; color: var(--neska-ink); }
+  & .composer-under .composer-picker-button { min-height: 32px !important; padding: 0 4px; gap: 6px; background: none; color: var(--neska-ink-2); font-size: 13px; }
+  & .composer-under .composer-picker-button:hover { color: var(--neska-ink); }
+  & .composer-under-effort-label { color: var(--neska-ink-3); }
+  & .composer-under .composer-experience [role="menu"] { left: auto; right: 0; }
+
+  /* running line: the task, then a labelled Atura */
+  & [data-slot="message-queue"] { max-width: none; }
+  & .message-queue-stop {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 12px 0 10px;
+    border: 1px solid var(--neska-line) !important;
+    border-radius: var(--neska-radius) !important;
+    color: var(--neska-ink) !important;
+    font-size: 14px;
+  }
+  & .message-queue-stop:hover:not(:disabled) { background: var(--neska-sunk) !important; border-color: var(--neska-ink-3) !important; }
+
+  & .composer-under .composer-picker-button,
+  & .composer-controls .composer-project .composer-picker-button { max-width: none; }
+
+  /* home: what waits for you sits above the box, one line, one action */
+  & .neska-home-waiting {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 24px;
+    padding: 10px 10px 10px 16px;
+    border: 1px solid var(--neska-accent);
+    border-radius: var(--neska-radius);
+    font-size: 15px;
+  }
+  & .neska-home-waiting-mark { box-sizing: border-box; width: 9px; height: 9px; flex: none; border: 1.5px solid var(--neska-accent); }
+  & .neska-home-waiting-open { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px 0 14px; border-radius: var(--neska-radius); background: #6b3a1e; color: #fff; font-size: 14px; font-weight: 500; }
+  & .neska-home-waiting-open:hover { background: #8a4d29; }
+  & .neska-try-label { margin: 18px 0 6px; font-family: var(--font-pixel); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--neska-ink-3); }
+  & .landing-tasks-suggestions > .landing-task-item::before { content: "→"; display: inline-block; font-family: var(--font-sans); font-size: 15px; transition: transform 200ms cubic-bezier(.2, 0, 0, 1); }
+  & .landing-tasks-suggestions > .landing-task-item:is(:hover, :focus-visible)::before { transform: translateX(4px); }
+  @media (prefers-reduced-motion: reduce) { & .landing-tasks-suggestions > .landing-task-item::before { transition: none; } }
+  & .landing-tasks-suggestions > .landing-task-item:hover { color: var(--neska-ink); }
+  & .landing-tasks-suggestions > .landing-task-item:first-child { border-top: 1px solid var(--neska-line-soft); }
+
+  /* sidebar: tasks grouped by what they need from you */
+  & .neska-new-task { justify-content: flex-start; gap: 10px; border: 1px solid var(--neska-line) !important; border-radius: var(--neska-radius) !important; background: var(--neska-paper) !important; color: var(--neska-ink) !important; font-weight: 400; }
+  & .neska-new-task:hover { background: var(--neska-sunk) !important; }
+  & .neska-kbd { margin-left: auto; font-family: var(--font-geist-mono), monospace; font-size: 11px; color: var(--neska-ink-3); }
+  & .neska-task-group { padding-top: 14px; }
+  & .neska-task-group-label { display: flex; justify-content: space-between; padding: 0 10px 6px; font-family: var(--font-pixel); font-size: 11px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: var(--neska-ink-3); }
+  & .neska-task-group[data-group="waiting"] .neska-task-group-label { color: var(--neska-accent); }
+  & .neska-task-row { gap: 10px; font-size: 14px; color: var(--neska-ink-2); }
+  & .neska-task-row[data-active="true"], & .neska-task-row[aria-current="page"] { color: var(--neska-ink); }
+  & .neska-task-state { width: 7px; height: 7px; flex: none; background: var(--neska-line); }
+  & .neska-task-state[data-state="running"] { background: var(--neska-accent); animation: neska-live-breathe 1.6s steps(4) infinite; }
+  & .neska-task-state[data-state="waiting"] { box-sizing: border-box; background: transparent; border: 1.5px solid var(--neska-accent); }
+  & .neska-task-state[data-state="failed"] { box-sizing: border-box; background: transparent; border: 1.5px solid var(--neska-ink); }
+  & .neska-task-state[data-state="done"] { background: var(--neska-ink); }
+  & .neska-task-meta { flex: none; font-size: 12px; color: var(--neska-ink-3); }
+  & .neska-task-group[data-group="waiting"] .neska-task-meta { color: var(--neska-accent); }
+  @media (min-width: 768px) { & .neska-mobile-inbox { visibility: hidden; } }
+  & .neska-show-more, & .neska-task-empty { padding: 6px 10px; font-size: 13px; color: var(--neska-ink-3); }
+  & .neska-show-more:hover { color: var(--neska-ink); }
+  & .neska-sidebar-foot { border-top: 1px solid var(--neska-line-soft); }
+  & .neska-foot-link { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 8px; border-radius: var(--neska-radius); font-size: 14px; color: var(--neska-ink-2); }
+  & .neska-foot-link:hover { background: var(--neska-sunk); color: var(--neska-ink); }
+
+  @media (max-width: 639px) {
+    & .composer-controls .composer-tools { display: none; }
+    & .composer-controls { flex-wrap: nowrap; }
+    & .composer-controls-start { flex: 1 1 auto; flex-wrap: nowrap; }
+    & .composer-controls-end { max-width: none; flex: 0 0 auto; }
+    & .composer-controls .composer-project { min-width: 0; flex: 0 1 auto; }
+    & .composer-controls .composer-project .composer-picker-button { max-width: 100%; min-width: 0 !important; overflow: hidden; }
+    & .composer-controls .composer-project .composer-picker-button .max-w-32 { max-width: 96px; }
+    & .composer-landing .composer-textarea { min-height: 78px; }
+    & .composer-under { flex-wrap: wrap; gap: 0 16px; }
+  }
+
   /* menus attach to the box: flat, 1px ink, no shadow */
   & .composer-shadow [role="menu"],
   & .composer-picker [role="menu"],

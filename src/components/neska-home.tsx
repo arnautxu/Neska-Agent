@@ -2,15 +2,21 @@
 import { useSyncExternalStore } from "react";
 import { useUiText } from "@/i18n/provider";
 import type { TaskCenterItem } from "@/task-center/contracts";
-export function NeskaHomeHeader({ userName, tasks, onOpenInbox }: { userName: string; tasks: readonly TaskCenterItem[]; onOpenInbox?: () => void }) {
+import { TriggerIcon } from "@/components/ui/trigger-icon";
+import { ArrowRightIcon } from "@/components/ui/neska-animated-icons";
+export function NeskaHomeHeader({ userName, tasks, onOpenInbox, onOpenTask }: { userName: string; tasks: readonly TaskCenterItem[]; onOpenInbox?: () => void; onOpenTask?: (task: TaskCenterItem) => void }) {
   const t = useUiText();
   const hour = useSyncExternalStore(subscribeClock, () => new Date().getHours(), () => -1);
   const greeting = hour < 0 ? "Hola, {name}" : hour < 12 ? "Bon dia, {name}" : hour < 19 ? "Bona tarda, {name}" : "Bon vespre, {name}";
+  const waiting = tasks.filter(task => task.status === "needs_attention");
   const running = tasks.filter(task => task.status === "running" && task.queue?.state !== "waiting").length;
-  const pending = tasks.filter(task => task.status === "needs_attention").length;
   const name = userName.trim().split(/\s+/)[0];
   return <div className="neska-home-header mb-8 text-left"><h1 className="text-[30px] font-medium leading-tight tracking-[-.01em] max-sm:text-[26px]">{t(greeting, { name })}</h1>
-    {running || pending ? <p className="mt-4 text-[15px] text-[var(--text-secondary)]">{t(running === 1 ? "1 tasca en curs" : "{running} tasques en curs", { running })}{pending ? <> · <button type="button" className="min-h-9 underline underline-offset-4" onClick={onOpenInbox}>{t(pending === 1 ? "1 t’espera" : "{pending} t’esperen", { pending })}</button></> : null}</p> : null}
+    {waiting.length ? <div className="neska-home-waiting" role="status">
+      <span aria-hidden="true" className="neska-home-waiting-mark" />
+      <p className="min-w-0 flex-1 truncate"><span className="text-[var(--neska-ink)]">{waiting[0].threadTitle}</span> <span className="text-[var(--neska-ink-2)]">· {t(waiting.length > 1 ? "i {more} més t’esperen" : "necessito la teva resposta", { more: waiting.length - 1 })}</span></p>
+      <button type="button" className="neska-home-waiting-open" onClick={() => onOpenTask ? onOpenTask(waiting[0]) : onOpenInbox?.()}>{t("Revisa-ho")}<TriggerIcon icon={ArrowRightIcon} size={15} /></button>
+    </div> : running ? <p className="mt-4 text-[15px] text-[var(--text-secondary)]">{t(running === 1 ? "1 tasca en curs" : "{running} tasques en curs", { running })}</p> : null}
   </div>;
 }
 export function NeskaCurrentTasks({ tasks, onOpenTask }: { tasks: readonly TaskCenterItem[]; onOpenTask?: (task: TaskCenterItem) => void }) {

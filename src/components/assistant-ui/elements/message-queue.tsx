@@ -1,7 +1,7 @@
 "use client";
 
 import { useUiLocale } from "@/i18n/provider";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { ArrowUpIcon, SquareIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { field, ghostButton, mono, paper } from "@/lib/surfaces";
@@ -41,6 +41,7 @@ export function MessageQueue({
   onCancel,
   onStop,
   stopping = false,
+  stopLabel,
   language,
   className,
   ...props
@@ -53,6 +54,8 @@ export function MessageQueue({
   onCancel?: (id: string) => void;
   onStop?: () => void;
   stopping?: boolean;
+  /** Shows stop as a labelled button instead of a bare square. */
+  stopLabel?: ReactNode;
   language?: keyof typeof queueCopy;
 }) {
   const locale = useUiLocale();
@@ -74,7 +77,7 @@ export function MessageQueue({
         <span className="text-foreground/90 min-w-0 flex-1 truncate text-[13.5px]">
           {running}
         </span>
-        <span className={cn(mono, "text-foreground/35 shrink-0")}>{copy.running}</span>
+        {stopLabel ? null : <span className={cn(mono, "text-foreground/35 shrink-0")}>{copy.running}</span>}
         {onStop ? (
           <button
             type="button"
@@ -82,9 +85,9 @@ export function MessageQueue({
             aria-busy={stopping || undefined}
             disabled={stopping}
             onClick={onStop}
-            className={cn(ghostButton, "touch-target size-7 shrink-0 disabled:opacity-40")}
+            className={cn(ghostButton, stopLabel ? "message-queue-stop touch-target shrink-0 disabled:opacity-40" : "touch-target size-7 shrink-0 disabled:opacity-40")}
           >
-            <SquareIcon className="size-3 fill-current" />
+            {stopLabel ?? <SquareIcon className="size-3 fill-current" />}
           </button>
         ) : null}
       </div>
