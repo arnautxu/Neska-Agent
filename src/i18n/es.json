@@ -229,5 +229,16 @@
   "i {more} més t’esperen": "y {more} más te esperan",
   "Què vols que faci? Per exemple, «concilia les factures d’octubre amb el banc»": "¿Qué quieres que haga? Por ejemplo, «concilia las facturas de octubre con el banco»",
   "Afegeix alguna cosa. No m’aturaré.": "Añade algo. No me detendré.",
-  "{done} de {total}": "{done} de {total}"
+  "{done} de {total}": "{done} de {total}",
+  "Només llegeix. No canvia res.": "Solo lee. No cambia nada.",
+  "Es pot desfer, però pot canviar fitxers o instal·lar coses.": "Se puede deshacer, pero puede cambiar archivos o instalar cosas.",
+  "Es pot desfer, però canvia fitxers del teu espai.": "Se puede deshacer, pero cambia archivos de tu espacio.",
+  "Es pot desfer, però amplia el que pot tocar durant la tasca.": "Se puede deshacer, pero amplía lo que puede tocar durante la tarea.",
+  "Es pot desfer, però no sé exactament fins on arriba.": "Se puede deshacer, pero no sé exactamente hasta dónde llega.",
+  "No es pot desfer. Envia o canvia dades fora de Neska.": "No se puede deshacer. Envía o cambia datos fuera de Neska.",
+  "No es pot desfer. Actua en una web en nom teu.": "No se puede deshacer. Actúa en una web en tu nombre.",
+  "No es pot desfer. Esborra o sobreescriu dades.": "No se puede deshacer. Borra o sobrescribe datos.",
+  "No es pot desfer. Envia dades fora de Neska.": "No se puede deshacer. Envía datos fuera de Neska.",
+  "No es pot desfer. Dona accés a internet i les dades poden sortir.": "No se puede deshacer. Da acceso a internet y los datos pueden salir.",
+  "No es pot desfer. Canvia el sistema o els permisos.": "No se puede deshacer. Cambia el sistema o los permisos."
 }

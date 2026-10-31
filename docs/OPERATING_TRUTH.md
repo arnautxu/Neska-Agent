@@ -69,3 +69,11 @@ employee returns control, closing private pages while retaining their profile.
 See [SECURE_INPUT.md](SECURE_INPUT.md) for the supported forms, restart behavior,
 manual fallback, validation and release boundaries. Payment-card entry remains
 preview-only. This implementation does not publish or deploy a release.
+
+## Approval risk levels (2026-10-31)
+
+Approvals now carry a server-computed blast-radius level (`contained`, `wide`,
+`irreversible`) and reason. It narrows only: irreversible or unclassified
+approvals cannot be granted for the whole task. Nothing is auto-approved. See
+[APPROVAL_STORE.md](APPROVAL_STORE.md). Local tests only; not Backend CI, GHCR
+publication, deployment or live acceptance.

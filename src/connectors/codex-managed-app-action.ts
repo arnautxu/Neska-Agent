@@ -13,6 +13,7 @@ import { ConnectorError, type ConnectorAuthorizationSnapshot, type ConnectorPrin
 import type { CodexManagedAppActionConfig } from "@/config/installation-schema";
 import type { ApprovalItem } from "@/lib/chat-contract";
 import type { JsonValue } from "../../contracts/codex/0.153.4/types/serde_json/JsonValue";
+import { classifyApprovalRisk } from "@/runtime/approval-risk";
 import {
   FileApprovalStore,
   type ApprovalLocator,
@@ -130,7 +131,8 @@ export class CodexManagedAppAction {
       authorizationFingerprint: authorization.authorizationFingerprint,
       approval: {
         id: locator.approvalId, threadId: locator.threadId, turnId: locator.turnId, itemId: locator.itemId,
-        kind: "connector", title: "Confirma l’acció de l’aplicació connectada", detail: "Revisa l’acció abans de permetre que l’aplicació l’executi.", status: "pending",
+        kind: "connector", title: "Confirma l’acció de l’aplicació connectada", detail: "Revisa l’acció abans de permetre que l’aplicació l’executi.",
+        risk: classifyApprovalRisk({ kind: "connector" }), status: "pending",
       },
     };
   }

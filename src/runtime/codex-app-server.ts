@@ -18,6 +18,7 @@ import {
   publicToolOutput,
 } from "@/ui/public-activity";
 import type { ApprovalRequestType } from "@/runtime/approval-store";
+import { classifyApprovalRisk } from "@/runtime/approval-risk";
 import type { RuntimeConfig } from "@/runtime/config";
 import type {
   RuntimeModelOption,
@@ -666,6 +667,7 @@ export function approvalFromRequest(request: ServerRequest): PendingServerApprov
         detail: reason ?? "Aquest pas necessita permís. Revisa l’ordre abans de continuar.",
         ...(command ? { command } : {}),
         ...(typeof params.cwd === "string" ? { cwd: params.cwd } : {}),
+        risk: classifyApprovalRisk({ kind: "command", command }),
         status: "pending",
       },
       requestType: "command",
@@ -680,6 +682,7 @@ export function approvalFromRequest(request: ServerRequest): PendingServerApprov
         kind: "file",
         title: "Vols que apliqui aquests canvis?",
         detail: reason ?? "Revisa els canvis abans de continuar.",
+        risk: classifyApprovalRisk({ kind: "file" }),
         status: "pending",
       },
       requestType: "file",
@@ -699,6 +702,10 @@ export function approvalFromRequest(request: ServerRequest): PendingServerApprov
           permissionSummary(requested) ??
           "Revisa els permisos abans de continuar.",
         ...(typeof params.cwd === "string" ? { cwd: params.cwd } : {}),
+        risk: classifyApprovalRisk({
+          kind: "permissions",
+          networkEnabled: isRecord(requested.network) && requested.network.enabled === true,
+        }),
         status: "pending",
       },
       requestType: "permissions",

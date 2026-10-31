@@ -83,3 +83,25 @@ npm run typecheck
 ```
 
 Las pruebas cubren restart/replay, idempotencia, conflicto de decisión, aislamiento cruzado por usuario/thread/turn/item, dos esperas simultáneas, expiración, abort y sustitución por symlink.
+
+## Nivells de risc (2026-10-31)
+
+Cada `ApprovalItem` nou porta `risk: { level, reason }`, calculat només al servidor
+(`src/runtime/approval-risk.ts`). El nivell indica com de difícil és desfer l'efecte,
+no la confiança del model:
+
+- `contained`: ordres que només llegeixen (llista tancada de programes, sense redireccions).
+- `wide`: reversible però ampli (canvis de fitxers, instal·lacions, permisos sense xarxa)
+  i qualsevol ordre desconeguda.
+- `irreversible`: esborrar o sobreescriure, enviar dades fora, canvis de sistema,
+  permisos amb xarxa, connectors i navegador.
+
+El nivell no aprova ni amplia res. L'única regla que aplica és restrictiva: una
+aprovació que no sigui `contained` o `wide` (incloent-hi les que no tenen nivell)
+converteix `acceptForSession` en `accept` al servidor. Les mutacions del navegador
+continuen rebutjant l'abast de sessió com abans. La targeta mostra el motiu i amaga
+"Permet durant aquesta tasca" quan l'acció no es pot desfer. Els registres antics
+sense `risk` continuen sent vàlids.
+
+Pas pendent, no implementat: no demanar permís per a `contained`. Necessita una
+decisió explícita del propietari del producte.

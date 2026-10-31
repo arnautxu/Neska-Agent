@@ -12,6 +12,10 @@ export function PermissionGrant({ approval, onResolve, connectorApproval = false
   const pending = approval.status === "pending";
   const title = publicActivityText(approval.title, 240) ?? t("Acció pendent");
   const detail = publicActivityText(approval.detail, 1000);
+  const risk = approval.risk ? { level: approval.risk.level, reason: publicActivityText(approval.risk.reason, 240) ?? "" } : null;
+  const irreversible = risk?.level === "irreversible";
+  // Mirrors the server rule: only reversible actions can be allowed for the whole task.
+  const sessionScopeAllowed = risk?.level === "contained" || risk?.level === "wide";
   const result = { accepted: "Permès una vegada", accepted_session: "Permès durant aquesta tasca", declined: "Acció rebutjada", pending: "Necessito el teu permís" }[approval.status];
   if (!pending) return <p className="py-2 text-sm text-[var(--text-secondary)]" role="status">{title} · {t(result)}</p>;
   const button = "inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] px-4 py-2 text-sm max-sm:w-full";
@@ -19,7 +23,11 @@ export function PermissionGrant({ approval, onResolve, connectorApproval = false
     <p className="neska-px text-[11px] text-[var(--text-secondary)]">{t("Necessito el teu permís")}</p>
     <h2 className="mt-2 text-[22px] font-medium leading-7">{title}</h2>
     {detail ? <p className="mt-2 text-[15px] leading-6 text-[var(--text-secondary)]">{detail}</p> : null}
-    {approval.command ? <details className="mt-4"><summary className="cursor-pointer text-sm text-[var(--text-secondary)]">{t("Revisa els detalls")}</summary><p className="mt-2 break-all font-mono text-xs">{publicCommandTitle(approval.command)}</p>{approval.kind === "command" && !connectorApproval && !readOnly ? <button type="button" className={`${button} mt-3 border border-[var(--border)]`} onClick={() => onResolve("acceptForSession")}>{t("Permet durant aquesta tasca")}</button> : null}</details> : null}
+    {risk ? <p data-slot="permission-risk" data-risk={risk.level} className={`mt-4 flex items-baseline gap-2 text-sm leading-5 ${irreversible ? "font-medium text-[var(--text)]" : "text-[var(--text-secondary)]"}`}>
+      <span aria-hidden="true" className={`inline-block size-2 shrink-0 translate-y-[-1px] ${irreversible ? "bg-current" : risk.level === "wide" ? "border border-current [background:linear-gradient(to_right,currentColor_50%,transparent_50%)]" : "border border-current"}`} />
+      <span>{t(risk.reason)}</span>
+    </p> : null}
+    {approval.command ? <details className="mt-4"><summary className="cursor-pointer text-sm text-[var(--text-secondary)]">{t("Revisa els detalls")}</summary><p className="mt-2 break-all font-mono text-xs">{publicCommandTitle(approval.command)}</p>{approval.kind === "command" && !connectorApproval && !readOnly && sessionScopeAllowed ? <button type="button" className={`${button} mt-3 border border-[var(--border)]`} onClick={() => onResolve("acceptForSession")}>{t("Permet durant aquesta tasca")}</button> : null}</details> : null}
     {readOnly ? <p className="mt-5 text-sm">{t("Esperant la decisió d’un editor del projecte")}</p> : <div className="mt-5 flex flex-wrap gap-2">
       <button type="button" className={`${button} bg-[var(--neska-accent,var(--brain-accent))] text-white`} onClick={() => onResolve("accept")}><TriggerIcon icon={CheckIcon} size={15} />{t("Permet")}</button>
       {approval.reviewUrl ? <a href={approval.reviewUrl} target="_blank" rel="noreferrer" className={`${button} border border-[var(--border)]`}><TriggerIcon icon={EyeIcon} size={15} />{t("Revisa")}</a> : onOpenReview ? <button type="button" className={`${button} border border-[var(--border)]`} onClick={onOpenReview}><TriggerIcon icon={EyeIcon} size={15} />{t("Revisa")}</button> : null}

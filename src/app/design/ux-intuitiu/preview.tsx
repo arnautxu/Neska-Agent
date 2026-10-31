@@ -28,6 +28,12 @@ const thread = (id: string, title: string, updatedAt: string, messages: ChatMess
 const request: ChatMessage = { id: "u1", role: "user", content: "Concilia les factures d'octubre amb l'extracte del banc i prepara el correu per als proveïdors amb diferències.", createdAt: now, status: "complete", plan: [], activity: [], approvals: [], diff: "", attachments: [], artifacts: [] };
 const working: ChatMessage = { ...exampleTask, content: "" };
 const asking: ChatMessage = { ...exampleTask, content: "", approvals: [{ id: "permission", threadId: "preview", turnId: "turn", itemId: "item", kind: "connector", title: "Enviar un correu a Ferreteria Puig", detail: "La factura F-2026-0931 és de 1.240,00 € i el banc en mostra 1.204,00 €. Els reclamo la diferència de 36,00 €.", status: "pending", stepIndex: 4 }] };
+// ?estat=permis&risc=contained|wide|irreversible shows the risk line on the card.
+const riskAsks: Record<string, ChatMessage["approvals"][number]> = {
+  irreversible: { ...asking.approvals[0]!, risk: { level: "irreversible", reason: "No es pot desfer. Envia o canvia dades fora de Neska." } },
+  wide: { id: "permission", threadId: "preview", turnId: "turn", itemId: "item", kind: "command", title: "Em dones permís per completar aquest pas?", detail: "Necessito una eina per llegir l’extracte del banc en Excel.", command: "npm install xlsx", risk: { level: "wide", reason: "Es pot desfer, però pot canviar fitxers o instal·lar coses." }, status: "pending", stepIndex: 1 },
+  contained: { id: "permission", threadId: "preview", turnId: "turn", itemId: "item", kind: "command", title: "Em dones permís per completar aquest pas?", detail: "Vull comptar quantes factures d’octubre hi ha a la carpeta compartida.", command: "grep -c F-2026 factures-octubre.csv", risk: { level: "contained", reason: "Només llegeix. No canvia res." }, status: "pending", stepIndex: 1 },
+};
 const threads = [
   thread("t-puig", "Correu a Ferreteria Puig", day(0)),
   thread("t-conc", "Conciliació factures octubre", day(0)),
@@ -54,7 +60,8 @@ const connectors = [
 const noop = () => {};
 const asyncNoop = async () => undefined;
 
-export function IntuitivePreview({ estat }: { estat: string }) {
+export function IntuitivePreview({ estat, risc }: { estat: string; risc?: string }) {
+  const riskAsk = risc ? riskAsks[risc] : undefined;
   const state = estat === "treballant" || estat === "permis" ? estat : "inici";
   const [prompt, setPrompt] = useState("");
   const [experience, setExperience] = useState<ComposerExperience>("smart");
@@ -62,7 +69,7 @@ export function IntuitivePreview({ estat }: { estat: string }) {
   const [docs, setDocs] = useState<StagedComposerDocument[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
-  const active = state === "inici" ? null : { ...threads[1], messages: [request, state === "permis" ? asking : working] } as WorkbenchThread;
+  const active = state === "inici" ? null : { ...threads[1], messages: [request, state === "permis" ? (riskAsk ? { ...asking, approvals: [riskAsk] } : asking) : working] } as WorkbenchThread;
   return <PreviewTheme><div className="workbench-shell flex h-[100dvh] overflow-hidden">
     <Sidebar branding={branding} session={{ provider: "local", user: { id: "preview", name: "Arnau", email: "preview@example.test" }, tenant: { id: "preview", name: "Maqueta" }, expiresAt: "2099-01-01T00:00:00.000Z" }}
       projects={[project, standalone]} threads={threads} activeProjectId={project.id} activeThreadId={active?.id ?? null} mobileOpen={mobileOpen} desktopOpen={desktopOpen} busy={false}

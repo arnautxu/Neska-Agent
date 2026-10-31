@@ -201,6 +201,13 @@ export type TurnOptions = {
   serverReferences?: ServerReference[];
 };
 
+/**
+ * How hard an approved effect is to undo. Set by the server only; it never
+ * grants anything. `irreversible` approvals are always one at a time.
+ */
+export type ApprovalRiskLevel = "contained" | "wide" | "irreversible";
+export type ApprovalRisk = { level: ApprovalRiskLevel; reason: string };
+
 export type ApprovalItem = {
   id: string;
   threadId: string;
@@ -215,6 +222,8 @@ export type ApprovalItem = {
   stepIndex?: number;
   /** Authenticated same-origin content supplied by the backend. */
   reviewUrl?: string;
+  /** Optional for approvals persisted before risk levels existed. */
+  risk?: ApprovalRisk;
   status: "pending" | "accepted" | "accepted_session" | "declined";
 };
 
@@ -631,6 +640,12 @@ export function isIncidentActionRequest(value: unknown): value is IncidentAction
     (value.action === "retry" || value.action === "skip") && isUuidString(value.clientRequestId) && isUuidString(value.userMessageId);
 }
 
+export function isApprovalRisk(value: unknown): value is ApprovalRisk {
+  return isRecord(value) && Object.keys(value).length === 2 &&
+    (value.level === "contained" || value.level === "wide" || value.level === "irreversible") &&
+    typeof value.reason === "string" && value.reason.length > 0 && value.reason.length <= 240;
+}
+
 export function isApprovalItem(value: unknown): value is ApprovalItem {
   if (!isRecord(value)) return false;
   return (
@@ -645,6 +660,7 @@ export function isApprovalItem(value: unknown): value is ApprovalItem {
     hasOptionalString(value, "command") &&
     hasOptionalString(value, "cwd") &&
     (value.stepIndex === undefined || isIndex(value.stepIndex)) &&
+    (value.risk === undefined || isApprovalRisk(value.risk)) &&
     (value.reviewUrl === undefined || (typeof value.reviewUrl === "string" && /^\/api\/[A-Za-z0-9][^\s\\]*$/.test(value.reviewUrl))) &&
     (!("permissionFingerprint" in value) || value.permissionFingerprint === undefined ||
       (typeof value.permissionFingerprint === "string" && /^[0-9a-f]{64}$/u.test(value.permissionFingerprint))) &&
