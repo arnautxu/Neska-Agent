@@ -20,6 +20,11 @@ describe("approval risk levels", () => {
     expect(level("python3 script.py")).toBe("wide");
     expect(level("cat a > b")).toBe("wide");
     expect(level("echo $(whoami)")).toBe("wide");
+    expect(level("ls & python3 script.py")).toBe("wide");
+    expect(level("cat <(python3 script.py)")).toBe("wide");
+    expect(level("cat < notes.txt")).toBe("wide");
+    expect(level("echo ${HOME}")).toBe("wide");
+    expect(level("ls\npython3 x.py")).toBe("wide");
     expect(level("ls; node build.js")).toBe("wide");
     expect(level("git checkout main")).toBe("wide");
     expect(level("sort -o invoices.csv replacement.csv")).toBe("wide");

@@ -100,8 +100,10 @@ export function classifyCommand(command: string | null | undefined): ApprovalRis
   if (DELETE.some((pattern) => pattern.test(text))) return risk("irreversible", "delete");
   if (OUTBOUND.some((pattern) => pattern.test(text))) return risk("irreversible", "outbound");
   if (SYSTEM.some((pattern) => pattern.test(text))) return risk("irreversible", "system");
-  // Any output redirection or substitution may overwrite or execute: not read-only.
-  if (/>|\$\(|`/u.test(text)) return risk("wide", "command");
+  // Only plain words joined by |, ;, && or || can be read-only. Any other shell
+  // syntax (redirection, background &, substitution, subshells, globs of
+  // braces, escapes, history) is not parsed here, so it is never contained.
+  if (/[&<>$`(){}\\!\n]/u.test(text.replace(/&&|\|\|/gu, " "))) return risk("wide", "command");
   const segments = text.split(/\|\||&&|[|;\n]/u);
   return segments.every(isReadOnlySegment) ? risk("contained", "readOnly") : risk("wide", "command");
 }
