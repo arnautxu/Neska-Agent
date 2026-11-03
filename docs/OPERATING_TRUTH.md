@@ -77,3 +77,13 @@ Approvals now carry a server-computed blast-radius level (`contained`, `wide`,
 approvals cannot be granted for the whole task. Nothing is auto-approved. See
 [APPROVAL_STORE.md](APPROVAL_STORE.md). Local tests only; not Backend CI, GHCR
 publication, deployment or live acceptance.
+
+## Finished-task checks (2026-11-03)
+
+A finished task now shows deterministic checks read from the persisted
+assistant message (`src/lib/task-verification.ts`): an answer exists, every
+plan step is completed or skipped, generated documents are ready, failed actions
+were retried successfully, and declined approvals are listed as information.
+Any failed check turns the task state from "Feta" into "Revisa-la". No model
+judges the result and nothing is retried automatically yet. Local tests only;
+not Backend CI, GHCR publication, deployment or live acceptance.

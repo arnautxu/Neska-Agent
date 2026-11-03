@@ -34,6 +34,15 @@ const riskAsks: Record<string, ChatMessage["approvals"][number]> = {
   wide: { id: "permission", threadId: "preview", turnId: "turn", itemId: "item", kind: "command", title: "Em dones permís per completar aquest pas?", detail: "Necessito una eina per llegir l’extracte del banc en Excel.", command: "npm install xlsx", risk: { level: "wide", reason: "Es pot desfer, però pot canviar fitxers o instal·lar coses." }, status: "pending", stepIndex: 1 },
   contained: { id: "permission", threadId: "preview", turnId: "turn", itemId: "item", kind: "command", title: "Em dones permís per completar aquest pas?", detail: "Vull comptar quantes factures d’octubre hi ha a la carpeta compartida.", command: "grep -c F-2026 factures-octubre.csv", risk: { level: "contained", reason: "Només llegeix. No canvia res." }, status: "pending", stepIndex: 1 },
 };
+// ?estat=fet (all checks pass) or ?estat=revisa (a step left and an action failed).
+const answer = "He conciliat les 38 factures d’octubre amb l’extracte. Hi ha una diferència de 36,00 € amb Ferreteria Puig i els he enviat el correu.";
+const finished: ChatMessage = { ...exampleTask, status: "complete", content: answer, plan: exampleTask.plan.map(step => ({ step: step.step, status: "completed" as const })),
+  toolResults: [1, 2, 3, 4].map(n => ({ id: `r${n}`, kind: "command" as const, title: `Pas ${n}`, status: "complete" as const, summary: null, output: null, sourceIds: [], createdAt: now })),
+  approvals: [{ id: "permission", threadId: "preview", turnId: "turn", itemId: "item", kind: "connector", title: "Enviar un correu a Ferreteria Puig", detail: "", status: "accepted", risk: { level: "irreversible", reason: "No es pot desfer. Envia o canvia dades fora de Neska." } }] };
+const needsReview: ChatMessage = { ...finished, content: "He conciliat 36 de les 38 factures d’octubre. Dues no s’han pogut llegir.",
+  plan: finished.plan.map((step, index) => index === finished.plan.length - 1 ? { ...step, status: "pending" as const } : step),
+  toolResults: [...(finished.toolResults ?? []), { id: "r5", kind: "command" as const, title: "Llegir escanejos-2026.pdf", status: "failed" as const, summary: null, output: null, sourceIds: [], createdAt: now }],
+  approvals: [{ ...finished.approvals[0]!, status: "declined" }] };
 const threads = [
   thread("t-puig", "Correu a Ferreteria Puig", day(0)),
   thread("t-conc", "Conciliació factures octubre", day(0)),
@@ -62,14 +71,14 @@ const asyncNoop = async () => undefined;
 
 export function IntuitivePreview({ estat, risc }: { estat: string; risc?: string }) {
   const riskAsk = risc ? riskAsks[risc] : undefined;
-  const state = estat === "treballant" || estat === "permis" ? estat : "inici";
+  const state = estat === "treballant" || estat === "permis" || estat === "fet" || estat === "revisa" ? estat : "inici";
   const [prompt, setPrompt] = useState("");
   const [experience, setExperience] = useState<ComposerExperience>("smart");
   const [ids, setIds] = useState<string[]>([]);
   const [docs, setDocs] = useState<StagedComposerDocument[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
-  const active = state === "inici" ? null : { ...threads[1], messages: [request, state === "permis" ? (riskAsk ? { ...asking, approvals: [riskAsk] } : asking) : working] } as WorkbenchThread;
+  const active = state === "inici" ? null : { ...threads[1], messages: [request, state === "permis" ? (riskAsk ? { ...asking, approvals: [riskAsk] } : asking) : state === "fet" ? finished : state === "revisa" ? needsReview : working] } as WorkbenchThread;
   return <PreviewTheme><div className="workbench-shell flex h-[100dvh] overflow-hidden">
     <Sidebar branding={branding} session={{ provider: "local", user: { id: "preview", name: "Arnau", email: "preview@example.test" }, tenant: { id: "preview", name: "Maqueta" }, expiresAt: "2099-01-01T00:00:00.000Z" }}
       projects={[project, standalone]} threads={threads} activeProjectId={project.id} activeThreadId={active?.id ?? null} mobileOpen={mobileOpen} desktopOpen={desktopOpen} busy={false}
@@ -79,7 +88,7 @@ export function IntuitivePreview({ estat, risc }: { estat: string; risc?: string
       manifest={baseBrainManifest} preferences={preferences} project={project} thread={active} projects={[project]} tasks={tasks}
       userName="Arnau" companyName="Neska" assistantName="Neska" hydrated prompt={prompt} composerExperience={experience} imageGeneration={false}
       connectorMentions={connectors} selectedConnectorMentionIds={ids} attachments={[]} documents={docs} publications={[]} documentUploading={false}
-      sending={state !== "inici"} stopping={false} queuedMessages={[]} runtimeStatus={{ ...initialRuntimeStatus, mode: "demo", codex: "disabled", ready: true }}
+      sending={state === "treballant" || state === "permis"} stopping={false} queuedMessages={[]} runtimeStatus={{ ...initialRuntimeStatus, mode: "demo", codex: "disabled", ready: true }}
       networkOnline streamRecovery={null} onRetryRuntime={noop} onPromptChange={setPrompt} onComposerExperienceChange={setExperience} onImageGenerationChange={noop}
       onDestinationChange={noop} onConnectorMentionIdsChange={setIds} onAttachmentsChange={noop} onDocumentsChange={setDocs} onAddDocuments={asyncNoop}
       onFreezePublication={asyncNoop} onDecidePublication={asyncNoop} onComposerNotice={noop} onSend={noop} onPlanRequest={noop} onStop={noop} onCancelQueuedMessage={noop}
