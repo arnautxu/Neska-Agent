@@ -11,7 +11,7 @@ import type { ApprovalDecision, ApprovalItem, ApprovalRisk, ApprovalRiskLevel } 
  */
 
 type RiskInput =
-  | { kind: "command"; command?: string | null }
+  | { kind: "command"; command?: string | null; networkEnabled?: boolean; extraPermissions?: boolean }
   | { kind: "file" }
   | { kind: "permissions"; networkEnabled: boolean }
   | { kind: "browser" }
@@ -42,15 +42,25 @@ const REASONS: Record<ApprovalRiskLevel, Record<string, string>> = {
 const READ_ONLY = new Set([
   "ls", "cat", "head", "tail", "wc", "grep", "rg", "pwd", "echo", "printf",
   "stat", "file", "du", "df", "which", "whoami", "date", "tree", "sort", "uniq",
-  "cut", "less", "more", "diff", "jq", "realpath", "basename", "dirname", "true",
+  "cut", "diff", "jq", "realpath", "basename", "dirname", "true",
 ]);
 const READ_ONLY_GIT = new Set(["status", "diff", "log", "show", "branch", "rev-parse", "ls-files", "blame"]);
+// Options that make an otherwise read-only program write, delete or execute.
+const WRITING_OPTIONS: Record<string, RegExp> = {
+  sort: /^(?:-[A-Za-z]*o|--output)/u,
+  tree: /^(?:-o|--output)/u,
+  find: /^-(?:fprint|fprintf|fprint0|fls|ok|okdir|execdir)/u,
+  git: /^--output/u,
+};
+// `git branch` only lists when every argument is a listing flag.
+const GIT_BRANCH_LISTING = new Set(["-a", "-r", "-v", "-vv", "--all", "--list", "--remotes", "--show-current", "--verbose"]);
 
 const DELETE = [
   /\brm\s/u, /\brmdir\b/u, /\bshred\b/u, /\bunlink\b/u, /\btruncate\b/u,
   /\bdd\s/u, /\bmkfs/u, /\bfind\b[^|;&]*\s-(?:delete|exec)\b/u,
   /\b(?:drop|truncate)\s+(?:table|database|schema)\b/iu, /\bdelete\s+from\b/iu,
   /\bgit\s+(?:reset\s+--hard|clean\s+-[a-z]*f|push\s+[^|;&]*(?:--force|-f\b))/u,
+  /\bgit\s+branch\s+[^|;&]*(?:-[A-Za-z]*[dD]\b|--delete\b)/u,
 ];
 const OUTBOUND = [
   /\bgit\s+push\b/u, /\b(?:npm|pnpm|yarn)\s+publish\b/u, /\bdocker\s+push\b/u,
@@ -74,8 +84,13 @@ function isReadOnlySegment(segment: string): boolean {
   while (words.length && /^[A-Za-z_][A-Za-z0-9_]*=/u.test(words[0]!)) words.shift();
   const [program, sub] = words;
   if (!program) return true;
-  if (program === "git") return sub !== undefined && READ_ONLY_GIT.has(sub);
-  if (program === "find") return true; // -delete/-exec already matched by DELETE.
+  const writing = WRITING_OPTIONS[program];
+  if (writing && words.slice(1).some((word) => writing.test(word))) return false;
+  if (program === "git") {
+    if (sub === undefined || !READ_ONLY_GIT.has(sub)) return false;
+    return sub !== "branch" || words.slice(2).every((word) => GIT_BRANCH_LISTING.has(word));
+  }
+  if (program === "find") return true; // -delete/-exec matched by DELETE, writers above.
   return READ_ONLY.has(program);
 }
 
@@ -93,8 +108,13 @@ export function classifyCommand(command: string | null | undefined): ApprovalRis
 
 export function classifyApprovalRisk(input: RiskInput): ApprovalRisk {
   switch (input.kind) {
-    case "command":
-      return classifyCommand(input.command);
+    case "command": {
+      // Permissions requested alongside a command count before its text.
+      if (input.networkEnabled) return risk("irreversible", "network");
+      const byText = classifyCommand(input.command);
+      if (input.extraPermissions && byText.level === "contained") return risk("wide", "permissions");
+      return byText;
+    }
     case "file":
       return risk("wide", "file");
     case "permissions":

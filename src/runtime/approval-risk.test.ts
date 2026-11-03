@@ -22,6 +22,14 @@ describe("approval risk levels", () => {
     expect(level("echo $(whoami)")).toBe("wide");
     expect(level("ls; node build.js")).toBe("wide");
     expect(level("git checkout main")).toBe("wide");
+    expect(level("sort -o invoices.csv replacement.csv")).toBe("wide");
+    expect(level("sort --output=invoices.csv a.csv")).toBe("wide");
+    expect(level("tree -o out.txt")).toBe("wide");
+    expect(level("find . -fprint list.txt")).toBe("wide");
+    expect(level("git log --output=log.txt")).toBe("wide");
+    expect(level("git branch feature")).toBe("wide");
+    expect(level("git branch -a")).toBe("contained");
+    expect(level("grep -o F-2026 factures.csv")).toBe("contained");
   });
 
   it("marks deletes, outbound sends and system changes as irreversible", () => {
@@ -30,7 +38,7 @@ describe("approval risk levels", () => {
       "git push origin main", "git reset --hard HEAD~1", "npm publish",
       "curl -X POST https://example.test/api", "curl -d 'a=1' https://example.test",
       "scp file host:/tmp", "sudo apt install x", "kill 1234", "psql -c 'DROP TABLE users'",
-      "ls && rm notes.txt",
+      "ls && rm notes.txt", "git branch -D unsaved-work", "git branch --delete old",
     ]) {
       expect(level(command), command).toBe("irreversible");
     }
@@ -42,6 +50,24 @@ describe("approval risk levels", () => {
     expect(classifyApprovalRisk({ kind: "permissions", networkEnabled: true }).level).toBe("irreversible");
     expect(classifyApprovalRisk({ kind: "connector" }).level).toBe("irreversible");
     expect(classifyApprovalRisk({ kind: "browser" }).level).toBe("irreversible");
+  });
+
+  it("counts network or extra permissions requested with a command", () => {
+    expect(classifyApprovalRisk({ kind: "command", command: "python3 script.py", networkEnabled: true }).level).toBe("irreversible");
+    expect(classifyApprovalRisk({ kind: "command", command: "ls", networkEnabled: true }).level).toBe("irreversible");
+    expect(classifyApprovalRisk({ kind: "command", command: "ls", extraPermissions: true }).level).toBe("wide");
+    const withNetwork = approvalFromRequest({
+      id: 8,
+      method: "item/commandExecution/requestApproval",
+      params: { threadId: "thread_1", turnId: "turn_1", itemId: "item_2", command: "python3 script.py", additionalPermissions: { network: { enabled: true }, fileSystem: null } },
+    } as never);
+    expect(withNetwork?.item.risk?.level).toBe("irreversible");
+    const withContext = approvalFromRequest({
+      id: 9,
+      method: "item/commandExecution/requestApproval",
+      params: { threadId: "thread_1", turnId: "turn_1", itemId: "item_3", command: "ls", networkApprovalContext: { host: "example.test" } },
+    } as never);
+    expect(withContext?.item.risk?.level).toBe("irreversible");
   });
 
   it("narrows session scope to one approval unless the action is reversible", () => {

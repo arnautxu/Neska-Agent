@@ -650,6 +650,14 @@ function permissionSummary(value: unknown) {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
+/** A command can ask for network access in its own request, not only through
+ *  `item/permissions/requestApproval`. Any such signal counts as network. */
+function commandRequestsNetwork(params: Record<string, unknown>): boolean {
+  const extra = isRecord(params.additionalPermissions) ? params.additionalPermissions : null;
+  if (extra && isRecord(extra.network) && extra.network.enabled === true) return true;
+  return params.networkApprovalContext !== undefined && params.networkApprovalContext !== null;
+}
+
 export function approvalFromRequest(request: ServerRequest): PendingServerApproval | null {
   if (!isRecord(request.params)) return null;
   const params = request.params;
@@ -667,7 +675,12 @@ export function approvalFromRequest(request: ServerRequest): PendingServerApprov
         detail: reason ?? "Aquest pas necessita permís. Revisa l’ordre abans de continuar.",
         ...(command ? { command } : {}),
         ...(typeof params.cwd === "string" ? { cwd: params.cwd } : {}),
-        risk: classifyApprovalRisk({ kind: "command", command }),
+        risk: classifyApprovalRisk({
+          kind: "command",
+          command,
+          networkEnabled: commandRequestsNetwork(params),
+          extraPermissions: isRecord(params.additionalPermissions) && isRecord(params.additionalPermissions.fileSystem),
+        }),
         status: "pending",
       },
       requestType: "command",
