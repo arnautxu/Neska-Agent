@@ -33,7 +33,7 @@ The reviewed build changes are:
 - rclone 1.75.2 from its official GitHub release, with separate SHA-256 digests
   for ARM64 and AMD64 verified before extraction. Debian's older rclone is not
   installed. Installation rejects unrecognized architectures or hash mismatches.
-- Pillow 12.3.0 from pinned, hash-checked CPython 3.11 Linux wheels. The affected
+- Pillow 13.0.0 from pinned, hash-checked CPython 3.12 Linux wheels. The affected
   Debian Pillow package is not installed. `/usr/bin/python3` loads the fixed
   wheel from its standard local site directory; the build asserts the version.
 
@@ -60,6 +60,10 @@ and [CVE-2026-41179](https://security-tracker.debian.org/tracker/CVE-2026-41179)
 are addressed by replacing the binary, even though Neska does not start an RC
 listener. [Pillow's affected image decoder](https://security-tracker.debian.org/tracker/CVE-2026-54058)
 is addressed by the upstream fixed wheel. Verify their absence in the new scan.
+
+On 2026-11-05 the CRITICAL scan flagged Pillow 12.3.0 (CVE-2026-112393,
+-112398, -112403, -112900, -96639; fixed in 13.0.0). The runtime pin moved to
+the upstream 13.0.0 CPython 3.12 wheels with both architecture hashes.
 
 Any future exception requires a narrow package/version scope, evidence,
 expiry, review and retained raw findings. Do not silently equate vendor Low
