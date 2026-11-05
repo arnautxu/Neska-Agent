@@ -48,7 +48,11 @@ export function nextTaskRetry(messages: readonly ChatMessage[], index: number): 
   if (attempt > MAX_TASK_RETRIES) return null;
 
   const problems: string[] = [];
-  if (!target.content.trim() && target.artifacts.length === 0) {
+  // A turn that did visible work (a browser session, a command) but wrote no
+  // text is shown as "Revisa-ho", not retried: a new turn would replace the
+  // live result the person is looking at just to add a sentence.
+  const didWork = (target.toolResults ?? []).some((result) => result.status === "complete");
+  if (!target.content.trim() && target.artifacts.length === 0 && !didWork) {
     problems.push("- Has acabat sense cap resposta. Escriu el resultat.");
   }
   const openSteps = target.plan

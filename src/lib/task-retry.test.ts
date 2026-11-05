@@ -46,6 +46,12 @@ describe("automatic task retry", () => {
     expect(nextTaskRetry([user("x"), declined], 1)).toBeNull();
   });
 
+  it("does not retry a turn that did visible work but wrote no text", () => {
+    const browserOnly = assistant({ content: "", toolResults: [{ ...failedTool("Obrir la web", "complete"), kind: "browser" as const }] });
+    expect(nextTaskRetry([user("x"), browserOnly], 1)).toBeNull();
+    expect(nextTaskRetry([user("x"), assistant({ content: "" })], 1)?.instructions).toContain("sense cap resposta");
+  });
+
   it("does not retry a document that is still converting", () => {
     const converting = assistant({ artifacts: [{ id: "d", type: "document", name: "a.pdf", url: "/x", kind: "pdf", mimeType: "application/pdf", size: 1, status: "processing", pages: null, previewUrl: null, publicationStatus: null, publicationError: null, targetLabel: null, error: null }] });
     expect(nextTaskRetry([user("x"), converting], 1)).toBeNull();
