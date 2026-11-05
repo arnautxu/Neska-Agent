@@ -1500,5 +1500,9 @@
   "{n} accions no s’han fet perquè vas dir «Ara no»": "{n} actions were not done because you said “Not now”",
   "Comprovat": "Checked",
   "Comprovacions": "Checks",
-  "Revisa-la": "Review it"
+  "Revisa-la": "Review it",
+  "Ho torno a provar · {n} de {max}": "Trying again · {n} of {max}",
+  "Incomplet": "Incomplete",
+  "ho he tornat a provar": "tried again",
+  "Ho he provat {n} vegades i no ho he pogut acabar. Cal que ho miris tu.": "I tried {n} times and couldn't finish it. Please take a look."
 }

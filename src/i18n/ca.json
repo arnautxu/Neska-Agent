@@ -1536,5 +1536,9 @@
   "Revisa-ho": "Revisa-ho",
   "Comprovat": "Comprovat",
   "Comprovacions": "Comprovacions",
-  "Revisa-la": "Revisa-la"
+  "Revisa-la": "Revisa-la",
+  "Ho torno a provar · {n} de {max}": "Ho torno a provar · {n} de {max}",
+  "Incomplet": "Incomplet",
+  "ho he tornat a provar": "ho he tornat a provar",
+  "Ho he provat {n} vegades i no ho he pogut acabar. Cal que ho miris tu.": "Ho he provat {n} vegades i no ho he pogut acabar. Cal que ho miris tu."
 }

@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@/lib/chat-contract";
+import type { ChatMessage, ToolResult } from "@/lib/chat-contract";
 
 /**
  * Deterministic checks on a finished task, read only from the persisted
@@ -16,6 +16,13 @@ export type TaskVerification = { status: "passed" | "attention"; checks: TaskChe
 type VerifiableMessage = Pick<ChatMessage, "status" | "content" | "plan" | "artifacts" | "toolResults" | "approvals">;
 
 const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
+
+/** A failed action that later succeeded under the same title was retried;
+ * only the ones that never recovered count. */
+export function unrecoveredFailures(results: readonly ToolResult[]): ToolResult[] {
+  return results.filter((result, index) => result.status === "failed" &&
+    !results.slice(index + 1).some((later) => later.title === result.title && later.status === "complete"));
+}
 
 export function verifyTask(message: VerifiableMessage): TaskVerification | null {
   // Only a turn that claims to be finished is checked. Stopped, failed and
@@ -44,12 +51,9 @@ export function verifyTask(message: VerifiableMessage): TaskVerification | null 
       : { id: "files", status: "failed", label: plural(broken.length, "{n} fitxer no s’ha acabat de generar", "{n} fitxers no s’han acabat de generar"), values: { n: broken.length } });
   }
 
-  // A failed action that later succeeded under the same title was retried;
-  // only the ones that never recovered count.
   const results = message.toolResults ?? [];
   if (results.length > 0) {
-    const unrecovered = results.filter((result, index) => result.status === "failed" &&
-      !results.slice(index + 1).some((later) => later.title === result.title && later.status === "complete"));
+    const unrecovered = unrecoveredFailures(results);
     checks.push(unrecovered.length === 0
       ? { id: "actions", status: "passed", label: plural(results.length, "L’acció ha anat bé", "Les {n} accions han anat bé"), values: { n: results.length } }
       : { id: "actions", status: "failed", label: plural(unrecovered.length, "{n} acció ha fallat", "{n} accions han fallat"), values: { n: unrecovered.length } });

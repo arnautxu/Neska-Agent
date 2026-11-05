@@ -24,6 +24,7 @@ vi.mock("@/app/api/runtime/turns/control/route", () => ({ POST: async (request: 
 
 const { POST: plans } = await import("@/app/api/runtime/plans/route");
 const { POST: incidents } = await import("@/app/api/runtime/incidents/route");
+const { POST: retries } = await import("@/app/api/runtime/retries/route");
 let root: string;
 let store: FileTurnProjectionStore;
 const request = (body: unknown, origin = "https://neska.example") => new Request(`${origin}/api/runtime/plans`, { method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -89,5 +90,25 @@ describe("private task action routes", () => {
     expect((await store.read(id(20), id(40)))?.message).toMatchObject({ status: "streaming", incidents: [{ status: "retry_requested" }] });
     expect((await incidents(request({ ...body, action: "retry", clientRequestId: id(52) }))).status).toBe(409);
     expect(state.controls).toHaveLength(1);
+  });
+
+  it("retries only the latest failed task, with server wording and a hard bound", async () => {
+    const failed: ChatMessage = { ...state.messages[1]!, planProposal: undefined, content: "He llegit el document." };
+    state.messages = [state.messages[0]!, failed];
+    const body = { threadId: id(20), assistantMessageId: id(40), execution: execution() };
+    expect((await retries(request(body, "https://foreign.example"))).status).toBe(403);
+    expect((await retries(request(body))).status).toBe(200);
+    expect(state.starts[0]).toMatchObject({ displayMessage: "Reintent automàtic 1 de 3", message: expect.stringContaining("1. Llegir el document") });
+    expect(JSON.stringify(state.starts[0])).not.toContain("Forged browser content");
+    // The stream reattaching replays the same retry; a different one is fenced.
+    state.messages = [...state.messages, { ...state.messages[0]!, id: id(31), content: "Reintent automàtic 1 de 3" }];
+    expect((await retries(request(body))).status).toBe(200);
+    expect((await retries(request({ ...body, execution: { ...execution(), userMessageId: id(32), assistantMessageId: id(42) } }))).status).toBe(409);
+    // A passing task, or a third failed attempt, gets no automatic retry.
+    state.messages = [state.messages[0]!, { ...failed, plan: [{ step: "Llegir el document", status: "completed" }] }];
+    expect((await retries(request(body))).status).toBe(409);
+    state.messages = [{ ...state.messages[0]!, content: "Reintent automàtic 3 de 3" }, failed];
+    expect((await retries(request(body))).status).toBe(409);
+    expect(state.starts).toHaveLength(2);
   });
 });

@@ -259,5 +259,9 @@
   "{n} accions no s’han fet perquè vas dir «Ara no»": "{n} acciones no se han hecho porque dijiste «Ahora no»",
   "Comprovat": "Comprobado",
   "Comprovacions": "Comprobaciones",
-  "Revisa-la": "Revísala"
+  "Revisa-la": "Revísala",
+  "Ho torno a provar · {n} de {max}": "Lo vuelvo a intentar · {n} de {max}",
+  "Incomplet": "Incompleto",
+  "ho he tornat a provar": "lo he vuelto a intentar",
+  "Ho he provat {n} vegades i no ho he pogut acabar. Cal que ho miris tu.": "Lo he intentado {n} veces y no lo he podido terminar. Necesito que lo mires tú."
 }

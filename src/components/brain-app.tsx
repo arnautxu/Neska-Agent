@@ -54,6 +54,7 @@ import {
   type ChatStreamRecoveryState,
 } from "@/ui/recoverable-chat-stream";
 import { createChatReattachRequest } from "@/ui/chat-reattach-request";
+import { nextTaskRetry, retryDisplayText } from "@/lib/task-retry";
 import { useStoredResponse } from "@/ui/use-stored-response";
 import { useRuntimeStatus } from "@/ui/use-runtime-status";
 import {
@@ -649,6 +650,11 @@ export function BrainApp({
   const streamRetryRef = useRef(new Map<string, () => void>());
   const [pendingBranchSend, setPendingBranchSend] = useState<{ threadId: string; content: string } | null>(null);
   const [queuedTurns, setQueuedTurns] = useState<QueuedChatTurn[]>([]);
+  // Tasks started in this browser session, and tasks already retried. Only a
+  // task the person just watched finish is retried automatically; opening an
+  // old conversation never starts work on its own.
+  const liveTaskIdsRef = useRef(new Set<string>());
+  const retriedTaskIdsRef = useRef(new Set<string>());
   const [dispatchingQueuedTurnId, setDispatchingQueuedTurnId] = useState<string | null>(null);
   const [managedAppAvailable, setManagedAppAvailable] = useState(false);
   const [managedAppActions, setManagedAppActions] = useState<ManagedAppActionRegistry>({});
@@ -1514,8 +1520,12 @@ export function BrainApp({
     }
   }, [t, liveAnswers]);
 
-  const sendMessage = useCallback(async (messageOverride?: string, displayMessageOverride?: string, taskIntent?: { mode: "plan" } | { proposal: ChatMessage }) => {
+  const sendMessage = useCallback(async (messageOverride?: string, displayMessageOverride?: string, taskIntent?: { mode: "plan" } | { proposal: ChatMessage } | { retry: ChatMessage }) => {
     const proposal = taskIntent && "proposal" in taskIntent ? taskIntent.proposal : undefined;
+    // An automatic retry is worded by the server; like a plan execution it
+    // never takes the composer's draft, files or mentions.
+    const retryOf = taskIntent && "retry" in taskIntent ? taskIntent.retry : undefined;
+    const serverTask = proposal ?? retryOf;
     const visibleContent = (displayMessageOverride ?? messageOverride ?? prompt).trim();
     const runtimeContent = (messageOverride ?? (pendingRuntimeContext
       ? `${prompt.trim()}\n\n${pendingRuntimeContext}`
@@ -1542,7 +1552,7 @@ export function BrainApp({
     let assistantMessage: ChatMessage | null = null;
     let controller: AbortController | null = null;
     let clientTurnPerformance: ClientTurnPerformance | null = null;
-    let ownsVisibleComposer = !proposal;
+    let ownsVisibleComposer = !serverTask;
     let succeeded = false;
     try {
       if (!thread) {
@@ -1569,11 +1579,11 @@ export function BrainApp({
         "complete",
         startedAt.toISOString(),
       );
-      if (!proposal && selectedConnectorMentionIds.length) userMessage.connectorMentions = selectedConnectorMentionIds;
-      if (!proposal && selectedServerReferences.length) userMessage.serverReferences = selectedServerReferences;
-      const readyDocuments = proposal ? [] : documents.filter((document) => document.status === "ready");
+      if (!serverTask && selectedConnectorMentionIds.length) userMessage.connectorMentions = selectedConnectorMentionIds;
+      if (!serverTask && selectedServerReferences.length) userMessage.serverReferences = selectedServerReferences;
+      const readyDocuments = serverTask ? [] : documents.filter((document) => document.status === "ready");
       userMessage.attachments = [
-        ...(proposal ? [] : attachments).map(({ dataUrl: _dataUrl, ...attachment }) => attachment),
+        ...(serverTask ? [] : attachments).map(({ dataUrl: _dataUrl, ...attachment }) => attachment),
         ...readyDocuments.map(({ uploadId: _uploadId, threadId: _threadId, kind: _kind, previewFiles: _previewFiles, pages: _pages, status: _status, error: _error, passive: _passive, processingUnavailable: _processingUnavailable, previewUnavailable: _previewUnavailable, ...attachment }) => attachment),
       ];
       assistantMessage = createMessage(
@@ -1609,7 +1619,7 @@ export function BrainApp({
           }
         : candidate));
       clientTurnPerformance.feedbackApplied("local");
-      if (!proposal) setComposerDrafts((current) => {
+      if (!serverTask) setComposerDrafts((current) => {
         const next = { ...current };
         // Consume only the exact draft that started this turn. If the user
         // left, came back and typed a newer draft while thread creation was
@@ -1620,7 +1630,7 @@ export function BrainApp({
         composerDraftsRef.current = next;
         return next;
       });
-      if (!proposal) setServerDrafts(current => {
+      if (!serverTask) setServerDrafts(current => {
         if (current[selectionDraftKey] !== selectedServerReferences) return current;
         const next = { ...current }; delete next[selectionDraftKey]; return next;
       });
@@ -1667,13 +1677,17 @@ export function BrainApp({
           webSearch: true,
           imageGeneration,
           skill: selectedSkill,
-          ...(selectedConnectorMentionIds.length ? { connectorMentions: selectedConnectorMentionIds } : {}),
-          attachments: proposal ? [] : attachments,
-          ...(!proposal && selectedServerReferences.length ? { serverReferences: selectedServerReferences } : {}),
+          ...(!serverTask && selectedConnectorMentionIds.length ? { connectorMentions: selectedConnectorMentionIds } : {}),
+          attachments: serverTask ? [] : attachments,
+          ...(!serverTask && selectedServerReferences.length ? { serverReferences: selectedServerReferences } : {}),
           ...(readyDocuments.length ? { documentUploadIds: readyDocuments.map((document) => document.uploadId) } : {}),
         },
       });
-      const requestBody = proposal ? JSON.stringify({ action: "execute", threadId, assistantMessageId: proposal.id, revision: proposal.planProposal?.revision, execution: JSON.parse(chatRequest) }) : chatRequest;
+      if (retryOf) retriedTaskIdsRef.current.add(retryOf.id);
+      liveTaskIdsRef.current.add(assistantId);
+      const requestBody = proposal
+        ? JSON.stringify({ action: "execute", threadId, assistantMessageId: proposal.id, revision: proposal.planProposal?.revision, execution: JSON.parse(chatRequest) })
+        : retryOf ? JSON.stringify({ threadId, assistantMessageId: retryOf.id, execution: JSON.parse(chatRequest) }) : chatRequest;
       const fetcher: typeof fetch = proposal ? async (_url, init) => {
         const response = await fetch("/api/runtime/plans", init);
         if (response.ok) {
@@ -1682,7 +1696,7 @@ export function BrainApp({
           if (accepted) setThreads(current => updateThreadMessage(current, threadId, accepted.id, () => accepted));
         }
         return response;
-      } : fetch;
+      } : retryOf ? (_url, init) => fetch("/api/runtime/retries", init) : fetch;
       await handleStream(createChatReattachRequest(requestBody, fetcher), threadId, assistantId, controller.signal, clientTurnPerformance, streamRequestedAt);
       succeeded = true;
     } catch (error) {
@@ -1776,6 +1790,22 @@ export function BrainApp({
       })
       .finally(() => setDispatchingQueuedTurnId(null));
   }, [actionBusy, activeProject, activeThread, dispatchingQueuedTurnId, documentUploading, queuedTurns, sendMessage, sending, t]);
+
+  // Bounded automatic retry when a finished task fails its checks. The server
+  // re-derives the decision and the wording; this only asks for it. Anything
+  // the person queued goes first.
+  useEffect(() => {
+    if (sending || actionBusy || documentUploading || dispatchingQueuedTurnId || !activeProject || !activeThread) return;
+    if (queuedTurns.some((item) => item.threadId === activeThread.id)) return;
+    const index = activeThread.messages.length - 1;
+    const last = activeThread.messages[index];
+    if (!last || !liveTaskIdsRef.current.has(last.id) || retriedTaskIdsRef.current.has(last.id)) return;
+    const retry = nextTaskRetry(activeThread.messages, index);
+    if (!retry) return;
+    retriedTaskIdsRef.current.add(last.id);
+    const display = retryDisplayText(retry.attempt);
+    void sendMessage(display, display, { retry: last });
+  }, [actionBusy, activeProject, activeThread, dispatchingQueuedTurnId, documentUploading, queuedTurns, sendMessage, sending]);
 
   useEffect(() => {
     const activeThreadIds = new Set(threads

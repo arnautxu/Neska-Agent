@@ -107,6 +107,15 @@ export type PlanMutationRequest = {
   revision: number;
 } & ({ action: "edit"; steps: string[] } | { action: "execute"; execution: ChatRequest });
 
+/** Automatic retry of a finished task that failed its checks. The server
+ * replaces `execution.message` with an instruction built from the persisted
+ * task, so the browser cannot choose what the retry asks for. */
+export type TaskRetryRequest = {
+  threadId: string;
+  assistantMessageId: string;
+  execution: ChatRequest;
+};
+
 export type IncidentActionRequest = {
   threadId: string;
   assistantMessageId: string;
@@ -632,6 +641,26 @@ export function isPlanMutationRequest(value: unknown): value is PlanMutationRequ
     ["ca", "es", "en"].includes(String(value.execution.preferences.language)) && typeof value.execution.preferences.showActivity === "boolean" &&
     isTurnOptions(value.execution.options) && value.execution.options.mode === "agent";
   return false;
+}
+
+function isExecutionFor(value: Record<string, unknown>, threadId: unknown, assistantMessageId: unknown) {
+  return isRecord(value.execution) && value.execution.threadId === threadId &&
+    isUuidString(value.execution.projectId) && isUuidString(value.execution.userMessageId) && isUuidString(value.execution.assistantMessageId) &&
+    value.execution.assistantMessageId !== assistantMessageId && value.execution.userMessageId !== value.execution.assistantMessageId &&
+    typeof value.execution.message === "string" && isRecord(value.execution.preferences) &&
+    ["direct", "balanced", "detailed"].includes(String(value.execution.preferences.tone)) &&
+    ["ca", "es", "en"].includes(String(value.execution.preferences.language)) && typeof value.execution.preferences.showActivity === "boolean" &&
+    isTurnOptions(value.execution.options) && value.execution.options.mode === "agent";
+}
+
+export function isTaskRetryRequest(value: unknown): value is TaskRetryRequest {
+  return isRecord(value) && Object.keys(value).length === 3 && isUuidString(value.threadId) &&
+    isUuidString(value.assistantMessageId) && isExecutionFor(value, value.threadId, value.assistantMessageId) &&
+    // A retry carries no new files, attachments or references of its own.
+    isRecord(value.execution) && isRecord(value.execution.options) &&
+    Array.isArray(value.execution.options.attachments) && value.execution.options.attachments.length === 0 &&
+    value.execution.options.documentUploadIds === undefined && value.execution.options.serverReferences === undefined &&
+    value.execution.options.connectorMentions === undefined;
 }
 
 export function isIncidentActionRequest(value: unknown): value is IncidentActionRequest {
