@@ -7,16 +7,18 @@ import { isChatMessage } from "@/lib/chat-contract";
 import { publicActivityText } from "@/ui/public-activity";
 import { taskProgress } from "@/ui/task-progress";
 import { TaskPlan } from "./task-plan";
+import { TaskChecks, type TaskRetryContext } from "./task-checks";
 import { MobilePermission } from "./mobile-permission";
 
 const button = "min-h-11 rounded-[2px] px-4 py-2 text-sm disabled:opacity-40";
-export function TaskCycle({ message, threadId, readOnly = false, onResolveApproval, onMessageChange, onExecutePlan, onOpenReview, onMutate }: {
+export function TaskCycle({ message, threadId, readOnly = false, onResolveApproval, onMessageChange, onExecutePlan, onOpenReview, onMutate, retry }: {
   message: ChatMessage; threadId: string; readOnly?: boolean;
   onResolveApproval: (approval: ApprovalItem, decision: ApprovalDecision) => void;
   onMessageChange?: (message: ChatMessage) => void;
   onExecutePlan?: (message: ChatMessage) => void;
   onOpenReview?: () => void;
   onMutate?: (url: string, body: object) => Promise<ChatMessage>;
+  retry?: TaskRetryContext;
 }) {
   const t = useUiText();
   const progress = taskProgress(message);
@@ -42,6 +44,7 @@ export function TaskCycle({ message, threadId, readOnly = false, onResolveApprov
     clientRequestId: crypto.randomUUID(), userMessageId: crypto.randomUUID(),
   });
   return <div className="task-cycle space-y-6">
+    {message.status === "complete" && !proposed ? <TaskChecks message={message} retry={retry} /> : null}
     {pending.map((approval, index) => <MobilePermission sheetAllowed={index === 0} key={approval.id} approval={approval} readOnly={readOnly} connectorApproval={approval.kind === "connector"} onResolve={decision => onResolveApproval(approval, decision)} onOpenReview={message.diff ? onOpenReview : undefined} />)}
     {message.incidents?.filter(incident => incident.status !== "resolved").map(incident => {
       const label = publicActivityText(incident.message, 1000);

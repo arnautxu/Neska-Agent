@@ -6,7 +6,7 @@ import type { ChatMessage } from "@/lib/chat-contract";
 import type { TaskProgress, TaskState } from "@/ui/task-progress";
 import { publicActivityRow } from "@/ui/public-activity-row";
 import { useModalFocus } from "@/ui/use-modal-focus";
-const STATE_LABEL: Record<TaskState, string> = { working: "En curs", waiting: "T’espera", done: "Feta", stopped: "Aturada", failed: "Ha fallat", proposed: "Pla proposat", queued: "A la cua" };
+const STATE_LABEL: Record<TaskState, string> = { working: "En curs", waiting: "T’espera", done: "Feta", review: "Revisa-la", stopped: "Aturada", failed: "Ha fallat", proposed: "Pla proposat", queued: "A la cua" };
 export function taskStateLabel(state: TaskState) { return STATE_LABEL[state]; }
 export function AgentStatusPanel({ message, closeButtonRef, onClose }: {
   progress: TaskProgress; message: ChatMessage; request: ChatMessage | undefined;

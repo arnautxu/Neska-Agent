@@ -107,6 +107,15 @@ export type PlanMutationRequest = {
   revision: number;
 } & ({ action: "edit"; steps: string[] } | { action: "execute"; execution: ChatRequest });
 
+/** Automatic retry of a finished task that failed its checks. The server
+ * replaces `execution.message` with an instruction built from the persisted
+ * task, so the browser cannot choose what the retry asks for. */
+export type TaskRetryRequest = {
+  threadId: string;
+  assistantMessageId: string;
+  execution: ChatRequest;
+};
+
 export type IncidentActionRequest = {
   threadId: string;
   assistantMessageId: string;
@@ -201,6 +210,13 @@ export type TurnOptions = {
   serverReferences?: ServerReference[];
 };
 
+/**
+ * How hard an approved effect is to undo. Set by the server only; it never
+ * grants anything. `irreversible` approvals are always one at a time.
+ */
+export type ApprovalRiskLevel = "contained" | "wide" | "irreversible";
+export type ApprovalRisk = { level: ApprovalRiskLevel; reason: string };
+
 export type ApprovalItem = {
   id: string;
   threadId: string;
@@ -215,6 +231,8 @@ export type ApprovalItem = {
   stepIndex?: number;
   /** Authenticated same-origin content supplied by the backend. */
   reviewUrl?: string;
+  /** Optional for approvals persisted before risk levels existed. */
+  risk?: ApprovalRisk;
   status: "pending" | "accepted" | "accepted_session" | "declined";
 };
 
@@ -625,10 +643,36 @@ export function isPlanMutationRequest(value: unknown): value is PlanMutationRequ
   return false;
 }
 
+function isExecutionFor(value: Record<string, unknown>, threadId: unknown, assistantMessageId: unknown) {
+  return isRecord(value.execution) && value.execution.threadId === threadId &&
+    isUuidString(value.execution.projectId) && isUuidString(value.execution.userMessageId) && isUuidString(value.execution.assistantMessageId) &&
+    value.execution.assistantMessageId !== assistantMessageId && value.execution.userMessageId !== value.execution.assistantMessageId &&
+    typeof value.execution.message === "string" && isRecord(value.execution.preferences) &&
+    ["direct", "balanced", "detailed"].includes(String(value.execution.preferences.tone)) &&
+    ["ca", "es", "en"].includes(String(value.execution.preferences.language)) && typeof value.execution.preferences.showActivity === "boolean" &&
+    isTurnOptions(value.execution.options) && value.execution.options.mode === "agent";
+}
+
+export function isTaskRetryRequest(value: unknown): value is TaskRetryRequest {
+  return isRecord(value) && Object.keys(value).length === 3 && isUuidString(value.threadId) &&
+    isUuidString(value.assistantMessageId) && isExecutionFor(value, value.threadId, value.assistantMessageId) &&
+    // A retry carries no new files, attachments or references of its own.
+    isRecord(value.execution) && isRecord(value.execution.options) &&
+    Array.isArray(value.execution.options.attachments) && value.execution.options.attachments.length === 0 &&
+    value.execution.options.documentUploadIds === undefined && value.execution.options.serverReferences === undefined &&
+    value.execution.options.connectorMentions === undefined;
+}
+
 export function isIncidentActionRequest(value: unknown): value is IncidentActionRequest {
   return isRecord(value) && Object.keys(value).length === 6 && isUuidString(value.threadId) &&
     isUuidString(value.assistantMessageId) && isOpaqueRuntimeId(value.incidentId) &&
     (value.action === "retry" || value.action === "skip") && isUuidString(value.clientRequestId) && isUuidString(value.userMessageId);
+}
+
+export function isApprovalRisk(value: unknown): value is ApprovalRisk {
+  return isRecord(value) && Object.keys(value).length === 2 &&
+    (value.level === "contained" || value.level === "wide" || value.level === "irreversible") &&
+    typeof value.reason === "string" && value.reason.length > 0 && value.reason.length <= 240;
 }
 
 export function isApprovalItem(value: unknown): value is ApprovalItem {
@@ -645,6 +689,7 @@ export function isApprovalItem(value: unknown): value is ApprovalItem {
     hasOptionalString(value, "command") &&
     hasOptionalString(value, "cwd") &&
     (value.stepIndex === undefined || isIndex(value.stepIndex)) &&
+    (value.risk === undefined || isApprovalRisk(value.risk)) &&
     (value.reviewUrl === undefined || (typeof value.reviewUrl === "string" && /^\/api\/[A-Za-z0-9][^\s\\]*$/.test(value.reviewUrl))) &&
     (!("permissionFingerprint" in value) || value.permissionFingerprint === undefined ||
       (typeof value.permissionFingerprint === "string" && /^[0-9a-f]{64}$/u.test(value.permissionFingerprint))) &&

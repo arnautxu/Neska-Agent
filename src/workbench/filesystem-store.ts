@@ -230,7 +230,7 @@ function isStrictChatMessage(value: unknown): value is ChatMessage {
     hasExactKeys(
       item,
       ["id", "threadId", "turnId", "itemId", "kind", "title", "detail", "status"],
-      ["command", "cwd", "permissionFingerprint", "stepIndex", "reviewUrl"],
+      ["command", "cwd", "permissionFingerprint", "stepIndex", "reviewUrl", "risk"],
     ))) return false;
   if (!value.attachments.every((item) =>
     hasExactKeys(item, ["id", "name", "mimeType", "size"]))) return false;

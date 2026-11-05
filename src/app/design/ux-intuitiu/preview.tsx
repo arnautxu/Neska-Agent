@@ -13,6 +13,7 @@ import type { StagedComposerDocument } from "@/ui/document-ui-adapter";
 import type { ThreadActivity } from "@/workbench/thread-activity";
 import { STANDALONE_PROJECT_SLUG, type WorkbenchProject, type WorkbenchThread } from "@/workbench/types";
 import { exampleTask } from "../tasca/preview";
+import { retryDisplayText } from "@/lib/task-retry";
 import { PreviewTheme } from "../preview-theme";
 
 // The whole intuitive flow with mock data: sidebar grouped by state, the
@@ -28,6 +29,29 @@ const thread = (id: string, title: string, updatedAt: string, messages: ChatMess
 const request: ChatMessage = { id: "u1", role: "user", content: "Concilia les factures d'octubre amb l'extracte del banc i prepara el correu per als proveïdors amb diferències.", createdAt: now, status: "complete", plan: [], activity: [], approvals: [], diff: "", attachments: [], artifacts: [] };
 const working: ChatMessage = { ...exampleTask, content: "" };
 const asking: ChatMessage = { ...exampleTask, content: "", approvals: [{ id: "permission", threadId: "preview", turnId: "turn", itemId: "item", kind: "connector", title: "Enviar un correu a Ferreteria Puig", detail: "La factura F-2026-0931 és de 1.240,00 € i el banc en mostra 1.204,00 €. Els reclamo la diferència de 36,00 €.", status: "pending", stepIndex: 4 }] };
+// ?estat=permis&risc=contained|wide|irreversible shows the risk line on the card.
+const riskAsks: Record<string, ChatMessage["approvals"][number]> = {
+  irreversible: { ...asking.approvals[0]!, risk: { level: "irreversible", reason: "No es pot desfer. Envia o canvia dades fora de Neska." } },
+  wide: { id: "permission", threadId: "preview", turnId: "turn", itemId: "item", kind: "command", title: "Em dones permís per completar aquest pas?", detail: "Necessito una eina per llegir l’extracte del banc en Excel.", command: "npm install xlsx", risk: { level: "wide", reason: "Es pot desfer, però pot canviar fitxers o instal·lar coses." }, status: "pending", stepIndex: 1 },
+  contained: { id: "permission", threadId: "preview", turnId: "turn", itemId: "item", kind: "command", title: "Em dones permís per completar aquest pas?", detail: "Vull comptar quantes factures d’octubre hi ha a la carpeta compartida.", command: "grep -c F-2026 factures-octubre.csv", risk: { level: "contained", reason: "Només llegeix. No canvia res." }, status: "pending", stepIndex: 1 },
+};
+// ?estat=fet (all checks pass) or ?estat=revisa (a step left and an action failed).
+const answer = "He conciliat les 38 factures d’octubre amb l’extracte. Hi ha una diferència de 36,00 € amb Ferreteria Puig i els he enviat el correu.";
+const finished: ChatMessage = { ...exampleTask, status: "complete", content: answer, plan: exampleTask.plan.map(step => ({ step: step.step, status: "completed" as const })),
+  toolResults: [1, 2, 3, 4].map(n => ({ id: `r${n}`, kind: "command" as const, title: `Pas ${n}`, status: "complete" as const, summary: null, output: null, sourceIds: [], createdAt: now })),
+  approvals: [{ id: "permission", threadId: "preview", turnId: "turn", itemId: "item", kind: "connector", title: "Enviar un correu a Ferreteria Puig", detail: "", status: "accepted", risk: { level: "irreversible", reason: "No es pot desfer. Envia o canvia dades fora de Neska." } }] };
+const needsReview: ChatMessage = { ...finished, content: "He conciliat 36 de les 38 factures d’octubre. Dues no s’han pogut llegir.",
+  plan: finished.plan.map((step, index) => index === finished.plan.length - 1 ? { ...step, status: "pending" as const } : step),
+  toolResults: [...(finished.toolResults ?? []), { id: "r5", kind: "command" as const, title: "Llegir escanejos-2026.pdf", status: "failed" as const, summary: null, output: null, sourceIds: [], createdAt: now }],
+  approvals: [{ ...finished.approvals[0]!, status: "declined" }] };
+// ?estat=reintent (retry running), reintent-fet (retry passed), esgotat (3 retries failed).
+const failedOnce: ChatMessage = { ...needsReview, id: "a-fail-0", approvals: [{ ...finished.approvals[0]!, status: "accepted" }] };
+const retryAsk = (attempt: number): ChatMessage => ({ ...request, id: `u-retry-${attempt}`, content: retryDisplayText(attempt) });
+const retryChains: Record<string, ChatMessage[]> = {
+  reintent: [request, failedOnce, retryAsk(1), { ...working, id: "a-retry-1" }],
+  "reintent-fet": [request, failedOnce, retryAsk(1), { ...finished, id: "a-retry-1", content: "He tornat a llegir escanejos-2026.pdf amb OCR i ja tinc les 38 factures conciliades. He enviat el correu a Ferreteria Puig." }],
+  esgotat: [request, failedOnce, ...[1, 2, 3].flatMap(attempt => [retryAsk(attempt), { ...failedOnce, id: `a-fail-${attempt}`, content: "No he pogut llegir escanejos-2026.pdf: el fitxer està protegit amb contrasenya." }])],
+};
 const threads = [
   thread("t-puig", "Correu a Ferreteria Puig", day(0)),
   thread("t-conc", "Conciliació factures octubre", day(0)),
@@ -54,15 +78,16 @@ const connectors = [
 const noop = () => {};
 const asyncNoop = async () => undefined;
 
-export function IntuitivePreview({ estat }: { estat: string }) {
-  const state = estat === "treballant" || estat === "permis" ? estat : "inici";
+export function IntuitivePreview({ estat, risc }: { estat: string; risc?: string }) {
+  const riskAsk = risc ? riskAsks[risc] : undefined;
+  const state = estat === "treballant" || estat === "permis" || estat === "fet" || estat === "revisa" || estat in retryChains ? estat : "inici";
   const [prompt, setPrompt] = useState("");
   const [experience, setExperience] = useState<ComposerExperience>("smart");
   const [ids, setIds] = useState<string[]>([]);
   const [docs, setDocs] = useState<StagedComposerDocument[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
-  const active = state === "inici" ? null : { ...threads[1], messages: [request, state === "permis" ? asking : working] } as WorkbenchThread;
+  const active = state === "inici" ? null : retryChains[state] ? { ...threads[1], messages: retryChains[state].map(message => ({ ...message, createdAt: now })) } as WorkbenchThread : { ...threads[1], messages: [request, state === "permis" ? (riskAsk ? { ...asking, approvals: [riskAsk] } : asking) : state === "fet" ? finished : state === "revisa" ? needsReview : working] } as WorkbenchThread;
   return <PreviewTheme><div className="workbench-shell flex h-[100dvh] overflow-hidden">
     <Sidebar branding={branding} session={{ provider: "local", user: { id: "preview", name: "Arnau", email: "preview@example.test" }, tenant: { id: "preview", name: "Maqueta" }, expiresAt: "2099-01-01T00:00:00.000Z" }}
       projects={[project, standalone]} threads={threads} activeProjectId={project.id} activeThreadId={active?.id ?? null} mobileOpen={mobileOpen} desktopOpen={desktopOpen} busy={false}
@@ -72,7 +97,7 @@ export function IntuitivePreview({ estat }: { estat: string }) {
       manifest={baseBrainManifest} preferences={preferences} project={project} thread={active} projects={[project]} tasks={tasks}
       userName="Arnau" companyName="Neska" assistantName="Neska" hydrated prompt={prompt} composerExperience={experience} imageGeneration={false}
       connectorMentions={connectors} selectedConnectorMentionIds={ids} attachments={[]} documents={docs} publications={[]} documentUploading={false}
-      sending={state !== "inici"} stopping={false} queuedMessages={[]} runtimeStatus={{ ...initialRuntimeStatus, mode: "demo", codex: "disabled", ready: true }}
+      sending={state === "treballant" || state === "permis" || state === "reintent"} stopping={false} queuedMessages={[]} runtimeStatus={{ ...initialRuntimeStatus, mode: "demo", codex: "disabled", ready: true }}
       networkOnline streamRecovery={null} onRetryRuntime={noop} onPromptChange={setPrompt} onComposerExperienceChange={setExperience} onImageGenerationChange={noop}
       onDestinationChange={noop} onConnectorMentionIdsChange={setIds} onAttachmentsChange={noop} onDocumentsChange={setDocs} onAddDocuments={asyncNoop}
       onFreezePublication={asyncNoop} onDecidePublication={asyncNoop} onComposerNotice={noop} onSend={noop} onPlanRequest={noop} onStop={noop} onCancelQueuedMessage={noop}

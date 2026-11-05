@@ -23,6 +23,7 @@ import {
 } from "@/runtime/browser/tool-call-store";
 import { BrowserActionHistoryStore } from "@/runtime/browser/action-history";
 import { BROWSER_RUNTIME_CAPABILITIES } from "@/runtime/browser/capabilities";
+import { classifyApprovalRisk } from "@/runtime/approval-risk";
 
 const OPAQUE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/u;
 const TOOL_NAMES = BROWSER_RUNTIME_CAPABILITIES.agentTools;
@@ -462,6 +463,7 @@ export async function handleBrowserDynamicToolCall(
       title: approvalTitle(command),
       detail: approvalDetail(command, expectedResource, approvalEvidence.request.summary),
       permissionFingerprint: context.permissions.fingerprint,
+      risk: classifyApprovalRisk({ kind: "browser" }),
       status: "pending",
     };
     const durableApproval = await context.approvalStore.createPending({
@@ -472,6 +474,7 @@ export async function handleBrowserDynamicToolCall(
     if (durableApproval.status === "pending") {
       await context.emitApproval(item);
     }
+    // Browser mutations already refuse session-wide approvals below; no narrowing here.
     const decision = await waitForApproval(context.approvalStore, item, "browser", context.signal);
     const resolved: ApprovalItem = {
       ...item,

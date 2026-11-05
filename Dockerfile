@@ -149,7 +149,7 @@ RUN /usr/bin/python3 -m venv /tmp/python-installer \
   && /tmp/python-installer/bin/pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps \
     --target /usr/local/lib/python3.12/dist-packages -r /tmp/python-runtime-requirements.txt \
   && rm -rf /tmp/python-installer /tmp/python-runtime-requirements.txt \
-  && /usr/bin/python3 -c "import openpyxl; import PIL; assert PIL.__version__ == '12.3.0'"
+  && /usr/bin/python3 -c "import openpyxl; import PIL; assert PIL.__version__ == '13.0.0'"
 
 COPY --chown=root:root scripts/install-container-chrome.py /tmp/install-container-chrome.py
 RUN /usr/bin/python3 /tmp/install-container-chrome.py \

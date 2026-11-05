@@ -37,6 +37,10 @@ import { MarkdownMessage } from "@/components/markdown-message";
 import { AgentStatusPanel, TaskStatusChip } from "@/components/agent-status-panel";
 import { taskProgress } from "@/ui/task-progress";
 import { TaskCycle } from "@/components/task-cycle";
+import type { TaskRetryContext } from "@/components/task-checks";
+import { RefreshCWIcon } from "@/components/ui/refresh-cw";
+import { MAX_TASK_RETRIES, retryAttemptOf } from "@/lib/task-retry";
+import { useReducedMotion } from "motion/react";
 import { ManagedAppActionControl } from "@/components/managed-app-action-control";
 import { type LiveAnswerStore, useLiveAnswer } from '@/ui/live-answer-store';
 import { StreamingResponse } from "@/components/agents/streaming-response";
@@ -345,6 +349,7 @@ function AssistantMessage({
   readOnly = false,
   recoveryPaused = false,
   taskTitle,
+  retry,
 }: {
   liveAnswers?: LiveAnswerStore;
   threadId: string;
@@ -369,6 +374,7 @@ function AssistantMessage({
   readOnly?: boolean;
   recoveryPaused?: boolean;
   taskTitle?: string;
+  retry?: TaskRetryContext;
 }) {
   const t = useUiText();
   const liveContent = useLiveAnswer(liveAnswers, `${threadId}:${message.id}`);
@@ -431,10 +437,30 @@ function AssistantMessage({
         <DocumentPublicationCard key={draft.id} draft={draft} readOnly={readOnly} onFreeze={onFreezePublication} onDecide={onDecidePublication} />
       ))}
 
-      {message.status !== "streaming" && message.planProposal?.status !== "proposed" && !message.approvals.some(approval => approval.status === "pending") ? <TaskCycle message={message} threadId={threadId} readOnly={readOnly} onResolveApproval={onResolveApproval} onOpenReview={() => onOpenReview(message.id)} onMessageChange={onTaskMessageChange ? saved => onTaskMessageChange(threadId, saved) : undefined} onExecutePlan={onExecutePlan} /> : null}
+      {message.status !== "streaming" && message.planProposal?.status !== "proposed" && !message.approvals.some(approval => approval.status === "pending") ? <TaskCycle message={message} threadId={threadId} readOnly={readOnly} onResolveApproval={onResolveApproval} onOpenReview={() => onOpenReview(message.id)} onMessageChange={onTaskMessageChange ? saved => onTaskMessageChange(threadId, saved) : undefined} onExecutePlan={onExecutePlan} retry={retry} /> : null}
       {message.status === "complete" && publicContent ? <ResultActions content={publicContent} /> : null}
     </article>
   );
+}
+
+/** An automatic retry is not something the person said, so it is not a
+ *  bubble: one quiet line where the next attempt starts. */
+function RetryMarker({ attempt, running }: { attempt: number; running: boolean }) {
+  const t = useUiText();
+  const iconRef = useRef<{ startAnimation: () => void; stopAnimation: () => void }>(null);
+  const reduceMotion = useReducedMotion();
+  useEffect(() => {
+    if (!running || reduceMotion) return;
+    // Turn once when the attempt starts, then rest.
+    const icon = iconRef.current;
+    icon?.startAnimation();
+    const rest = setTimeout(() => icon?.stopAnimation(), 700);
+    return () => clearTimeout(rest);
+  }, [running, reduceMotion]);
+  return <div data-slot="retry-marker" role="note" className="message-enter flex items-center gap-2 border-t border-[var(--border)] pt-4 text-[var(--text-secondary)]">
+    <span aria-hidden="true" className="inline-grid shrink-0 place-items-center"><RefreshCWIcon ref={iconRef} size={13} className="grid place-items-center" /></span>
+    <span className="neska-px text-[11px]">{t("Ho torno a provar · {n} de {max}", { n: attempt, max: MAX_TASK_RETRIES })}</span>
+  </div>;
 }
 
 function UserMessage({ message, connectorMentions, threadId, onRequestPublication, onEdit, readOnly = false }: { message: ChatMessage; connectorMentions: ConnectorMention[]; threadId: string; onRequestPublication?: (attachment: ChatAttachment) => void; onEdit: (content: string) => void; readOnly?: boolean }) {
@@ -1052,7 +1078,7 @@ export function ChatWorkspace({
               {thread?.messages.map((message, index) => (
                 <div key={message.id} id={`message-${message.id}`} className="scroll-mt-8">
                   <DaySeparator date={message.createdAt} previousDate={thread.messages[index - 1]?.createdAt} />
-                  {message.role === "user" ? <UserMessage message={message} connectorMentions={connectorMentions} threadId={thread.id} onRequestPublication={onRequestPublication && thread.messages[index + 1]?.role === "assistant" ? (attachment) => onRequestPublication(attachment, thread.messages[index + 1]!.id) : undefined} readOnly={readOnly} onEdit={(content) => onEditMessage(message, content)} /> : (
+                  {message.role === "user" && retryAttemptOf(message) ? <RetryMarker attempt={retryAttemptOf(message)!} running={thread.messages[index + 1]?.status === "streaming"} /> : message.role === "user" ? <UserMessage message={message} connectorMentions={connectorMentions} threadId={thread.id} onRequestPublication={onRequestPublication && thread.messages[index + 1]?.role === "assistant" ? (attachment) => onRequestPublication(attachment, thread.messages[index + 1]!.id) : undefined} readOnly={readOnly} onEdit={(content) => onEditMessage(message, content)} /> : (
                     <AssistantMessage
                       liveAnswers={liveAnswers}
                       threadId={thread.id}
@@ -1062,6 +1088,7 @@ export function ChatWorkspace({
                       assistantName={assistantName}
                       onTaskMessageChange={onTaskMessageChange}
                       onExecutePlan={onExecutePlan}
+                      retry={{ retried: retryAttemptOf(thread.messages[index + 1]) !== null, attempt: retryAttemptOf(thread.messages[index - 1]) }}
                       onResolveApproval={(approval, decision) => void onResolveApproval(message.id, approval, decision)}
                       publications={publications.filter((draft) => draft.turnId === message.id && draft.threadId === thread.id)}
                       onFreezePublication={onFreezePublication}

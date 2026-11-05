@@ -1,7 +1,8 @@
 import type { ChatMessage, PlanStep } from "@/lib/chat-contract";
 import { publicActivityText } from "@/ui/public-activity";
+import { verifyTask } from "@/lib/task-verification";
 
-export type TaskState = "working" | "waiting" | "done" | "stopped" | "failed" | "proposed" | "queued";
+export type TaskState = "working" | "waiting" | "done" | "review" | "stopped" | "failed" | "proposed" | "queued";
 
 export type TaskProgress = {
   state: TaskState;
@@ -14,7 +15,7 @@ export type TaskProgress = {
 
 /** One factual summary of a turn's plan. It never invents steps: the plan,
  * approvals and status all come from the persisted assistant message. */
-export function taskProgress(message: Pick<ChatMessage, "plan" | "approvals" | "status" | "planProposal" | "queue" | "incidents">): TaskProgress {
+export function taskProgress(message: Pick<ChatMessage, "plan" | "approvals" | "status" | "planProposal" | "queue" | "incidents"> & Partial<Pick<ChatMessage, "content" | "artifacts" | "toolResults">>): TaskProgress {
   const steps = message.plan.flatMap((step, originalIndex) => {
     const label = publicActivityText(step.step, 1_000);
     return label ? [{ ...step, step: label, originalIndex }] : [];
@@ -32,7 +33,7 @@ export function taskProgress(message: Pick<ChatMessage, "plan" | "approvals" | "
       : message.status === "streaming"
         ? "working"
         : message.status === "complete"
-          ? "done"
+          ? finishedState(message)
           : "stopped";
   const live = state === "working" || state === "waiting";
   const current = live ? steps.findIndex((step) => step.status === "in_progress") : -1;
@@ -48,4 +49,11 @@ export function isStepDone(step: PlanStep, _state: TaskState) {
 /** The panel and the header only appear for work that has steps. */
 export function isMultiStepTask(progress: TaskProgress) {
   return progress.total >= 2;
+}
+
+/** A finished task whose deterministic checks found something reads "review", not "done". */
+function finishedState(message: Pick<ChatMessage, "plan" | "approvals" | "status"> & Partial<Pick<ChatMessage, "content" | "artifacts" | "toolResults">>): TaskState {
+  if (message.content === undefined) return "done";
+  const verification = verifyTask({ ...message, content: message.content, artifacts: message.artifacts ?? [], toolResults: message.toolResults });
+  return verification?.status === "attention" ? "review" : "done";
 }

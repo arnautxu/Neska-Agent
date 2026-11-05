@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { designPreviewsEnabled } from "../previews";
 import { IntuitivePreview } from "./preview";
-export default async function Page({ searchParams }: { searchParams: Promise<{ estat?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ estat?: string; risc?: string }> }) {
   if (!designPreviewsEnabled()) notFound();
-  return <IntuitivePreview estat={(await searchParams).estat ?? "inici"} />;
+  const params = await searchParams;
+  return <IntuitivePreview estat={params.estat ?? "inici"} risc={params.risc} />;
 }

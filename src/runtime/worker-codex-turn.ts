@@ -61,6 +61,7 @@ import {
   waitForApproval,
   type FileApprovalStore,
 } from "@/runtime/approval-store";
+import { narrowDecisionForRisk } from "@/runtime/approval-risk";
 import {
   BROWSER_DYNAMIC_TOOLS,
   BrowserDynamicToolError,
@@ -2108,12 +2109,14 @@ async function runWorkerCodexTurnAttempt(
             { envelope, key: `approval:pending:${approval.item.id}` },
           );
         }
-        const decision = await waitForApproval(
+        // Irreversible effects are approved one at a time, whatever scope the
+        // client asked for. This only narrows; it never approves.
+        const decision = narrowDecisionForRisk(await waitForApproval(
           approvalStore,
           permissionBoundItem,
           approval.requestType,
           turnSignal,
-        );
+        ), permissionBoundItem);
         await emit(
           { type: "approval", item: resolvedApproval(permissionBoundItem, decision) },
           { envelope, key: `approval:resolved:${approval.item.id}` },
