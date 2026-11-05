@@ -46,6 +46,11 @@ describe("task verification", () => {
       .toMatchObject({ id: "actions", status: "failed", values: { n: 1 } });
   });
 
+  it("never clears a failed file change with a later success under the same generic title", () => {
+    const file = (status: "complete" | "failed") => ({ ...tool("Cambios en archivos", status), kind: "file" as const });
+    expect(verifyTask(msg({ toolResults: [file("failed"), file("complete")] }))?.checks.find((check) => check.id === "actions")?.status).toBe("failed");
+  });
+
   it("reports declined actions as information, not as a failure", () => {
     const result = verifyTask(msg({ approvals: [{ id: "p", threadId: "t", turnId: "u", itemId: "i", kind: "connector", title: "Enviar", detail: "", status: "declined" }] }));
     expect(result?.status).toBe("passed");

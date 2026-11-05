@@ -17,11 +17,17 @@ type VerifiableMessage = Pick<ChatMessage, "status" | "content" | "plan" | "arti
 
 const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
 
-/** A failed action that later succeeded under the same title was retried;
- * only the ones that never recovered count. */
+// Only commands and web lookups carry a title specific enough to tell a retry
+// of the same operation apart. File changes, connector and browser actions
+// share generic titles, so a later success never clears their failure.
+const RECOVERABLE_KINDS = new Set<ToolResult["kind"]>(["command", "web"]);
+
+/** A failed command or lookup that later succeeded with the same kind and
+ * title was retried; every other failure that never recovered counts. */
 export function unrecoveredFailures(results: readonly ToolResult[]): ToolResult[] {
   return results.filter((result, index) => result.status === "failed" &&
-    !results.slice(index + 1).some((later) => later.title === result.title && later.status === "complete"));
+    !(RECOVERABLE_KINDS.has(result.kind) && results.slice(index + 1).some((later) =>
+      later.kind === result.kind && later.title === result.title && later.status === "complete")));
 }
 
 export function verifyTask(message: VerifiableMessage): TaskVerification | null {

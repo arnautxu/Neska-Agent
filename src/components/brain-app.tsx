@@ -655,6 +655,7 @@ export function BrainApp({
   // old conversation never starts work on its own.
   const liveTaskIdsRef = useRef(new Set<string>());
   const retriedTaskIdsRef = useRef(new Set<string>());
+  const retrySendRef = useRef<((display: string, target: ChatMessage) => void) | null>(null);
   const [dispatchingQueuedTurnId, setDispatchingQueuedTurnId] = useState<string | null>(null);
   const [managedAppAvailable, setManagedAppAvailable] = useState(false);
   const [managedAppActions, setManagedAppActions] = useState<ManagedAppActionRegistry>({});
@@ -1793,19 +1794,43 @@ export function BrainApp({
 
   // Bounded automatic retry when a finished task fails its checks. The server
   // re-derives the decision and the wording; this only asks for it. Anything
-  // the person queued goes first.
+  // the person queued goes first. Only persistent installations retry: the
+  // browser-only preview has nothing on the server to retry from.
   useEffect(() => {
+    if (initialWorkbench.persistence !== "filesystem") return;
     if (sending || actionBusy || documentUploading || dispatchingQueuedTurnId || !activeProject || !activeThread) return;
     if (queuedTurns.some((item) => item.threadId === activeThread.id)) return;
     const index = activeThread.messages.length - 1;
     const last = activeThread.messages[index];
     if (!last || !liveTaskIdsRef.current.has(last.id) || retriedTaskIdsRef.current.has(last.id)) return;
-    const retry = nextTaskRetry(activeThread.messages, index);
-    if (!retry) return;
+    if (!nextTaskRetry(activeThread.messages, index)) return;
     retriedTaskIdsRef.current.add(last.id);
-    const display = retryDisplayText(retry.attempt);
-    void sendMessage(display, display, { retry: last });
-  }, [actionBusy, activeProject, activeThread, dispatchingQueuedTurnId, documentUploading, queuedTurns, sendMessage, sending]);
+    const threadId = activeThread.id;
+    // The stream reports "done" before the server has durably finished the
+    // turn. Wait for the saved thread to show it finished, and decide from
+    // that copy, so the retry never races the turn it follows.
+    void (async () => {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const saved = await getThreadRequest(threadId).catch(() => null);
+        const savedIndex = saved ? saved.messages.length - 1 : -1;
+        const savedLast = saved?.messages[savedIndex];
+        if (saved && savedLast?.id === last.id && savedLast.status !== "streaming") {
+          const retry = nextTaskRetry(saved.messages, savedIndex);
+          // Only while the person is still looking at this task, and through
+          // the latest render's sender so it never acts on stale state.
+          if (retry && activeSelectionRef.current.threadId === threadId) {
+            retrySendRef.current?.(retryDisplayText(retry.attempt), savedLast);
+          }
+          return;
+        }
+        if (saved && savedLast && savedLast.id !== last.id) return;
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    })();
+  }, [actionBusy, activeProject, activeThread, dispatchingQueuedTurnId, documentUploading, initialWorkbench.persistence, queuedTurns, sending]);
+  useEffect(() => {
+    retrySendRef.current = (display, target) => void sendMessage(display, display, { retry: target });
+  }, [sendMessage]);
 
   useEffect(() => {
     const activeThreadIds = new Set(threads
