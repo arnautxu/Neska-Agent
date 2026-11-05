@@ -17,6 +17,10 @@ on:
     paths-ignore:
       - "docs/**"
       - "*.md"
+  # Weekly run on main so newly published CVEs and drift surface before the
+  # next change. Publication still requires a push run (publish-ghcr.yml).
+  schedule:
+    - cron: "0 6 * * 1"
 
 permissions:
   contents: read
