@@ -100,6 +100,7 @@
     "POST /api/projects/{projectId}/sources": "ProjectSourceUploadResponse",
     "POST /api/projects/{projectId}/threads": "JsonObject",
     "POST /api/runtime/plans": "stream:ChatStreamEvent",
+    "POST /api/runtime/retries": "stream:ChatStreamEvent",
     "POST /api/runtime/incidents": "JsonObject",
     "POST /api/runtime/approvals": "JsonObject",
     "POST /api/runtime/browser": "BrowserStatus",

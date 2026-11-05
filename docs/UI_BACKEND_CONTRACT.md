@@ -1727,6 +1727,24 @@ original. Torna a validar els permisos del torn, adjunts, eines i política al
 handler de chat ordinari. Una repetició amb els mateixos IDs reprèn la mateixa
 execució durable; una altra execució o revisió obsoleta rep `409`.
 
+### Reintent automàtic d’una tasca
+
+`POST /api/runtime/retries`, same-origin i sessió local:
+
+```ts
+{ threadId, assistantMessageId, execution: ChatRequest }
+```
+
+Només per a l’última tasca acabada que no passa les comprovacions deterministes
+(`src/lib/task-retry.ts`). El servidor decideix si toca, substitueix
+`execution.message` per una instrucció derivada del missatge guardat i fixa
+`displayMessage` a «Reintent automàtic n de 3». Màxim 3 intents, comptats des
+del marcador del propi torn; mai si la persona ha rebutjat una aprovació a la
+tasca. La petició no pot portar fitxers, mencions ni referències. Retorna el
+mateix NDJSON que `/api/chat` i passa pels mateixos controls de permisos. Una
+repetició amb el mateix `userMessageId` reprèn la mateixa execució; qualsevol
+altra rep `409`.
+
 ### Accions d’incidència
 
 `POST /api/runtime/incidents`, same-origin i sessió local:
