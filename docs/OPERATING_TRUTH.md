@@ -5,7 +5,8 @@ Updated: 2026-10-11.
 ## LibreChat migration (2026-11-09)
 
 The harness and UI are moving to a LibreChat fork in `librechat/`. See
-[LIBRECHAT_MIGRATION.md](LIBRECHAT_MIGRATION.md). Not built, deployed or accepted yet.
+[LIBRECHAT_MIGRATION.md](LIBRECHAT_MIGRATION.md). Live on prova.neska.cat on Claude since
+2026-11-09; the old stack was removed from that server. No backups for the new stack yet.
 
 ## Current scope
 
