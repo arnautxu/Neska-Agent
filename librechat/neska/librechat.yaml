@@ -1,0 +1,23 @@
+# Neska on LibreChat: per-client configuration.
+# Copied to /etc/neska/<client>/librechat.yaml on the client's Hetzner server.
+version: 1.3.18
+cache: true
+
+interface:
+  theme: neska
+  customWelcome: 'Què fem avui?'
+  landingFooter: false
+
+# One assistant called Neska. The model behind it is chosen here, per client,
+# and paid with that client's API key (set in .env).
+modelSpecs:
+  prioritize: true
+  list:
+    - name: neska
+      label: Neska
+      description: "L'agent de la teva empresa"
+      iconURL: /assets/logo.svg
+      default: true
+      preset:
+        endpoint: openAI
+        model: gpt-6-astra
