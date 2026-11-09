@@ -2,6 +2,11 @@
 
 Updated: 2026-10-11.
 
+## LibreChat migration (2026-11-09)
+
+The harness and UI are moving to a LibreChat fork in `librechat/`. See
+[LIBRECHAT_MIGRATION.md](LIBRECHAT_MIGRATION.md). Not built, deployed or accepted yet.
+
 ## Current scope
 
 Neska is a reusable company brain. The current cleanup removes the legacy scheduling engine, customer-specific context, branding rules, personal account overrides, host deployment procedures and historical customer acceptance reports. Generic documents, connectors, employee isolation, memory, automations, backup and recovery remain.
