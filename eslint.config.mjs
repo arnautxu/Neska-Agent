@@ -5,6 +5,7 @@ export default defineConfig([
   ...nextVitals,
   globalIgnores([
     ".next/**",
+    "librechat/**",
     "dist/**",
     "contracts/codex/**",
     "coverage/**",
