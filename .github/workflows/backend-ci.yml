@@ -11,12 +11,16 @@ on:
     paths-ignore:
       - "docs/**"
       - "*.md"
+      - "librechat/**"
+      - ".github/workflows/build-librechat.yml"
   push:
     branches:
       - main
     paths-ignore:
       - "docs/**"
       - "*.md"
+      - "librechat/**"
+      - ".github/workflows/build-librechat.yml"
   # Weekly run on main so newly published CVEs and drift surface before the
   # next change. Publication still requires a push run (publish-ghcr.yml).
   schedule:

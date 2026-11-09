@@ -1,0 +1,59 @@
+# Neska on LibreChat: one isolated stack per client, on that client's Hetzner server
+# (CAX21, ARM64, 8 GB). Run from /srv/neska/<client>:
+#   docker compose --env-file /etc/neska/<client>/neska.env -f docker-compose.yml up -d
+# The app image is built natively for ARM64 from ../ (this fork), never pulled from upstream,
+# so what runs is exactly the reviewed Neska commit.
+name: neska-${NESKA_CLIENT:?set NESKA_CLIENT}
+
+services:
+  app:
+    image: ${NESKA_IMAGE:-neska-librechat:local}
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      platforms: [linux/arm64]
+    restart: unless-stopped
+    depends_on: [mongodb, meilisearch]
+    env_file: ${NESKA_ENV_FILE:?set NESKA_ENV_FILE}
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3080
+      MONGO_URI: mongodb://mongodb:27017/neska
+      MEILI_HOST: http://meilisearch:7700
+      CONFIG_PATH: /app/neska/librechat.yaml
+      # One app replica per server: lets scheduled tasks run without Redis.
+      SCHEDULES_SINGLE_PROCESS: 'true'
+      NO_INDEX: 'true'
+    volumes:
+      - ${NESKA_CONFIG:?set NESKA_CONFIG}:/app/neska/librechat.yaml:ro
+      - ${NESKA_DATA:-/srv/neska}/uploads:/app/uploads
+      - ${NESKA_DATA:-/srv/neska}/images:/app/client/public/images
+      - ${NESKA_DATA:-/srv/neska}/logs:/app/api/logs
+    expose: ['3080']
+
+  mongodb:
+    image: mongo:8.0.20
+    restart: unless-stopped
+    command: mongod --noauth
+    volumes:
+      - ${NESKA_DATA:-/srv/neska}/mongo:/data/db
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.35.1
+    restart: unless-stopped
+    environment:
+      MEILI_NO_ANALYTICS: 'true'
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY}
+    volumes:
+      - ${NESKA_DATA:-/srv/neska}/meili:/meili_data
+
+  # TLS for the client's domain (e.g. prova.neska.cat). Only 80/443 are published;
+  # MongoDB and Meilisearch stay on the private compose network.
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports: ['80:80', '443:443']
+    command: caddy reverse-proxy --from ${NESKA_DOMAIN:?set NESKA_DOMAIN} --to app:3080
+    volumes:
+      - ${NESKA_DATA:-/srv/neska}/caddy:/data

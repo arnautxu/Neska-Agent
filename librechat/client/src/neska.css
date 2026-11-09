@@ -1,0 +1,30 @@
+/* Neska: self-hosted faces for the `neska` theme (interface.theme: neska).
+ * Rubik and Geist (Pixel, Mono) are SIL Open Font License; see public/assets/fonts/neska/OFL.md.
+ * A face downloads only when text renders in it, so other themes pay nothing. */
+@font-face { font-family: 'Rubik'; font-style: normal; font-weight: 400; font-display: swap; src: url('/assets/fonts/neska/rubik-400.ttf') format('truetype'); }
+@font-face { font-family: 'Rubik'; font-style: normal; font-weight: 500; font-display: swap; src: url('/assets/fonts/neska/rubik-500.ttf') format('truetype'); }
+@font-face { font-family: 'Rubik'; font-style: normal; font-weight: 600 700; font-display: swap; src: url('/assets/fonts/neska/rubik-600.ttf') format('truetype'); }
+@font-face { font-family: 'Geist Pixel'; font-style: normal; font-weight: 400; font-display: swap; src: url('/assets/fonts/neska/geist-pixel-400.ttf') format('truetype'); }
+@font-face { font-family: 'Geist Mono'; font-style: normal; font-weight: 400 600; font-display: swap; src: url('/assets/fonts/neska/geist-mono-400.ttf') format('truetype'); }
+
+/* Short section labels in Geist Pixel, uppercase (Neska theme only). Reading text stays Rubik. */
+html[data-theme='neska'] .neska-label {
+  font-family: 'Geist Pixel', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--text-tertiary));
+}
+
+/* Animated icons (Neska theme). Glyphs with a Neska twin play their own motion through
+ * NeskaIcon; every other icon in a button, link or menu item takes one small hop when it
+ * is hovered or focused, then rests. Nothing moves under prefers-reduced-motion. */
+@keyframes neska-icon-hop {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-2px); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme='neska'] :is(button, a, [role='menuitem'], [role='tab']):is(:hover, :focus-visible) svg:not([data-neska-animated] svg):not(.animate-spin) {
+    animation: neska-icon-hop 0.45s cubic-bezier(0.2, 0, 0, 1) 1;
+  }
+}

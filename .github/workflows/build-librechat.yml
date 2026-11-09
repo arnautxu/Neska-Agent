@@ -1,0 +1,78 @@
+name: Build Neska LibreChat image
+
+# Builds the Neska fork of LibreChat (librechat/) natively for the Hetzner ARM servers.
+# The image is pushed to GHCR by full revision and also kept as a short-lived workflow
+# artifact, so a server can load it with a repository-scoped token. Building an image
+# does not deploy it or prove it works on a host: those stay separate steps.
+
+on:
+  push:
+    branches: [main]
+    paths: ['librechat/**', '.github/workflows/build-librechat.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: build-librechat-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    env:
+      IMAGE: ghcr.io/arnautxu/neska-librechat
+    steps:
+      - name: Checkout the exact revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.0.0
+      - name: Authenticate to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Build and push linux/arm64
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.0.0
+        with:
+          context: librechat
+          file: librechat/Dockerfile
+          platforms: linux/arm64
+          push: true
+          cache-from: type=registry,ref=ghcr.io/arnautxu/neska-librechat:buildcache-arm64
+          cache-to: type=registry,ref=ghcr.io/arnautxu/neska-librechat:buildcache-arm64,mode=max
+          tags: ghcr.io/arnautxu/neska-librechat:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+      - name: Export the image for hosts without a GHCR credential
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          docker pull "$IMAGE@$DIGEST"
+          [[ $(docker image inspect --format '{{.Architecture}}' "$IMAGE@$DIGEST") == arm64 ]]
+          docker tag "$IMAGE@$DIGEST" "neska-librechat:$GITHUB_SHA"
+          mkdir -p out
+          docker save "neska-librechat:$GITHUB_SHA" | zstd -T0 -10 -o out/neska-librechat.tar.zst
+          jq -n --arg revision "$GITHUB_SHA" --arg image "$IMAGE@$DIGEST" --arg tag "neska-librechat:$GITHUB_SHA" \
+            '{schemaVersion:1,revision:$revision,architecture:"arm64",image:$image,localTag:$tag}' > out/release.json
+          (cd out && sha256sum neska-librechat.tar.zst > neska-librechat.tar.zst.sha256)
+          ls -la out
+      - name: Keep the image archive for the deploy
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: neska-librechat-${{ github.sha }}-arm64
+          path: out/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
