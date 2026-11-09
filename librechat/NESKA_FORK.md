@@ -15,6 +15,8 @@ MIT licence (`LICENSE`, kept unchanged). Imported as plain files (no upstream hi
 | `client/src/locales/i18n.ts`, `client/src/store/language.ts`, `client/src/vite-env.d.ts` | Catalan is the default language (`VITE_DEFAULT_LANG` overrides); a saved choice still wins. |
 | `client/index.html`, `client/vite.config.ts` | Title, description, `lang="ca"`, PWA name and colours. |
 | `client/public/assets/logo.svg`, favicons, PWA icons | Neska pixel mascot. |
+| `client/src/components/NeskaIcons/` | Neska's animated icons (lucide-animated + own), `NeskaIcon` maps lucide glyphs to them. |
+| `client/src/components/UnifiedSidebar/ExpandedPanel.tsx` | Sidebar rail draws icons through `NeskaIcon`. |
 | `neska/` | Per-client config, Docker Compose for Hetzner ARM, env template. |
 
 ## Pulling a new upstream version

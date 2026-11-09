@@ -1,5 +1,6 @@
 import { memo, useCallback, Suspense } from 'react';
 import { SquarePen } from 'lucide-react';
+import { NeskaIcon } from '~/components/NeskaIcons';
 import { useLocation } from 'react-router-dom';
 import { Skeleton, Sidebar, Button, TooltipAnchor } from '@librechat/client';
 import type { NavLink } from '~/common';
@@ -47,7 +48,7 @@ const NewChatButton = memo(function NewChatButton({
           className="hover:bg-surface-nav-hover flex h-9 w-9 items-center justify-center rounded-lg transition-colors"
           onClick={handleNewChatClick}
         >
-          <SquarePen className="text-text-primary h-5 w-5" />
+          <NeskaIcon icon={SquarePen} className="text-text-primary" />
         </a>
       }
     />
@@ -114,7 +115,7 @@ const NavIconButton = memo(function NavIconButton({
           className="h-9 w-9 rounded-lg"
           onClick={handleClick}
         >
-          <link.icon className="h-5 w-5" aria-hidden="true" />
+          <NeskaIcon icon={link.icon} className="h-5 w-5" />
         </Button>
       }
     />

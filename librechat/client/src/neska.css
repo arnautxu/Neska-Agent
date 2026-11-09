@@ -15,3 +15,16 @@ html[data-theme='neska'] .neska-label {
   text-transform: uppercase;
   color: rgb(var(--text-tertiary));
 }
+
+/* Animated icons (Neska theme). Glyphs with a Neska twin play their own motion through
+ * NeskaIcon; every other icon in a button, link or menu item takes one small hop when it
+ * is hovered or focused, then rests. Nothing moves under prefers-reduced-motion. */
+@keyframes neska-icon-hop {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-2px); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme='neska'] :is(button, a, [role='menuitem'], [role='tab']):is(:hover, :focus-visible) svg:not([data-neska-animated] svg):not(.animate-spin) {
+    animation: neska-icon-hop 0.45s cubic-bezier(0.2, 0, 0, 1) 1;
+  }
+}
