@@ -8,10 +8,12 @@ interface:
   customWelcome: 'Què fem avui?'
   landingFooter: false
 
-# One assistant called Neska. The model behind it is chosen here, per client,
-# and paid with that client's API key (set in .env).
+# One assistant called Neska, on Claude. Each user enters their own Anthropic key
+# in the model menu (ANTHROPIC_API_KEY=user_provided in neska.env).
+# addedEndpoints keeps the Anthropic row in the menu, which is where the key is set.
 modelSpecs:
   prioritize: true
+  addedEndpoints: [anthropic]
   list:
     - name: neska
       label: Neska
@@ -19,5 +21,19 @@ modelSpecs:
       iconURL: /assets/logo.svg
       default: true
       preset:
-        endpoint: openAI
-        model: gpt-6-astra
+        endpoint: anthropic
+        model: claude-sonnet-5-5
+
+# Memory across conversations. Users see and delete what is kept under "Memòries"
+# in the side panel. The memory agent runs on the user's own Anthropic key.
+memory:
+  disabled: false
+  personalize: true
+  tokenLimit: 10000
+  agent:
+    enabled: true
+    provider: anthropic
+    model: claude-haiku-5-5
+    instructions: "Guarda només fets útils i duradors sobre l'usuari i la seva feina (preferències, rol, projectes). En català. Mai contrasenyes ni claus."
+    # Needs the Neska memory.ts fix: Claude 5 rejects the temperature LibreChat's
+    # memory agent used to send (see NESKA_FORK.md).

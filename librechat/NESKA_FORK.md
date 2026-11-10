@@ -24,3 +24,11 @@ MIT licence (`LICENSE`, kept unchanged). Imported as plain files (no upstream hi
 1. Download the new upstream tree into a scratch folder.
 2. Diff it against the previous upstream commit and apply that diff here (`git apply --3way`).
 3. Re-check every file in the table above, rebuild, re-render the PNG screens and compare.
+
+## Memory with Claude 5 (2026-11-10)
+
+- `packages/api/src/agents/memory.ts`: the memory agent drops its default temperature (0.4)
+  for Anthropic `adaptive` thinking and for every model where `omitsSamplingParameters` is
+  true. Claude 5 rejects it either way: locally with adaptive thinking ("temperature is not
+  supported when thinking is enabled") and with a 400 when thinking is off ("`temperature`
+  is deprecated for this model"). Test in `__tests__/memory.test.ts`.
