@@ -9,7 +9,7 @@ MIT licence (`LICENSE`, kept unchanged). Imported as plain files (no upstream hi
 |---|---|
 | `packages/client/src/theme/themes/neska.ts` | New bundled theme `neska` (ink #161616, brown #6B3A1E accent, 2px corners, no shadows, Rubik). |
 | `packages/client/src/theme/themes/index.ts`, `packages/data-provider/src/theme.ts`, `client/src/Providers/bootVersion.ts` | Register `neska` next to `clickhouse`. |
-| `client/src/neska.css`, `client/src/style.css` | Self-hosted Rubik / Geist Pixel / Geist Mono faces; `.neska-label` pixel labels (only under the `neska` theme). |
+| `client/src/neska.css`, `client/src/style.css` | Self-hosted Young Serif (product name, headings) / Borna (reading text, `.neska-label` labels) / Geist Mono (code) faces, only under the `neska` theme. Logo: `public/assets/logo.svg` (app/favicon icon, off-white tile), `neska-dog.svg` (dog without tile: model icon, rail mark, landing mark, 3.5% backdrop via `body::after`) and `logo-lockup.svg` (dog + "Neska Agent", sign-in page). Brand hooks `.neska-rail-mark` (`UnifiedSidebar/ExpandedPanel.tsx`) and `.neska-landing-row/.neska-landing-mark` (`Chat/Landing.tsx`) are inert outside the `neska` theme. |
 | `client/public/assets/fonts/neska/` | Font files (SIL OFL, see `OFL.md`). |
 | `client/src/components/Conversations/{Conversations,ProjectsSection}.tsx` | `neska-label` class on sidebar section labels. |
 | `client/src/locales/i18n.ts`, `client/src/store/language.ts`, `client/src/vite-env.d.ts` | Catalan is the default language (`VITE_DEFAULT_LANG` overrides); a saved choice still wins. |

@@ -1,17 +1,16 @@
 /* Neska: self-hosted faces for the `neska` theme (interface.theme: neska).
- * Rubik and Geist (Pixel, Mono) are SIL Open Font License; see public/assets/fonts/neska/OFL.md.
+ * Young Serif names the product and sets headings; Borna sets reading text and labels;
+ * Geist Mono stays for code. Licences: public/assets/fonts/neska/OFL.md.
  * A face downloads only when text renders in it, so other themes pay nothing. */
-@font-face { font-family: 'Rubik'; font-style: normal; font-weight: 400; font-display: swap; src: url('/assets/fonts/neska/rubik-400.ttf') format('truetype'); }
-@font-face { font-family: 'Rubik'; font-style: normal; font-weight: 500; font-display: swap; src: url('/assets/fonts/neska/rubik-500.ttf') format('truetype'); }
-@font-face { font-family: 'Rubik'; font-style: normal; font-weight: 600 700; font-display: swap; src: url('/assets/fonts/neska/rubik-600.ttf') format('truetype'); }
-@font-face { font-family: 'Geist Pixel'; font-style: normal; font-weight: 400; font-display: swap; src: url('/assets/fonts/neska/geist-pixel-400.ttf') format('truetype'); }
+@font-face { font-family: 'Young Serif'; font-style: normal; font-weight: 400 700; font-display: swap; src: url('/assets/fonts/neska/young-serif-400.ttf') format('truetype'); }
+@font-face { font-family: 'Borna'; font-style: normal; font-weight: 300 700; font-display: swap; src: url('/assets/fonts/neska/borna-500.otf') format('opentype'); }
 @font-face { font-family: 'Geist Mono'; font-style: normal; font-weight: 400 600; font-display: swap; src: url('/assets/fonts/neska/geist-mono-400.ttf') format('truetype'); }
 
-/* Short section labels in Geist Pixel, uppercase (Neska theme only). Reading text stays Rubik. */
+/* Short section labels: Borna, small and tracked uppercase (Neska theme only). */
 html[data-theme='neska'] .neska-label {
-  font-family: 'Geist Pixel', ui-monospace, monospace;
+  font-family: 'Borna', system-ui, sans-serif;
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgb(var(--text-tertiary));
 }
@@ -26,5 +25,62 @@ html[data-theme='neska'] .neska-label {
 @media (prefers-reduced-motion: no-preference) {
   html[data-theme='neska'] :is(button, a, [role='menuitem'], [role='tab']):is(:hover, :focus-visible) svg:not([data-neska-animated] svg):not(.animate-spin) {
     animation: neska-icon-hop 0.45s cubic-bezier(0.2, 0, 0, 1) 1;
+  }
+}
+
+/* Brand presence (Neska theme only). The dog is drawn without a tile:
+   rail mark at the top of the icon rail, a large mark on the landing
+   screen, and a faint engraving-like backdrop (pattern taken from Hermes,
+   whose desktop app lays a 2.5% illustration over the whole window). */
+html[data-theme='neska'] .neska-rail-mark {
+  display: block;
+  width: 36px;
+  height: 36px;
+  margin: 2px 0 6px;
+  object-fit: contain;
+  user-select: none;
+}
+html[data-theme='neska'] .neska-landing-row {
+  flex-direction: column;
+  gap: 18px;
+}
+html[data-theme='neska'] .neska-landing-mark {
+  width: 104px;
+  height: 104px;
+  margin: 0;
+}
+html[data-theme='neska'] :is(.avatar-stroke, div, span):has(> img[src$='neska-dog.svg']),
+html[data-theme='neska'] .avatar-stroke:has(img[src$='neska-dog.svg']) {
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+html[data-theme='neska'] .avatar-stroke:has(img[src$='neska-dog.svg'])::after {
+  display: none;
+}
+html[data-theme='neska'] img[src$='neska-dog.svg'] {
+  object-fit: contain;
+}
+html[data-theme='neska'] body::after {
+  content: '';
+  position: fixed;
+  right: -10vh;
+  bottom: -16vh;
+  width: 78vh;
+  height: 78vh;
+  background: url('/assets/neska-dog.svg') no-repeat center / contain;
+  filter: grayscale(1);
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 50;
+}
+@media (max-width: 767px) {
+  html[data-theme='neska'] body::after {
+    width: 70vw;
+    height: 70vw;
+    right: -14vw;
+    bottom: 18vh;
   }
 }

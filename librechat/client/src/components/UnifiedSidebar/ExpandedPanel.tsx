@@ -153,6 +153,13 @@ function ExpandedPanel({
 
   return (
     <div className="border-border-inset bg-surface-sidebar flex h-full shrink-0 flex-col gap-2 border-e px-2 py-2">
+      <img
+        src="assets/neska-dog.svg"
+        alt=""
+        aria-hidden="true"
+        className="neska-rail-mark hidden"
+        draggable={false}
+      />
       <TooltipAnchor
         side={tooltipSide}
         description={toggleSidebarHint}

@@ -6,8 +6,8 @@ import type { IThemeAppearance, ThemeDefinition, IThemeRGB } from 'librechat-dat
  *
  * White canvas, #161616 ink, brown #6B3A1E only for "alive" and the primary action.
  * Hierarchy comes from type and space: 1px lines, 2px corners, no shadows.
- * Errors are drawn with ink and a cross, never red. Rubik is the reading face;
- * Geist Pixel is reserved for short labels (see `neska.css`).
+ * Errors are drawn with ink and a cross, never red. Young Serif names the product
+ * and sets headings; Borna is the reading face and sets short labels (see `neska.css`).
  *
  * Only the roles Neska changes are named; every other role resolves against
  * LibreChat's defaults. Dark mode keeps LibreChat's palette with a lighter brown
@@ -120,7 +120,8 @@ export const neskaDarkTheme: Partial<IThemeRGB> = {
   'rgb-focus-control': '176 122 85',
 };
 
-const NESKA_SANS = '"Rubik", system-ui, -apple-system, "Segoe UI", sans-serif';
+const NESKA_SANS = '"Borna", system-ui, -apple-system, "Segoe UI", sans-serif';
+const NESKA_SERIF = '"Young Serif", Georgia, "Times New Roman", serif';
 const NESKA_MONO = '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 const FLAT = '0 0 0 0 transparent';
 
@@ -144,8 +145,8 @@ const neskaShape: Partial<IThemeAppearance> = {
   authControlRadius: '2px',
   checkboxRadius: '2px',
   fontFamily: NESKA_SANS,
-  displayFontFamily: NESKA_SANS,
-  dialogTitleFontFamily: NESKA_SANS,
+  displayFontFamily: NESKA_SERIF,
+  dialogTitleFontFamily: NESKA_SERIF,
   monoFontFamily: NESKA_MONO,
   shadow2xs: FLAT,
   shadowXs: FLAT,
