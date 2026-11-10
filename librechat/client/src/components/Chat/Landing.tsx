@@ -7,6 +7,7 @@ import { useChatContext, useAgentsMapContext, useAssistantsMapContext } from '~/
 import Description, { isHtmlDescription } from '~/components/ui/Description';
 import { useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
 import { getIconEndpoint, getEntity, getModelSpec } from '~/utils';
+import { isImageURL } from '~/utils/icons';
 import { useLocalize, useAuthContext, useGreeting } from '~/hooks';
 import { useChatSettings } from '~/Providers/ChatSettingsContext';
 import AgentContact from '~/components/Agents/AgentContact';
@@ -77,6 +78,8 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     [conversation?.spec, startupConfig],
   );
 
+  /** An image spec icon (e.g. the Neska dog) is a brand mark: shown large and stacked above the greeting. */
+  const hasBrandMark = !isTemporary && isImageURL(conversation?.iconURL ?? modelSpec?.iconURL);
   const brandedSpecLabel = modelSpec?.showOnLanding ? modelSpec.label : '';
   const brandedSpecDescription = (modelSpec?.showOnLanding && modelSpec.description) || '';
   const name =
@@ -143,10 +146,10 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     >
       <div ref={contentRef} className="flex flex-col items-center gap-0 p-2">
         <div
-          className={`neska-landing-row flex ${textHasMultipleLines ? 'flex-col' : 'flex-col md:flex-row'} items-center justify-center gap-2`}
+          className={`flex ${hasBrandMark || textHasMultipleLines ? 'flex-col' : 'flex-col md:flex-row'} items-center justify-center ${hasBrandMark ? 'gap-4' : 'gap-2'}`}
         >
           <div
-            className={`neska-landing-mark relative size-10 justify-center ${textHasMultipleLines ? 'mb-2' : ''}`}
+            className={`relative justify-center ${hasBrandMark ? 'size-24' : 'size-10'} ${textHasMultipleLines && !hasBrandMark ? 'mb-2' : ''}`}
           >
             <div className="avatar-stroke size-full rounded-full dark:after:shadow-none">
               {isTemporary ? (
