@@ -8,6 +8,7 @@ with Neska's design on top, running one stack per client on Hetzner ARM.
   the Anthropic API (Arnau, 2026-11-09). Default Sonnet 5.5; Opus 5.5 and Haiku 5.5 selectable.
   Each user enters their own Anthropic key in the model menu (`user_provided`). OpenAI is hidden.
 - Memory across conversations is on (LibreChat memory agent on Haiku 5.5, user's own key).
+  Upstream's memory agent sent a temperature Claude 5 rejects; fixed in the fork (NESKA_FORK.md).
 - The existing Next.js app and Codex runtime stay in the repo, unchanged, until the LibreChat
   stack passes authenticated live acceptance; then they are archived. `deploy-neska.yml` targets
   the old stack, which no longer exists on prova; do not run it.
@@ -21,5 +22,6 @@ Status 2026-11-09 (separate gates):
   Deployed by hand over SSH; there is no automated deploy for this stack yet.
 - Old stack: removed from the server on Arnau's request (containers, data, units, nginx). Only its
   last off-site restic backup and the two files that decrypt it remain, pending Arnau's call.
-- Live acceptance: Arnau chatted with Neska on Claude through the web UI. Memory not yet proven.
+- Live acceptance: Arnau chatted with Neska on Claude through the web UI. Memory failed on image
+  fd5db56 (temperature rejected); the fix ships with the next image and still needs a live check.
 - Backups for the new stack: none yet (Arnau: not for now). Required before real customer data.

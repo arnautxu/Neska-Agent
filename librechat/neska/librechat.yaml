@@ -35,7 +35,5 @@ memory:
     provider: anthropic
     model: claude-haiku-5-5
     instructions: "Guarda només fets útils i duradors sobre l'usuari i la seva feina (preferències, rol, projectes). En català. Mai contrasenyes ni claus."
-    # Claude 5 models default to adaptive thinking, which forbids a temperature; the
-    # memory agent always sends one. Thinking off for this short extraction step.
-    model_parameters:
-      thinking: false
+    # Needs the Neska memory.ts fix: Claude 5 rejects the temperature LibreChat's
+    # memory agent used to send (see NESKA_FORK.md).

@@ -27,7 +27,8 @@ MIT licence (`LICENSE`, kept unchanged). Imported as plain files (no upstream hi
 
 ## Memory with Claude 5 (2026-11-10)
 
-- `packages/api/src/agents/memory.ts`: the memory agent drops its default temperature for
-  Anthropic `adaptive` thinking as well as `enabled` (Claude 5 defaults to adaptive, which
-  rejects a temperature locally: "temperature is not supported when thinking is enabled").
-  Test in `__tests__/memory.test.ts`. Prova also sets `thinking: false` for the memory agent.
+- `packages/api/src/agents/memory.ts`: the memory agent drops its default temperature (0.4)
+  for Anthropic `adaptive` thinking and for every model where `omitsSamplingParameters` is
+  true. Claude 5 rejects it either way: locally with adaptive thinking ("temperature is not
+  supported when thinking is enabled") and with a 400 when thinking is off ("`temperature`
+  is deprecated for this model"). Test in `__tests__/memory.test.ts`.
