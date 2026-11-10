@@ -583,13 +583,14 @@ describe('processMemory - GPT-5+ handling', () => {
     }
   });
 
-  it('drops the default temperature for Anthropic adaptive thinking but keeps it when disabled', async () => {
+  it('drops the default temperature for Claude 5 and thinking models, keeps it for older Claude', async () => {
     const cases = [
       { thinking: { type: 'adaptive' }, expected: undefined },
       { thinking: { type: 'enabled', budget_tokens: 2000 }, expected: undefined },
-      { thinking: { type: 'disabled' }, expected: 0.4 },
+      { thinking: { type: 'disabled' }, expected: undefined, model: 'claude-haiku-5-5' },
+      { thinking: { type: 'disabled' }, expected: 0.4, model: 'claude-3-5-haiku-20241022' },
     ];
-    for (const { thinking, expected } of cases) {
+    for (const { thinking, expected, model = 'claude-haiku-5-5' } of cases) {
       jest.clearAllMocks();
       const { Run } = jest.requireMock('@librechat/agents');
       (Run.create as jest.Mock).mockResolvedValue({
@@ -607,7 +608,7 @@ describe('processMemory - GPT-5+ handling', () => {
         instructions: 'Test instructions',
         llmConfig: {
           provider: Providers.ANTHROPIC,
-          model: 'claude-haiku-5-5',
+          model,
           thinking,
         } as never,
       });

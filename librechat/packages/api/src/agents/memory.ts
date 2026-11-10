@@ -13,6 +13,7 @@ import {
   AgentCapabilities,
   hasActivePiiPatterns,
   stripAgentIdSuffix,
+  omitsSamplingParameters,
 } from 'librechat-data-provider';
 import type {
   OpenAIClientOptions,
@@ -924,10 +925,13 @@ ${memory ?? 'No existing memories'}`;
     };
     if (
       llmConfig?.provider === Providers.ANTHROPIC &&
-      /** Neska: Claude 5 models default to adaptive thinking, which rejects a
-       *  temperature just like enabled thinking does. Only `disabled` keeps it. */
+      /** Neska: Claude 5 models (and Opus 4.7+) reject any temperature: with their
+       *  default adaptive thinking it fails locally, and with thinking disabled the
+       *  API answers 400 "temperature is deprecated for this model". The memory
+       *  default of 0.4 must go for them whatever the thinking setting. */
       (anthropicConfig.thinking?.type === 'enabled' ||
-        anthropicConfig.thinking?.type === 'adaptive') &&
+        anthropicConfig.thinking?.type === 'adaptive' ||
+        omitsSamplingParameters(String((finalLLMConfig as { model?: string }).model ?? ''))) &&
       anthropicConfig.temperature != null
     ) {
       delete (finalLLMConfig as Record<string, unknown>).temperature;
