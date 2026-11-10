@@ -35,5 +35,6 @@ memory:
     provider: anthropic
     model: claude-haiku-5-5
     instructions: "Guarda només fets útils i duradors sobre l'usuari i la seva feina (preferències, rol, projectes). En català. Mai contrasenyes ni claus."
+    # Haiku 5.5 rejects non-default temperatures; LibreChat sends 0.4 if unset, so pin 1.
     model_parameters:
-      temperature: 0.1
+      temperature: 1
