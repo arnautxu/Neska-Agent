@@ -93,7 +93,7 @@ function AuthLayout({
       <BlinkAnimation active={isFetching}>
         <div className="mt-6 h-10 w-full bg-cover">
           <img
-            src="assets/logo.svg"
+            src="assets/logo-lockup.svg"
             className="h-full w-full object-contain"
             alt={localize('com_ui_logo', { 0: startupConfig?.appTitle ?? 'LibreChat' })}
           />
@@ -112,7 +112,7 @@ function AuthLayout({
           )}
         >
           {!hasStartupConfigError && !isFetching && header && (
-            <h1 className="text-text-primary mb-4 text-center text-3xl font-semibold select-none">
+            <h1 className="font-display text-text-primary mb-4 text-center text-3xl font-semibold select-none">
               {header}
             </h1>
           )}

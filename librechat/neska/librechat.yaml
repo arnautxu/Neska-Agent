@@ -18,7 +18,7 @@ modelSpecs:
     - name: rapid
       label: Ràpid
       description: 'Respon de seguida. Per a la feina del dia a dia.'
-      iconURL: /assets/logo.svg
+      iconURL: /assets/neska-dog.svg
       default: true
       preset:
         endpoint: anthropic
@@ -28,7 +28,7 @@ modelSpecs:
     - name: intelligent
       label: Intel·ligent
       description: 'Pensa més a fons. Per a feina complexa.'
-      iconURL: /assets/logo.svg
+      iconURL: /assets/neska-dog.svg
       preset:
         endpoint: anthropic
         model: claude-opus-5-5
