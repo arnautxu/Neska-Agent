@@ -22,4 +22,6 @@ export interface SelectedValues {
 
 export interface ModelSelectorProps {
   startupConfig: TStartupConfig | undefined;
+  /** Neska: `composer` draws a compact picker inside the input box (Ràpid / Intel·ligent). */
+  variant?: 'header' | 'composer';
 }
