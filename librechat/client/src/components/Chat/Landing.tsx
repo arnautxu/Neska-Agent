@@ -143,9 +143,11 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     >
       <div ref={contentRef} className="flex flex-col items-center gap-0 p-2">
         <div
-          className={`flex ${textHasMultipleLines ? 'flex-col' : 'flex-col md:flex-row'} items-center justify-center gap-2`}
+          className={`neska-landing-row flex ${textHasMultipleLines ? 'flex-col' : 'flex-col md:flex-row'} items-center justify-center gap-2`}
         >
-          <div className={`relative size-10 justify-center ${textHasMultipleLines ? 'mb-2' : ''}`}>
+          <div
+            className={`neska-landing-mark relative size-10 justify-center ${textHasMultipleLines ? 'mb-2' : ''}`}
+          >
             <div className="avatar-stroke size-full rounded-full dark:after:shadow-none">
               {isTemporary ? (
                 <div className={containerClassName}>

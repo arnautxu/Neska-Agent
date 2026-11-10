@@ -27,3 +27,60 @@ html[data-theme='neska'] .neska-label {
     animation: neska-icon-hop 0.45s cubic-bezier(0.2, 0, 0, 1) 1;
   }
 }
+
+/* Brand presence (Neska theme only). The dog is drawn without a tile:
+   rail mark at the top of the icon rail, a large mark on the landing
+   screen, and a faint engraving-like backdrop (pattern taken from Hermes,
+   whose desktop app lays a 2.5% illustration over the whole window). */
+html[data-theme='neska'] .neska-rail-mark {
+  display: block;
+  width: 36px;
+  height: 36px;
+  margin: 2px 0 6px;
+  object-fit: contain;
+  user-select: none;
+}
+html[data-theme='neska'] .neska-landing-row {
+  flex-direction: column;
+  gap: 18px;
+}
+html[data-theme='neska'] .neska-landing-mark {
+  width: 104px;
+  height: 104px;
+  margin: 0;
+}
+html[data-theme='neska'] :is(.avatar-stroke, div, span):has(> img[src$='neska-dog.svg']),
+html[data-theme='neska'] .avatar-stroke:has(img[src$='neska-dog.svg']) {
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+html[data-theme='neska'] .avatar-stroke:has(img[src$='neska-dog.svg'])::after {
+  display: none;
+}
+html[data-theme='neska'] img[src$='neska-dog.svg'] {
+  object-fit: contain;
+}
+html[data-theme='neska'] body::after {
+  content: '';
+  position: fixed;
+  right: -10vh;
+  bottom: -16vh;
+  width: 78vh;
+  height: 78vh;
+  background: url('/assets/neska-dog.svg') no-repeat center / contain;
+  filter: grayscale(1);
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 50;
+}
+@media (max-width: 767px) {
+  html[data-theme='neska'] body::after {
+    width: 70vw;
+    height: 70vw;
+    right: -14vw;
+    bottom: 18vh;
+  }
+}
