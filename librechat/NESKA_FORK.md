@@ -32,3 +32,11 @@ MIT licence (`LICENSE`, kept unchanged). Imported as plain files (no upstream hi
   true. Claude 5 rejects it either way: locally with adaptive thinking ("temperature is not
   supported when thinking is enabled") and with a 400 when thinking is off ("`temperature`
   is deprecated for this model"). Test in `__tests__/memory.test.ts`.
+
+## Mode picker in the input box (2026-11-10)
+
+Users never pick a raw Anthropic model. `librechat.yaml` defines two model specs with `enforce: true`:
+"Ràpid" (Sonnet, default) and "Intel·ligent" (Opus), both signed "Neska". The picker moved from the
+chat header into the composer bar (`ModelSelector variant="composer"`, menu opens upward). Because
+the specs-only menu has no key-entry row, the Claude key is one company key on the server
+(`ANTHROPIC_API_KEY` in `/etc/neska/<client>/neska.env`), not a per-user key.
