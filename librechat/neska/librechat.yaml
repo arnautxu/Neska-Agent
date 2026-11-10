@@ -8,6 +8,13 @@ interface:
   customWelcome: 'Què fem avui?'
   landingFooter: false
 
+# What both modes can do besides chatting: run Python in the code sandbox (create and edit
+# PowerPoint, Excel and Word files), use the Neska skills in ../skill/ (presentacions,
+# excel, word) and draw artifacts (visual previews inside the chat). The sandbox lives in
+# neska/code/ and is reached through LIBRECHAT_CODE_BASEURL in neska.env. Both modes
+# below carry executeCode, skills and artifacts, always on: hideBadgeRow hides the tool
+# chips so people never have to switch anything on.
+#
 # One assistant called Neska with two modes, picked in the input box. People never pick a
 # provider or a model: enforce keeps them to these specs, and no endpoint is added to the
 # menu. modelLabel keeps every answer signed "Neska" whichever mode wrote it.
@@ -20,6 +27,10 @@ modelSpecs:
       description: 'Respon de seguida. Per a la feina del dia a dia.'
       iconURL: /assets/neska-dog.svg
       default: true
+      executeCode: true
+      skills: true
+      artifacts: default
+      hideBadgeRow: true
       preset:
         endpoint: anthropic
         model: claude-sonnet-5-5
@@ -29,6 +40,10 @@ modelSpecs:
       label: Intel·ligent
       description: 'Pensa més a fons. Per a feina complexa.'
       iconURL: /assets/neska-dog.svg
+      executeCode: true
+      skills: true
+      artifacts: default
+      hideBadgeRow: true
       preset:
         endpoint: anthropic
         model: claude-opus-5-5
