@@ -24,3 +24,10 @@ MIT licence (`LICENSE`, kept unchanged). Imported as plain files (no upstream hi
 1. Download the new upstream tree into a scratch folder.
 2. Diff it against the previous upstream commit and apply that diff here (`git apply --3way`).
 3. Re-check every file in the table above, rebuild, re-render the PNG screens and compare.
+
+## Memory with Claude 5 (2026-11-10)
+
+- `packages/api/src/agents/memory.ts`: the memory agent drops its default temperature for
+  Anthropic `adaptive` thinking as well as `enabled` (Claude 5 defaults to adaptive, which
+  rejects a temperature locally: "temperature is not supported when thinking is enabled").
+  Test in `__tests__/memory.test.ts`. Prova also sets `thinking: false` for the memory agent.

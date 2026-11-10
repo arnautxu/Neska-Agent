@@ -924,7 +924,10 @@ ${memory ?? 'No existing memories'}`;
     };
     if (
       llmConfig?.provider === Providers.ANTHROPIC &&
-      anthropicConfig.thinking?.type === 'enabled' &&
+      /** Neska: Claude 5 models default to adaptive thinking, which rejects a
+       *  temperature just like enabled thinking does. Only `disabled` keeps it. */
+      (anthropicConfig.thinking?.type === 'enabled' ||
+        anthropicConfig.thinking?.type === 'adaptive') &&
       anthropicConfig.temperature != null
     ) {
       delete (finalLLMConfig as Record<string, unknown>).temperature;
