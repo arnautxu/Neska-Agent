@@ -24,6 +24,7 @@ modelSpecs:
         endpoint: anthropic
         model: claude-sonnet-5-5
         modelLabel: Neska
+        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte.'
     - name: intelligent
       label: Intel·ligent
       description: 'Pensa més a fons. Per a feina complexa.'
@@ -32,9 +33,10 @@ modelSpecs:
         endpoint: anthropic
         model: claude-opus-5-5
         modelLabel: Neska
+        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte.'
 
 # Memory across conversations. Users see and delete what is kept under "Memòries"
-# in the side panel. The memory agent runs on the user's own Anthropic key.
+# in the side panel. The memory agent runs on the server's company Anthropic key.
 memory:
   disabled: false
   personalize: true
