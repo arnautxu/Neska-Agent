@@ -14,6 +14,8 @@ import useToolFavorites from '~/hooks/Input/useToolFavorites';
 import useChipPacking from '~/hooks/Input/useChipPacking';
 import { useBadgeRowContext } from '~/Providers';
 import TokenUsage from '../TokenUsage';
+import ModelSelector from '~/components/Chat/Menus/Endpoints/ModelSelector';
+import { useGetStartupConfig } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 import Thinking from './Thinking';
 import Palette from './Palette';
@@ -239,6 +241,7 @@ function Bar({
   dictation,
 }: BarProps) {
   const localize = useLocalize();
+  const { data: startupConfig } = useGetStartupConfig();
   const context = useBadgeRowContext();
   /* Latched on the palette's first open and never released: the skills catalog
      is only walked for composers whose palette was actually used, and closing
@@ -461,6 +464,8 @@ function Bar({
                   : 'translate-y-0 opacity-100',
               )}
             >
+              {/* Neska: Ràpid / Intel·ligent, picked here instead of in the header. */}
+              {index === 0 && <ModelSelector startupConfig={startupConfig} variant="composer" />}
               <Thinking
                 index={index}
                 disabled={disabled}

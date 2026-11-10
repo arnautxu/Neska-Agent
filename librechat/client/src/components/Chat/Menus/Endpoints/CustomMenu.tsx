@@ -13,6 +13,8 @@ export interface CustomMenuProps extends Ariakit.MenuButtonProps<'div'> {
   comboboxLabel?: string;
   trigger?: Ariakit.MenuButtonProps['render'];
   defaultOpen?: boolean;
+  /** Neska: the composer's mode picker opens upward, above the input box. */
+  placement?: Ariakit.MenuStoreProps['placement'];
 }
 
 export const CustomMenu = React.forwardRef<HTMLDivElement, CustomMenuProps>(function CustomMenu(
@@ -27,6 +29,7 @@ export const CustomMenu = React.forwardRef<HTMLDivElement, CustomMenuProps>(func
     comboboxLabel,
     trigger,
     defaultOpen,
+    placement,
     ...props
   },
   ref,
@@ -39,7 +42,7 @@ export const CustomMenu = React.forwardRef<HTMLDivElement, CustomMenuProps>(func
 
   const menuStore = Ariakit.useMenuStore({
     showTimeout: 100,
-    placement: inlineSide(direction, parent ? 'end' : 'start'),
+    placement: placement ?? inlineSide(direction, parent ? 'end' : 'start'),
     defaultOpen: defaultOpen,
   });
   const isOpen = menuStore.useState('open');

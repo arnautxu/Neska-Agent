@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { TooltipAnchor } from '@librechat/client';
 import { getConfigDefaults } from 'librechat-data-provider';
 import type { ModelSelectorProps } from '~/common';
@@ -18,7 +19,8 @@ import { useLocalize } from '~/hooks';
 
 const defaultInterface = getConfigDefaults().interface;
 
-function ModelSelectorContent() {
+function ModelSelectorContent({ variant = 'header' }: { variant?: 'header' | 'composer' }) {
+  const inComposer = variant === 'composer';
   const localize = useLocalize();
   const modelSelectorHint = useShortcutHint('openModelSelector', localize('com_ui_select_model'));
   const modelSelectorAriaKey = useShortcutAriaKey('openModelSelector');
@@ -65,6 +67,21 @@ function ModelSelectorContent() {
     [localize, agentsMap, modelSpecs, selectedValues, mappedEndpoints],
   );
 
+  /** Neska: in the input box the picker is a quiet text button, named by the mode
+   *  ("Ràpid", "Intel·ligent") with a chevron; it never shows a provider or model. */
+  const composerTrigger = (
+    <button
+      type="button"
+      data-testid="model-selector-button"
+      aria-keyshortcuts={modelSelectorAriaKey}
+      aria-label={localize('com_ui_select_model')}
+      className="text-text-secondary hover:text-text-primary hover:bg-surface-hover rounded-theme-control flex h-8 shrink-0 items-center gap-1 px-2 text-sm"
+    >
+      <span className="truncate">{selectedDisplayValue}</span>
+      <ChevronDown className="size-3.5 opacity-70" aria-hidden="true" />
+    </button>
+  );
+
   const trigger = (
     <TooltipAnchor
       aria-label={localize('com_ui_select_model')}
@@ -88,8 +105,18 @@ function ModelSelectorContent() {
   );
 
   return (
-    <div className="relative flex max-w-[60vw] min-w-0 flex-col items-center gap-2 sm:max-w-xs">
+    <div
+      className={
+        inComposer
+          ? 'relative flex min-w-0 items-center'
+          : 'relative flex max-w-[60vw] min-w-0 flex-col items-center gap-2 sm:max-w-xs'
+      }
+    >
       <Menu
+        placement={inComposer ? 'top-end' : undefined}
+        /* The root menu button paints a bordered 40px field; in the input box the
+           mode is a quiet text button like its neighbours. */
+        className={inComposer ? 'h-8 w-auto border-0 bg-transparent px-2' : undefined}
         values={selectedValues}
         onValuesChange={(values: Record<string, any>) => {
           setSelectedValues({
@@ -98,10 +125,10 @@ function ModelSelectorContent() {
             modelSpec: values.modelSpec || '',
           });
         }}
-        onSearch={(value) => setSearchValue(value)}
-        combobox={<input id="model-search" placeholder=" " />}
-        comboboxLabel={localize('com_endpoint_search_models')}
-        trigger={trigger}
+        onSearch={inComposer ? undefined : (value) => setSearchValue(value)}
+        combobox={inComposer ? undefined : <input id="model-search" placeholder=" " />}
+        comboboxLabel={inComposer ? undefined : localize('com_endpoint_search_models')}
+        trigger={inComposer ? composerTrigger : trigger}
       >
         {searchResults ? (
           renderSearchResults(searchResults, localize, searchValue)
@@ -129,7 +156,7 @@ function ModelSelectorContent() {
   );
 }
 
-export default function ModelSelector({ startupConfig }: ModelSelectorProps) {
+export default function ModelSelector({ startupConfig, variant = 'header' }: ModelSelectorProps) {
   const interfaceConfig = startupConfig?.interface ?? defaultInterface;
   const modelSpecs = startupConfig?.modelSpecs?.list ?? [];
 
@@ -141,7 +168,7 @@ export default function ModelSelector({ startupConfig }: ModelSelectorProps) {
   return (
     <ModelSelectorChatProvider>
       <ModelSelectorProvider startupConfig={startupConfig}>
-        <ModelSelectorContent />
+        <ModelSelectorContent variant={variant} />
       </ModelSelectorProvider>
     </ModelSelectorChatProvider>
   );
