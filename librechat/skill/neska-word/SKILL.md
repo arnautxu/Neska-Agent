@@ -42,4 +42,8 @@ Obre'l amb `Document(path)`, canvia només el que et demanen conservant els esti
 
 ## Sempre
 
-Desa a `/mnt/data/` amb un nom curt en minúscules i guions; el fitxer apareix al xat per descarregar-lo. Escriu en la llengua de l'usuari (per defecte, català).
+Desa a `/mnt/data/` amb un nom curt en minúscules i guions; el fitxer apareix sol al xat per veure-ho i descarregar-lo (no escriguis la ruta a la resposta). Escriu en la llengua de l'usuari (per defecte, català).
+
+## Fitxers de treball
+
+A `/mnt/data/` només hi desa el fitxer final que l'usuari ha de rebre: tot el que hi ha allà li apareix al xat. Els scripts, proves i fitxers temporals van a `/tmp/`. A la resposta, no expliquis el procés ni diguis què no has pogut comprovar: dona el resultat.

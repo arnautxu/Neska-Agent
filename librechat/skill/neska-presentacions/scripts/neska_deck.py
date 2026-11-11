@@ -30,7 +30,7 @@ from pptx import Presentation
 from pptx.chart.data import CategoryChartData
 from pptx.dml.color import RGBColor
 from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
-from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
+from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Emu, Inches, Pt
 
@@ -92,10 +92,14 @@ class Deck:
         return tb
 
     def _rule(self, s, x, y, w, color=LINE, weight=0.75):
-        ln = s.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, x, y, x + w, y)
-        ln.line.color.rgb = color
-        ln.line.width = Pt(weight)
-        return ln
+        # A hairline drawn as a thin filled rectangle: connectors render as thick bars in
+        # some previewers (including the chat's).
+        r = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y, w, Pt(weight))
+        r.fill.solid()
+        r.fill.fore_color.rgb = color
+        r.line.fill.background()
+        r.shadow.inherit = False
+        return r
 
     def _chrome(self, s):
         """Footer: deck title left, slide number right, hairline above."""
@@ -110,8 +114,12 @@ class Deck:
         if kicker:
             self._text(s, M, y, Inches(8), Inches(0.3), kicker.upper(), 11, color=self.accent, bold=True)
             y += Inches(0.4)
-        self._text(s, M, y, W - 2 * M, Inches(1.0), title, 34, SERIF)
-        return y + Inches(1.15)
+        # Long titles wrap to two lines; push the content down so they never overlap.
+        two_lines = len(title) > 46
+        size = 30 if two_lines else 34
+        h = Inches(1.15) if two_lines else Inches(0.7)
+        self._text(s, M, y, W - 2 * M, h, title, size, SERIF, spacing=1.05)
+        return y + h + Inches(0.45)
 
     # ---------- slide types ----------
     def cover(self, title: str, subtitle: str = "", kicker: str = "", notes: str | None = None):
@@ -208,6 +216,7 @@ class Deck:
         }[kind]
         gf = s.shapes.add_chart(ct, M, y, W - 2 * M, H - y - Inches(0.9), data)
         ch = gf.chart
+        ch.has_title = False  # the slide title already says it
         ch.font.name, ch.font.size, ch.font.color.rgb = SANS, Pt(12), MUTED
         ch.has_legend = len(series) > 1 or kind == "pie"
         if ch.has_legend:

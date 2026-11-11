@@ -33,8 +33,9 @@ d.save("/mnt/data/nom-presentacio.pptx")
 
    Tipus de gràfic: `bar`, `hbar`, `line`, `pie`. Són gràfics natius: l'usuari els pot editar a PowerPoint.
    Afegeix `notes="…"` a les diapositives importants amb el que l'usuari ha de dir en veu alta.
-4. **Desa sempre a `/mnt/data/`** amb un nom curt en minúscules i guions. El fitxer apareix al xat per descarregar-lo i previsualitzar-lo.
-5. **Respon breu:** què has fet, quantes diapositives i una línia sobre què pot canviar si vol.
+4. **Desa sempre a `/mnt/data/`** amb un nom curt en minúscules i guions. El fitxer apareix sol al xat, amb previsualització i botó de descàrrega: no escriguis mai la ruta `/mnt/data/…` a la resposta.
+5. **Comprova-la** abans de respondre: torna-la a obrir amb `Presentation(path)` i mira que hi hagi totes les diapositives i que cap text sigui més llarg del que hi cap (punts de més de ~90 caràcters, títols de més de ~80). Si cal, escurça i torna-la a desar.
+6. **Respon breu:** una frase amb què has fet, la llista de diapositives (una línia cada una) i què pot demanar de canviar. No expliquis el procés ni diguis què no has comprovat.
 
 ## Regles d'estil (no les trenquis)
 
@@ -47,3 +48,7 @@ d.save("/mnt/data/nom-presentacio.pptx")
 ## Si l'usuari puja una presentació per editar-la
 
 Obre-la amb `python-pptx` (`Presentation("/mnt/data/<fitxer>.pptx")`), canvia només el que et demana, conserva el disseny original i desa-la amb un nom nou (`…-v2.pptx`).
+
+## Fitxers de treball
+
+A `/mnt/data/` només hi desa el fitxer final que l'usuari ha de rebre: tot el que hi ha allà li apareix al xat. Els scripts, proves i fitxers temporals van a `/tmp/`. A la resposta, no expliquis el procés ni diguis què no has pogut comprovar: dona el resultat.

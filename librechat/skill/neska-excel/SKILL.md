@@ -25,6 +25,7 @@ print(describe("/mnt/data/<fitxer>.xlsx"))
 - Obre'l amb `openpyxl.load_workbook(path)` (sense `data_only`) perquè les fórmules no es perdin. **No** el reescriguis amb pandas: perdria fórmules, formats i gràfics.
 - Canvia només el que et demanen. Fórmules noves en català o anglès no importa: escriu-les en anglès (`=SUM(B2:B20)`), Excel les tradueix.
 - Desa amb un nom nou (`<nom>-v2.xlsx`) i explica en una llista curta què has canviat (full, cel·les).
+- Les fórmules noves es calculen quan l'usuari obre el fitxer a Excel; la previsualització del xat pot mostrar-les buides. Per això, posa també a la resposta les xifres clau que has calculat amb pandas.
 
 ## Crear un Excel nou
 
@@ -32,8 +33,12 @@ print(describe("/mnt/data/<fitxer>.xlsx"))
 - Fes servir fórmules d'Excel per als totals i càlculs (no posis els resultats a mà), perquè l'usuari els pugui tocar.
 - Aplica l'estil Neska amb `style_table(ws, number_formats={"C": '#,##0.00 €', "D": '0.0%'})`.
 - Gràfic natiu amb `add_chart(ws, "bar", "Títol", data_cols=(2, 3), cat_col=1, header_row=1, last_row=13)`.
-- Desa a `/mnt/data/<nom-curt>.xlsx`. El fitxer apareix al xat per descarregar-lo.
+- Desa a `/mnt/data/<nom-curt>.xlsx`. El fitxer apareix sol al xat per veure-ho i descarregar-lo: no escriguis la ruta `/mnt/data/…` a la resposta.
 
 ## Formats habituals
 
 Euros `#,##0.00 €` · Percentatge `0.0%` · Data `dd/mm/yyyy` · Milers `#,##0`
+
+## Fitxers de treball
+
+A `/mnt/data/` només hi desa el fitxer final que l'usuari ha de rebre: tot el que hi ha allà li apareix al xat. Els scripts, proves i fitxers temporals van a `/tmp/`. A la resposta, no expliquis el procés ni diguis què no has pogut comprovar: dona el resultat.
