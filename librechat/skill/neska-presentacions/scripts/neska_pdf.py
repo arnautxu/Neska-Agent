@@ -346,13 +346,21 @@ def _check_page(n: int, page) -> list[Problem]:
         if t_order in covered:
             continue
         for g_order, g, g_pos in graphics:
-            if g_pos and g_order < t_order:
-                continue
             ix = min(x + w, g[0] + g[2]) - max(x, g[0])
             iy = min(y + h, g[1] + g[3]) - max(y, g[1])
-            if ix > 6 and iy > h * 0.3:
-                out.append(Problem(n, f"un gràfic i el text «{snippet}» es trepitgen", (x, y, w, h)))
+            if not (ix > 6 and iy > h * 0.3):
+                continue
+            if g_pos and g_order < t_order:
+                # A positioned graphic behind the text is a background, but text that straddles
+                # its edge (half on the shape, half off) reads as an accident.
+                inside = x >= g[0] - 2 and x + w <= g[0] + g[2] + 2 and y >= g[1] - 2 and y + h <= g[1] + g[3] + 2
+                if inside or ix < 24:
+                    continue
+                out.append(Problem(n, f"el text «{snippet}» queda mig a sobre d'un gràfic de fons; "
+                                      "mou-lo del tot dins o del tot fora (o class=\"bleed\" si és volgut)", (x, y, w, h)))
                 break
+            out.append(Problem(n, f"un gràfic i el text «{snippet}» es trepitgen", (x, y, w, h)))
+            break
 
     # Two graphics that only partly overlap: side-by-side charts, icons or maps colliding.
     # A graphic laid mostly over another (a texture behind a chart) is deliberate.
