@@ -8,8 +8,8 @@ interface:
   customWelcome: 'Què fem avui?'
   landingFooter: false
 
-# What both modes can do besides chatting: run Python in the code sandbox (create and edit
-# PowerPoint, Excel and Word files), use the Neska skills in ../skill/ (presentacions,
+# What both modes can do besides chatting: run Python in the code sandbox (presentations as
+# PDF, Excel and Word files), use the Neska skills in ../skill/ (presentacions,
 # excel, word) and draw artifacts (visual previews inside the chat). The sandbox lives in
 # neska/code/ and is reached through LIBRECHAT_CODE_BASEURL in neska.env. Both modes
 # below carry executeCode, skills and artifacts, always on: hideBadgeRow hides the tool

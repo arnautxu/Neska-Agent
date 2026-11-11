@@ -1,62 +1,85 @@
 ---
 name: neska-presentacions
-description: Crea presentacions de PowerPoint (.pptx) boniques i editables amb l'estil Neska. Fes-la servir sempre que l'usuari demani una presentació, unes diapositives, un deck, un pitch o un PowerPoint, o vulgui convertir un document o unes dades en diapositives.
+description: Crea presentacions en PDF amb un disseny de nivell d'estudi (criteri Impeccable). Fes-la servir sempre que l'usuari demani una presentació, unes diapositives, un deck, un pitch o un PowerPoint, o vulgui convertir un document o unes dades en diapositives. El resultat és sempre un PDF, mai un .pptx.
 ---
 
-# Presentacions Neska
+# Presentacions Neska (PDF)
 
-Fes presentacions que semblin fetes per un bon dissenyador: poques paraules, molt d'aire, una idea per diapositiva.
+Les presentacions es lliuren **sempre en PDF**, encara que l'usuari digui "PowerPoint". Es
+dissenyen en HTML i CSS (una `<section class="slide">` per diapositiva, 1280×720 px) i
+`neska_pdf.render` en fa el PDF i un full de revisió per mirar-les.
 
 ## Com treballar
 
-1. **Entén l'encàrrec.** Qui la veurà, per a què i quanta estona. Si falta una dada clau (per exemple, les xifres), pregunta-ho una sola vegada; si no, decideix tu i digues què has suposat.
-2. **Escriu l'esquema abans de fer res.** Títol de cada diapositiva com una frase que digui la conclusió ("Les vendes han crescut un 38%"), no un tema ("Vendes"). Normalment 6-12 diapositives.
-3. **Construeix-la amb `neska_deck.py`** dins l'eina d'executar codi:
+1. **Llegeix el criteri** la primera vegada de la conversa: `cat` de
+   `/mnt/data/skills/neska-presentacions/disseny.md` i de
+   `/mnt/data/skills/neska-presentacions/impeccable/craft-floor.md`. Segueix-los.
+2. **Entén l'encàrrec**: qui la veurà, per a què, on es projectarà. Si falta una dada clau (les
+   xifres, per exemple), pregunta-ho una sola vegada; si no, decideix tu i digues què has suposat.
+3. **Tria el món** (paper, tinta, accent, tipografia) a partir del client i del tema, i escriu
+   el **guió**: un títol-conclusió per diapositiva i quina composició farà cada una.
+4. **Fes-la i revisa-la en una sola crida de codi.** Al sandbox, `/tmp` s'esborra entre crides i
+   tot el que es desa a `/mnt/data` li apareix a l'usuari. Per tant, escriu el programa amb un
+   heredoc (`python3 - <<'EOF' … EOF`), sense desar-ne el `.py`:
 
 ```python
 import sys; sys.path.insert(0, "/mnt/data/skills/neska-presentacions/scripts")
-from neska_deck import Deck
+from neska_pdf import render, bars, hbars, line
 
-d = Deck(title="Nom de la presentació")
-d.cover("Títol gran", "Subtítol", kicker="Proposta", date="Novembre 2026")
-d.agenda(["Primer bloc", "Segon bloc", "Números", "Calendari"])
-d.section("01", "Primer bloc", "Una frase que el resumeixi")
-d.bullets("Una conclusió clara", ["Lema: explicació curta", "Lema: explicació curta", "Lema: explicació curta"])
-d.cards("Què inclou", [("Títol", "Una o dues frases"), ("Títol", "…"), ("Títol", "…")])
-d.stat("+38%", "creixement de vendes", note="Font: …")
-d.stats("Tres xifres", [("12", "clients nous"), ("4,2", "valoració"), ("98%", "a temps")])
-d.chart("Les vendes es multipliquen per 4", ["Gen", "Feb", "Mar"], {"Vendes": [10, 12, 18]},
-        kind="bar", takeaway="La frase que vols que recordin")
-d.table("Pressupost", [["Partida", "Import"], ["Disseny", "4.000 €"], ["Total", "4.000 €"]])
-d.timeline("Calendari", [("Nov", "Què passa"), ("Des", "Què passa"), ("Gen", "Què passa")])
-d.two_columns("Abans i després", "Abans", ["…"], "Després", ["…"])
-d.quote("Una frase potent.", "Qui ho diu")
-d.closing("Gràcies", "contacte@empresa.cat")
-d.save("/mnt/data/nom-presentacio.pptx")
+html = f"""
+<style>
+  /* Món: paper càlid, tinta gairebé negra, verd fosc com a únic accent; Young Serif + Instrument Sans */
+  :root {{ --accent: #1F5C4D; --line: #D7DFDB; --tint: #EEF3F0; }}
+  .cover {{ background: var(--accent); color: #fff; display: flex; flex-direction: column; justify-content: flex-end; }}
+  .cover p {{ color: #CFE0DA; margin-top: 24px; }}
+  .lead {{ max-width: 760px; color: var(--muted); margin-top: 24px; }}
+</style>
+
+<section class="slide cover">
+  <h1>Una clínica que la gent recomana</h1>
+  <p>Pla de creixement 2027</p>
+</section>
+
+<section class="slide">
+  <h2>6 de cada 10 pacients nous arriben per recomanació</h2>
+  <div style="margin-top: 56px">{hbars(["Recomanació", "Google", "Instagram"], [61, 22, 9], highlight=0, unit=" %")}</div>
+</section>
+"""
+print(render(html, "/tmp/presentacio.pdf"))   # PDF + /mnt/data/revisio-diapositives.png
 ```
 
-   Tipus de gràfic: `bar`, `hbar`, `line`, `pie`. Són gràfics natius: l'usuari els pot editar a PowerPoint.
-   Amb una sola sèrie, la darrera barra surt destacada (`highlight=` per triar-ne una altra).
-   **Varia el ritme:** la portada, les seccions, `stat` i el tancament són de color sòlid; entre mig,
-   alterna `bullets`, `cards`, `stats`, `chart`, `timeline` i `table`. No posis dues diapositives
-   iguals seguides. Als `bullets`, escriu "Lema: detall" perquè el lema surti en negreta.
-   Afegeix `notes="…"` a les diapositives importants amb el que l'usuari ha de dir en veu alta.
-4. **Desa sempre a `/mnt/data/`** amb un nom curt en minúscules i guions. El fitxer apareix sol al xat, amb previsualització i botó de descàrrega: no escriguis mai la ruta `/mnt/data/…` a la resposta.
-5. **Comprova-la** abans de respondre: torna-la a obrir amb `Presentation(path)` i mira que hi hagi totes les diapositives i que cap text sigui més llarg del que hi cap (punts de més de ~90 caràcters, títols de més de ~80). Si cal, escurça i torna-la a desar.
-6. **Respon breu:** una frase amb què has fet, la llista de diapositives (una línia cada una) i què pot demanar de canviar. No expliquis el procés ni diguis què no has comprovat.
+5. **Mira-la de debò.** Aquest pas no se salta mai. Obre `/mnt/data/revisio-diapositives.png`
+   amb `read_file` (si diu que no el troba, torna-ho a provar una vegada) i revisa-la amb les preguntes del final de `disseny.md`. El que el revisor pot
+   mesurar (text tallat, trepitjat, massa petit, poc contrast, pàgines de més, emojis) surt a la
+   llista i marcat en vermell; la resta ho has de veure tu. Corregeix-ho tot d'una vegada i torna
+   al pas 4. Com a màxim tres voltes.
+6. **Quan estigui bé**, genera-la per última vegada directament al lloc final, sense full de
+   revisió, i esborra el de les voltes anteriors:
+   `render(html, "/mnt/data/<nom-curt>.pdf", sheet=None)` (minúscules i guions) i
+   `os.remove("/mnt/data/revisio-diapositives.png")`. No deixis cap altre fitxer a `/mnt/data`. El PDF apareix sol al xat: no escriguis mai la ruta a la resposta.
+7. **Respon breu**: una frase amb què has fet, la llista de diapositives (una línia cada una),
+   què has suposat i què pot demanar de canviar. No expliquis el procés.
 
-## Regles d'estil (no les trenquis)
+## Eines
 
-- Fons blanc, text gairebé negre, un sol color d'accent (marró Neska `#6B3A1E`). Si l'usuari dona colors de la seva marca, passa `accent=RGBColor(...)` a `Deck`.
-- Màxim 5 punts per diapositiva i unes 12 paraules per punt. Si no hi cap, fes-ne dues.
-- Cap imatge de recurs genèrica, cap ombra, cap degradat, cap WordArt.
-- Les xifres importants van grans amb `stat` o `stats`, no enterrades en un punt.
-- Escriu en la llengua de l'usuari (per defecte, català), amb majúscula només a l'inici.
+- `render(html, pdf, sheet=..., slides_dir=None)`: `html` pot ser només les `<section>` amb un
+  `<style>`. Afegeix sol les tipografies i `scripts/base.css` (mida de pàgina, `.slide`, variables
+  `--paper --ink --muted --line --tint --accent --on-accent --display --text --pad`, mides de
+  `h1 h2 h3`). Retorna un informe; imprimeix-lo. Amb `slides_dir="/tmp/d"` també desa cada
+  diapositiva gran, per mirar-ne una de prop.
+- `bars(labels, values, highlight=i, unit="")`, `hbars(...)` (rànquings) i
+  `line(labels, {"Sèrie": [...]}, highlight="Sèrie")`: SVG amb els colors de `:root`.
+  Amplada per defecte 1104 px (l'amplada útil de la diapositiva); passa `width=`/`height=` si
+  el gràfic va en una columna.
+- Imatges: si l'usuari puja una foto o un logo, és a `/mnt/data/<fitxer>`; posa-la amb
+  `<img src="file:///mnt/data/<fitxer>">`.
+- CSS que funciona: flexbox, grid, `position: absolute`, variables, `@font-face`. No hi ha
+  JavaScript ni animacions, i `text-wrap: balance` no té efecte: talla els títols a mà si cal.
 
-## Si l'usuari puja una presentació per editar-la
+## Si l'usuari puja una presentació
 
-Obre-la amb `python-pptx` (`Presentation("/mnt/data/<fitxer>.pptx")`), canvia només el que et demana, conserva el disseny original i desa-la amb un nom nou (`…-v2.pptx`).
-
-## Fitxers de treball
-
-A `/mnt/data/` només hi desa el fitxer final que l'usuari ha de rebre: tot el que hi ha allà li apareix al xat. Els scripts, proves i fitxers temporals van a `/tmp/`. A la resposta, no expliquis el procés ni diguis què no has pogut comprovar: dona el resultat.
+- Si vol canviar-ne el contingut o el disseny, refés-la com a PDF amb aquest mètode i conserva
+  el contingut. Si té una marca (colors, logo, lletra), aquesta marca és el món.
+- Si demana explícitament editar el seu `.pptx` i tornar-lo en `.pptx`, fes-ho amb `python-pptx`
+  (`Presentation("/mnt/data/<fitxer>.pptx")`), canvia només el que demana i desa'l amb un nom
+  nou (`…-v2.pptx`). És l'únic cas en què es lliura un `.pptx`.

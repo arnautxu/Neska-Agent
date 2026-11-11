@@ -29,7 +29,7 @@ Status 2026-11-09 (separate gates):
 Files and presentations (2026-11-10, Arnau: "que funcioni com a Codex o com a Claude"):
 - Both modes (Ràpid, Intel·ligent) get `executeCode`, `skills` and `artifacts`, always on with
   the tool chips hidden (`hideBadgeRow`). Neska skills live in `librechat/skill/`
-  (`neska-presentacions` with `neska_deck.py`, `neska-excel` with `neska_xlsx.py`, `neska-word`)
+  (`neska-presentacions`, `neska-excel` with `neska_xlsx.py`, `neska-word`)
   and ship inside the app image.
 - Code runs in LibreChat's open-source Code Interpreter, installed per server from
   `librechat/neska/code/` (direct NsJail mode, no KVM on Hetzner cloud). ARM images and the
@@ -41,3 +41,12 @@ Files and presentations (2026-11-10, Arnau: "que funcioni com a Codex o com a Cl
   sandbox runner crash-looped; rolled back to f0698d5. Fix: dedicated AppArmor profile
   `librechat/neska/code/apparmor-neska-codeapi-sandbox` (only for sandbox-runner), verified
   healthy on prova in a throwaway container. Not yet deployed or live-accepted.
+- 2026-11-11 later: PR #34 deployed on prova and live-accepted by Arnau (Neska made a deck), but
+  he judged the design poor and asked for presentations as PDF, never PowerPoint, designed with
+  Impeccable's criteria. `neska-presentacions` now writes HTML/CSS slides and turns them into PDF
+  with WeasyPrint (`scripts/neska_pdf.py`), reviews a contact sheet with `read_file` before
+  delivering, and follows `disseny.md` (our slide adaptation of Impeccable, Apache 2.0; notice in
+  `impeccable/`). The sandbox needs the `neska2` patch from `build-codeapi.yml` (Pango + WeasyPrint):
+  new images and a new pkgs tree on the server before the new app image. The chat hides the
+  review sheets (`revisio-*.png`) that the agent reads.
+  Gates: local x86 end-to-end only so far.
