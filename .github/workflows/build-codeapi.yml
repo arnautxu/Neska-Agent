@@ -4,6 +4,10 @@ name: Build Neska code sandbox (arm64)
 # Apache 2.0) natively for the Hetzner ARM servers. Upstream only publishes linux/amd64
 # images, so we build the six service images plus the runtime package tree (Python with
 # python-pptx, openpyxl, pandas, matplotlib...) from one pinned upstream commit.
+# Neska patches two things on top (step "Apply the Neska patch"): Pango in the sandbox rootfs
+# and WeasyPrint in the Python packages, so the neska-presentacions skill can turn HTML into
+# PDF. Tags are sha-<upstream>-<neska_patch>, so a new patch never overwrites the images a
+# server runs.
 # Hetzner cloud has no KVM, so the sandbox runner is the direct NsJail target.
 # Building does not deploy anything: see librechat/neska/code/README.md.
 
@@ -14,18 +18,23 @@ on:
         description: 'ClickHouse/code-interpreter commit (full SHA)'
         required: true
         default: 4b41f3a97d9cafaf11498b62b1ec6cb9e91c68f0
+      neska_patch:
+        description: 'Neska patch level (tag suffix; bump it when the patch below changes)'
+        required: true
+        default: neska2
 
 permissions:
   contents: read
   packages: write
 
 concurrency:
-  group: build-codeapi-${{ inputs.upstream_sha }}
+  group: build-codeapi-${{ inputs.upstream_sha }}-${{ inputs.neska_patch }}
   cancel-in-progress: false
 
 env:
   UPSTREAM: ClickHouse/code-interpreter
   REGISTRY: ghcr.io/arnautxu
+  TAG_SUFFIX: sha-${{ inputs.upstream_sha }}-${{ inputs.neska_patch }}
 
 jobs:
   images:
@@ -53,6 +62,12 @@ jobs:
           ref: ${{ inputs.upstream_sha }}
           fetch-depth: 1
           persist-credentials: false
+      - name: Apply the Neska patch (Pango for WeasyPrint in the sandbox rootfs)
+        run: |
+          set -euo pipefail
+          grep -q '^    fonts-liberation \\$' api/Dockerfile
+          sed -i 's/^    fonts-liberation \\$/    fonts-liberation \\\n    libpango-1.0-0 \\\n    libpangoft2-1.0-0 \\\n    libharfbuzz-subset0 \\/' api/Dockerfile
+          grep -q '^    libpangoft2-1.0-0 \\$' api/Dockerfile
       - name: Set up Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.0.0
       - name: Authenticate to GHCR
@@ -71,7 +86,7 @@ jobs:
           push: true
           cache-from: type=registry,ref=${{ env.REGISTRY }}/neska-codeapi-${{ matrix.name }}:buildcache-arm64
           cache-to: type=registry,ref=${{ env.REGISTRY }}/neska-codeapi-${{ matrix.name }}:buildcache-arm64,mode=max
-          tags: ${{ env.REGISTRY }}/neska-codeapi-${{ matrix.name }}:sha-${{ inputs.upstream_sha }}
+          tags: ${{ env.REGISTRY }}/neska-codeapi-${{ matrix.name }}:${{ env.TAG_SUFFIX }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ inputs.upstream_sha }}
@@ -88,8 +103,33 @@ jobs:
           ref: ${{ inputs.upstream_sha }}
           fetch-depth: 1
           persist-credentials: false
+      - name: Apply the Neska patch (WeasyPrint for HTML to PDF)
+        run: |
+          set -euo pipefail
+          grep -q '^        gpxpy; then$' build-packages.sh
+          sed -i 's/^        gpxpy; then$/        gpxpy \\\n        weasyprint; then/' build-packages.sh
+          grep -q '^        weasyprint; then$' build-packages.sh
       - name: Build the runtime packages (Python, Node, Bun, Bash)
         run: ./build-packages.sh
+      - name: Checkout the Neska deck resources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: neska-src
+          sparse-checkout: librechat/neska/sandbox-recursos
+          persist-credentials: false
+      - name: Add the Neska deck resources (fonts, icons, maps) to the Python tree
+        # neska_recursos.py finds them at <sys.prefix>/share/neska. They live here and not in
+        # the skill because every skill file is uploaded again on each code call.
+        run: |
+          set -euo pipefail
+          found=0
+          for d in data/pkgs/python/*/; do
+            sudo mkdir -p "$d/share/neska"
+            sudo cp -r neska-src/librechat/neska/sandbox-recursos/. "$d/share/neska/"
+            test -f "$d/share/neska/fonts/fonts.css"
+            found=1
+          done
+          test "$found" = 1
       - name: Authenticate to GHCR
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.0.0
         with:
@@ -98,7 +138,7 @@ jobs:
           password: ${{ github.token }}
       - name: Ship the package tree as an image (copied out to CODEAPI_PKGS on the server)
         env:
-          TAG: ${{ env.REGISTRY }}/neska-codeapi-pkgs:sha-${{ inputs.upstream_sha }}
+          TAG: ${{ env.REGISTRY }}/neska-codeapi-pkgs:${{ env.TAG_SUFFIX }}
         run: |
           set -euo pipefail
           sudo chmod -R a+rX data/pkgs

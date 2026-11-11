@@ -41,6 +41,7 @@ import {
 import WorkspaceChanges, { partitionWorkspaceChanges } from './Parts/WorkspaceChanges';
 import { MCPAppSuppressionContext, MCPAppViews } from '~/components/MCPUIResource';
 import { useStoredSubagentHints } from '~/components/Chat/Subagents/attachments';
+import { withoutReviewSheets } from '~/utils/reviewSheets';
 import { ParallelContentRenderer, type PartWithIndex } from './ParallelContent';
 import { isPreviewedToolCallPart, PreviewedToolCallPart } from './hydration';
 import { MediaContext, MessageContext, SearchContext } from '~/Providers';
@@ -1347,7 +1348,18 @@ const ContentPartsBody = memo(function ContentPartsBody({
   return <ApprovalProvider>{sequentialContent}</ApprovalProvider>;
 });
 
-const ContentParts = memo(function ContentParts(props: ContentPartsProps) {
+const ContentParts = memo(function ContentParts(rawProps: ContentPartsProps) {
+  const visibleAttachments = useMemo(
+    () => withoutReviewSheets(rawProps.attachments, rawProps.content),
+    [rawProps.attachments, rawProps.content],
+  );
+  const props = useMemo(
+    () =>
+      visibleAttachments === rawProps.attachments
+        ? rawProps
+        : { ...rawProps, attachments: visibleAttachments },
+    [rawProps, visibleAttachments],
+  );
   const { enabled: appsEnabled } = useMCPAppsPolicy();
   const {
     attachments,

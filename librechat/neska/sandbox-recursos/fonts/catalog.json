@@ -1,0 +1,658 @@
+[
+ {
+  "family": "Fraunces",
+  "group": "serif",
+  "voice": "serif \"old style\" amb molt de caràcter, càlida i una mica estranya; de 100 a 900",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": true,
+  "source": "fraunces@5.3.0"
+ },
+ {
+  "family": "Gloock",
+  "group": "serif",
+  "voice": "serif de contrast alt, de revista o de luxe",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "gloock@5.3.0"
+ },
+ {
+  "family": "Young Serif",
+  "group": "serif",
+  "voice": "serif robusta i càlida (la de Neska)",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "young-serif@5.3.0"
+ },
+ {
+  "family": "Instrument Serif",
+  "group": "serif",
+  "voice": "serif editorial fina, amb cursiva; molt vista, fes-la servir amb raó",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": true,
+  "source": "instrument-serif@5.3.0"
+ },
+ {
+  "family": "DM Serif Display",
+  "group": "serif",
+  "voice": "serif de titular, rodona i elegant",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": true,
+  "source": "dm-serif-display@5.3.0"
+ },
+ {
+  "family": "Bodoni Moda",
+  "group": "serif",
+  "voice": "Bodoni: moda, perfumeria, cultura; contrast extrem",
+  "variable": true,
+  "weights": [
+   "400 900"
+  ],
+  "italic": true,
+  "source": "bodoni-moda@5.3.0"
+ },
+ {
+  "family": "Libre Caslon Display",
+  "group": "serif",
+  "voice": "Caslon clàssica, de llibre antic i institucions",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "libre-caslon-display@5.3.0"
+ },
+ {
+  "family": "Abril Fatface",
+  "group": "serif",
+  "voice": "serif negríssima de cartell, molt expressiva",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "abril-fatface@5.3.0"
+ },
+ {
+  "family": "Newsreader",
+  "group": "serif",
+  "voice": "serif de diari, per a text llarg i titulars sobris",
+  "variable": true,
+  "weights": [
+   "200 800"
+  ],
+  "italic": true,
+  "source": "newsreader@5.3.0"
+ },
+ {
+  "family": "Literata",
+  "group": "serif",
+  "voice": "serif de lectura, amable i sòlida",
+  "variable": true,
+  "weights": [
+   "200 900"
+  ],
+  "italic": true,
+  "source": "literata@5.3.0"
+ },
+ {
+  "family": "Source Serif 4",
+  "group": "serif",
+  "voice": "serif neutra i molt llegible",
+  "variable": true,
+  "weights": [
+   "200 900"
+  ],
+  "italic": true,
+  "source": "source-serif-4@5.3.1"
+ },
+ {
+  "family": "Spectral",
+  "group": "serif",
+  "voice": "serif fina i literària",
+  "variable": false,
+  "weights": [
+   "200",
+   "300",
+   "400",
+   "500",
+   "600",
+   "700",
+   "800"
+  ],
+  "italic": true,
+  "source": "spectral@5.3.0"
+ },
+ {
+  "family": "IBM Plex Serif",
+  "group": "serif",
+  "voice": "serif tècnica, d'enginyeria",
+  "variable": false,
+  "weights": [
+   "100",
+   "200",
+   "300",
+   "400",
+   "500",
+   "600",
+   "700"
+  ],
+  "italic": true,
+  "source": "ibm-plex-serif@5.3.0"
+ },
+ {
+  "family": "Zilla Slab",
+  "group": "slab",
+  "voice": "egípcia moderna, de premsa i cartell",
+  "variable": false,
+  "weights": [
+   "300",
+   "400",
+   "500",
+   "600",
+   "700"
+  ],
+  "italic": true,
+  "source": "zilla-slab@5.3.0"
+ },
+ {
+  "family": "Roboto Slab",
+  "group": "slab",
+  "voice": "egípcia neutra",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": false,
+  "source": "roboto-slab@5.3.0"
+ },
+ {
+  "family": "Alfa Slab One",
+  "group": "slab",
+  "voice": "egípcia negríssima, de rètol de botiga o de fira",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "alfa-slab-one@5.3.0"
+ },
+ {
+  "family": "Bree Serif",
+  "group": "slab",
+  "voice": "serif amable i informal",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "bree-serif@5.3.0"
+ },
+ {
+  "family": "Instrument Sans",
+  "group": "sans",
+  "voice": "sans neta, de text",
+  "variable": true,
+  "weights": [
+   "400 700"
+  ],
+  "italic": true,
+  "source": "instrument-sans@5.3.0"
+ },
+ {
+  "family": "DM Sans",
+  "group": "sans",
+  "voice": "geomètrica suau i clara; text i titulars amables",
+  "variable": true,
+  "weights": [
+   "100 1000"
+  ],
+  "italic": true,
+  "source": "dm-sans@5.3.0"
+ },
+ {
+  "family": "Schibsted Grotesk",
+  "group": "sans",
+  "voice": "grotesca de diari, clara; text",
+  "variable": true,
+  "weights": [
+   "400 900"
+  ],
+  "italic": true,
+  "source": "schibsted-grotesk@5.3.0"
+ },
+ {
+  "family": "Archivo",
+  "group": "sans",
+  "voice": "sans de treball, sòlida; de 100 a 900 i d'estreta a ampla",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": true,
+  "source": "archivo@5.3.0"
+ },
+ {
+  "family": "Bricolage Grotesque",
+  "group": "sans",
+  "voice": "grotesca amb personalitat i calidesa; de 200 a 800",
+  "variable": true,
+  "weights": [
+   "200 800"
+  ],
+  "italic": false,
+  "source": "bricolage-grotesque@5.3.0"
+ },
+ {
+  "family": "Familjen Grotesk",
+  "group": "sans",
+  "voice": "grotesca escandinava, amb gràcia",
+  "variable": true,
+  "weights": [
+   "400 700"
+  ],
+  "italic": true,
+  "source": "familjen-grotesk@5.3.0"
+ },
+ {
+  "family": "Hanken Grotesk",
+  "group": "sans",
+  "voice": "grotesca neta i lleugerament geomètrica",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": true,
+  "source": "hanken-grotesk@5.3.0"
+ },
+ {
+  "family": "Figtree",
+  "group": "sans",
+  "voice": "geomètrica amable i clara",
+  "variable": true,
+  "weights": [
+   "300 900"
+  ],
+  "italic": true,
+  "source": "figtree@5.3.0"
+ },
+ {
+  "family": "Manrope",
+  "group": "sans",
+  "voice": "sans tècnica i moderna",
+  "variable": true,
+  "weights": [
+   "200 800"
+  ],
+  "italic": false,
+  "source": "manrope@5.3.0"
+ },
+ {
+  "family": "Epilogue",
+  "group": "sans",
+  "voice": "grotesca amb punta editorial; molt bona negra",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": true,
+  "source": "epilogue@5.3.0"
+ },
+ {
+  "family": "Public Sans",
+  "group": "sans",
+  "voice": "sans institucional i neutra (administració)",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": true,
+  "source": "public-sans@5.3.0"
+ },
+ {
+  "family": "Work Sans",
+  "group": "sans",
+  "voice": "grotesca ampla, de cartell en negreta",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": true,
+  "source": "work-sans@5.3.0"
+ },
+ {
+  "family": "IBM Plex Sans",
+  "group": "sans",
+  "voice": "sans d'enginyeria i tecnologia",
+  "variable": true,
+  "weights": [
+   "100 700"
+  ],
+  "italic": true,
+  "source": "ibm-plex-sans@5.3.0"
+ },
+ {
+  "family": "IBM Plex Sans Condensed",
+  "group": "condensed",
+  "voice": "Plex estreta, per a taules denses",
+  "variable": false,
+  "weights": [
+   "100",
+   "200",
+   "300",
+   "400",
+   "500",
+   "600",
+   "700"
+  ],
+  "italic": true,
+  "source": "ibm-plex-sans-condensed@5.3.0"
+ },
+ {
+  "family": "Sora",
+  "group": "sans",
+  "voice": "geomètrica ampla, de producte digital",
+  "variable": true,
+  "weights": [
+   "100 800"
+  ],
+  "italic": false,
+  "source": "sora@5.3.0"
+ },
+ {
+  "family": "Outfit",
+  "group": "sans",
+  "voice": "geomètrica rodona, de marca jove",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": false,
+  "source": "outfit@5.3.0"
+ },
+ {
+  "family": "Red Hat Display",
+  "group": "sans",
+  "voice": "grotesca de titular amb caràcter",
+  "variable": true,
+  "weights": [
+   "300 900"
+  ],
+  "italic": true,
+  "source": "red-hat-display@5.3.0"
+ },
+ {
+  "family": "Onest",
+  "group": "sans",
+  "voice": "sans neutra i molt llegible",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": false,
+  "source": "onest@5.3.1"
+ },
+ {
+  "family": "Inter Tight",
+  "group": "sans",
+  "voice": "la sans neutra per excel·lència; és el clixé de la IA, evita-la si no hi ha raó",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": true,
+  "source": "inter-tight@5.3.0"
+ },
+ {
+  "family": "Geist",
+  "group": "sans",
+  "voice": "sans tecnològica neta",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": true,
+  "source": "geist@5.3.0"
+ },
+ {
+  "family": "Big Shoulders Display",
+  "group": "condensed",
+  "voice": "condensada de rètol i senyal; contundent",
+  "variable": true,
+  "weights": [
+   "100 900"
+  ],
+  "italic": false,
+  "source": "big-shoulders-display@5.3.0"
+ },
+ {
+  "family": "Anton",
+  "group": "condensed",
+  "voice": "condensada negríssima, de cartell",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "anton@5.3.0"
+ },
+ {
+  "family": "Bebas Neue",
+  "group": "condensed",
+  "voice": "condensada de majúscules, d'esport i d'esdeveniment",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "bebas-neue@5.3.0"
+ },
+ {
+  "family": "Oswald",
+  "group": "condensed",
+  "voice": "condensada clàssica de titular",
+  "variable": true,
+  "weights": [
+   "200 700"
+  ],
+  "italic": false,
+  "source": "oswald@5.3.0"
+ },
+ {
+  "family": "Barlow Condensed",
+  "group": "condensed",
+  "voice": "condensada de senyalística i transport",
+  "variable": false,
+  "weights": [
+   "100",
+   "200",
+   "300",
+   "400",
+   "500",
+   "600",
+   "700",
+   "800",
+   "900"
+  ],
+  "italic": true,
+  "source": "barlow-condensed@5.3.0"
+ },
+ {
+  "family": "Archivo Black",
+  "group": "display",
+  "voice": "grotesca negríssima, de titular rotund",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "archivo-black@5.3.0"
+ },
+ {
+  "family": "Unbounded",
+  "group": "display",
+  "voice": "ampla i rodona, d'etiqueta o de marca jove",
+  "variable": true,
+  "weights": [
+   "200 900"
+  ],
+  "italic": false,
+  "source": "unbounded@5.3.0"
+ },
+ {
+  "family": "Syne",
+  "group": "display",
+  "voice": "ampla i estranya, d'art i cultura; de 400 a 800",
+  "variable": true,
+  "weights": [
+   "400 800"
+  ],
+  "italic": false,
+  "source": "syne@5.3.0"
+ },
+ {
+  "family": "Dela Gothic One",
+  "group": "display",
+  "voice": "negríssima i compacta, de manga o de música",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "dela-gothic-one@5.3.0"
+ },
+ {
+  "family": "Climate Crisis",
+  "group": "display",
+  "voice": "negra extrema que es fon; només per a xifres i paraules soles",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "climate-crisis@5.3.0"
+ },
+ {
+  "family": "Bowlby One",
+  "group": "display",
+  "voice": "negríssima i rodona, de rètol retro",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "bowlby-one@5.3.0"
+ },
+ {
+  "family": "Rubik Mono One",
+  "group": "display",
+  "voice": "majúscules gruixudes i quadrades, de joc o de festival",
+  "variable": false,
+  "weights": [
+   "400"
+  ],
+  "italic": false,
+  "source": "rubik-mono-one@5.3.0"
+ },
+ {
+  "family": "IBM Plex Mono",
+  "group": "mono",
+  "voice": "mono per a xifres, codi i noms de fitxer (mai per fer \"tecnològic\")",
+  "variable": false,
+  "weights": [
+   "100",
+   "200",
+   "300",
+   "400",
+   "500",
+   "600",
+   "700"
+  ],
+  "italic": true,
+  "source": "ibm-plex-mono@5.3.0"
+ },
+ {
+  "family": "JetBrains Mono",
+  "group": "mono",
+  "voice": "mono clara per a dades i codi",
+  "variable": true,
+  "weights": [
+   "100 800"
+  ],
+  "italic": true,
+  "source": "jetbrains-mono@5.3.0"
+ },
+ {
+  "family": "DM Mono",
+  "group": "mono",
+  "voice": "mono suau",
+  "variable": false,
+  "weights": [
+   "300",
+   "400",
+   "500"
+  ],
+  "italic": true,
+  "source": "dm-mono@5.3.0"
+ },
+ {
+  "family": "Space Mono",
+  "group": "mono",
+  "voice": "mono amb caràcter retro",
+  "variable": false,
+  "weights": [
+   "400",
+   "700"
+  ],
+  "italic": true,
+  "source": "space-mono@5.3.0"
+ },
+ {
+  "family": "Caveat",
+  "group": "hand",
+  "voice": "lletra de mà per a anotacions curtes sobre un gràfic; mai per a títols",
+  "variable": true,
+  "weights": [
+   "400 700"
+  ],
+  "italic": false,
+  "source": "caveat@5.3.0"
+ },
+ {
+  "family": "Silkscreen",
+  "group": "pixel",
+  "voice": "píxel per a etiquetes petites, toc retro",
+  "variable": false,
+  "weights": [
+   "400",
+   "700"
+  ],
+  "italic": false,
+  "source": "silkscreen@5.3.0"
+ },
+ {
+  "family": "Pixelify Sans",
+  "group": "pixel",
+  "voice": "píxel llegible, toc retro de Neska",
+  "variable": true,
+  "weights": [
+   "400 700"
+  ],
+  "italic": false,
+  "source": "pixelify-sans@5.3.0"
+ }
+]
