@@ -15,6 +15,8 @@ Els servidors cloud de Hetzner no tenen `/dev/kvm`, així que el sandbox fa serv
 directe de NsJail (espais de noms, seccomp, sense xarxa, usuari per feina) en lloc de microVMs.
 Docker no deixa crear cgroups per feina: el límit de memòria i CPU és el del contenidor
 (`mem_limit: 3g`, `cpus: 2`) més els límits de temps per feina.
+Cada usuari pot fer 60 crides de codi cada 30 s (`MAX_REQUESTS` a l'`api`; per defecte en són
+20, massa poques per a una presentació, que llegeix diverses imatges i en genera unes quantes).
 
 Les imatges i el paquet de llenguatges (Python 3.14 amb python-pptx, openpyxl, pandas,
 matplotlib…) es construeixen per a ARM amb el workflow **Build Neska code sandbox (arm64)**
