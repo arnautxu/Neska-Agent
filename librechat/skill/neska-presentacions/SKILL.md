@@ -15,7 +15,8 @@ dissenyen en HTML i CSS (una `<section class="slide">` per diapositiva, 1280×72
    `/mnt/data/skills/neska-presentacions/disseny.md` i de `…/impeccable/craft-floor.md`, i obre
    amb `read_file` `…/exemples/referencia_ruta.png`, `…/exemples/referencia_fruita.png` i
    `…/exemples/recursos.png` (els mapes, icones i gràfics que tens). Les referències són el
-   nivell mínim; no en copiïs el món. Segueix el criteri.
+   nivell mínim; no en copiïs el món. Segueix el criteri. Fes les crides **d'una en una**, mai
+   diverses alhora: el sandbox en limita el ritme i les que van en paral·lel fallen.
 2. **Entén l'encàrrec**: qui la veurà, per a què, on es projectarà. Si falta una dada clau (les
    xifres, per exemple), pregunta-ho una sola vegada; si no, decideix tu i digues què has suposat.
 3. **Tria el món** (d'on surt, estratègia de color, tipografies, gest propi) a partir del client,
@@ -45,7 +46,7 @@ print(render(html, "/tmp/presentacio.pdf"))   # PDF + /mnt/data/revisio-diaposit
 
 5. **Mira-la de debò.** Aquest pas no se salta mai. Obre `/mnt/data/revisio-diapositives.png`
    amb `read_file` (si diu que no el troba, torna-ho a provar una vegada) i revisa-la amb les preguntes del final de `disseny.md`. El que el revisor pot
-   mesurar (text tallat, trepitjat, massa petit, poc contrast, pàgines de més, emojis) surt a la
+   mesurar (text tallat, trepitjat, tapat per un gràfic, massa petit, poc contrast, pàgines de més, emojis) surt a la
    llista i marcat en vermell; la resta ho has de veure tu. Corregeix-ho tot d'una vegada i torna
    al pas 4. Com a màxim tres voltes.
 6. **Quan estigui bé**, genera-la per última vegada directament al lloc final, sense full de

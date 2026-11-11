@@ -162,6 +162,11 @@ def _walk(box, ancestors=()):
         yield from _walk(child, ancestors + (box,))
 
 
+def _positioned(boxes) -> bool:
+    return any(getattr(b, "style", None) is not None and b.style["position"] in ("absolute", "fixed", "relative")
+               for b in boxes)
+
+
 def _rgba(color):
     if color is None:
         return None
@@ -207,7 +212,17 @@ def _check_page(n: int, page) -> list[Problem]:
 
     out: list[Problem] = []
     texts = []
+    under = []  # texts that a later or positioned graphic could cover
+    graphics = []  # (order, rect, positioned) of pictures, icons and maps that may paint over text
+    order = 0
     for box, anc in _walk(page._page_box):
+        order += 1
+        if isinstance(box, B.ReplacedBox) and box.width and box.height:
+            z = box.style["z_index"]
+            if not (isinstance(z, int) and z < 0):
+                graphics.append((order, (box.position_x, box.position_y, box.width, box.height),
+                                 _positioned(anc + (box,))))
+            continue
         if not isinstance(box, B.TextBox) or not box.text.strip():
             continue
         x, y, w, h = box.position_x, box.position_y, box.width, box.height
@@ -220,6 +235,7 @@ def _check_page(n: int, page) -> list[Problem]:
         if _is_bleed(anc):
             continue  # deliberate bleed: type cut by the slide edge, checked by eye
         texts.append((rect, box, anc))
+        under.append((order, rect, _positioned(anc), snippet))
         if x < -1 or y < -1 or x + w > SLIDE_W + 1 or y + h > SLIDE_H + 1:
             out.append(Problem(n, f"el text «{snippet}» surt de la diapositiva", rect))
             continue
@@ -248,6 +264,18 @@ def _check_page(n: int, page) -> list[Problem]:
             need = 3.0 if large else 4.5
             if ratio < need:
                 out.append(Problem(n, f"poc contrast ({ratio:.1f}:1, cal {need}:1) a «{snippet}»", rect))
+
+    # A picture, icon or map painted over text: positioned boxes paint after static ones, and
+    # among equals the later one in the document wins.
+    for t_order, (x, y, w, h), t_pos, snippet in under:
+        for g_order, g, g_pos in graphics:
+            if not ((g_pos and not t_pos) or (g_pos == t_pos and g_order > t_order)):
+                continue
+            ix = min(x + w, g[0] + g[2]) - max(x, g[0])
+            iy = min(y + h, g[1] + g[3]) - max(y, g[1])
+            if ix > 6 and iy > h * 0.3:
+                out.append(Problem(n, f"un gràfic tapa el text «{snippet}»", (x, y, w, h)))
+                break
 
     # Text from different blocks drawn on top of each other.
     def block_of(anc):

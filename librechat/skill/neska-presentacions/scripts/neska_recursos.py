@@ -356,15 +356,34 @@ def mapa(nom: str, destaca=None, colors: dict | None = None, valors: dict | None
             if 0 <= x <= width and 0 <= y <= height:
                 labels.append(_label(x, y + label_size * 0.35, want[f["id"]] or f["name"], label_size,
                                      ink, halo, "middle"))
-    seen = set()
+    seen, marks = set(), []
     for lon, lat, lab in pts + [p for ln in lines for p in ln]:
         if (lon, lat) in seen:
             continue
         seen.add((lon, lat))
         x, y = P(lon, lat)
         out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="7" style="fill:{ink};stroke:{vora};stroke-width:3"/>')
-        if lab:
-            labels.append(_label(x + 14, y + 7, lab, label_size, ink, halo, "start"))
+        marks.append((x, y, lab))
+    # Point labels: right of the dot unless that hits another label, a dot or the frame; then
+    # left, above, below. Wider estimate than the real text so near misses also move.
+    boxes = [(x - 9, y - 9, x + 9, y + 9) for x, y, _ in marks]
+    for x, y, lab in marks:
+        if not lab:
+            continue
+        w, h = len(lab) * label_size * 0.6 + 6, label_size * 1.2
+        options = [(x + 14, y + 7, "start", (x + 12, y - h / 2, x + 12 + w, y + h / 2)),
+                   (x - 14, y + 7, "end", (x - 12 - w, y - h / 2, x - 12, y + h / 2)),
+                   (x, y - 16, "middle", (x - w / 2, y - 16 - h, x + w / 2, y - 12)),
+                   (x, y + 14 + label_size, "middle", (x - w / 2, y + 12, x + w / 2, y + 12 + h))]
+
+        def bad(b):
+            off = b[0] < 0 or b[1] < 0 or b[2] > width or b[3] > height
+            hits = sum(1 for o in boxes if not (b[2] <= o[0] or b[0] >= o[2] or b[3] <= o[1] or b[1] >= o[3])
+                       and o != (x - 9, y - 9, x + 9, y + 9))
+            return off * 10 + hits
+        lx, ly, anchor, box = min(options, key=lambda o: bad(o[3]))
+        boxes.append(box)
+        labels.append(_label(lx, ly, lab, label_size, ink, halo, anchor))
     out += labels
     if credit and "IGN" in m["credit"]:
         out.append(f'<text x="{width - 4}" y="{height - 6}" text-anchor="end" style="font-size:14px;'
