@@ -1,0 +1,108 @@
+name: Build Neska code sandbox (arm64)
+
+# Builds LibreChat's open-source Code Interpreter (github.com/ClickHouse/code-interpreter,
+# Apache 2.0) natively for the Hetzner ARM servers. Upstream only publishes linux/amd64
+# images, so we build the six service images plus the runtime package tree (Python with
+# python-pptx, openpyxl, pandas, matplotlib...) from one pinned upstream commit.
+# Hetzner cloud has no KVM, so the sandbox runner is the direct NsJail target.
+# Building does not deploy anything: see librechat/neska/code/README.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_sha:
+        description: 'ClickHouse/code-interpreter commit (full SHA)'
+        required: true
+        default: 4b41f3a97d9cafaf11498b62b1ec6cb9e91c68f0
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: build-codeapi-${{ inputs.upstream_sha }}
+  cancel-in-progress: false
+
+env:
+  UPSTREAM: ClickHouse/code-interpreter
+  REGISTRY: ghcr.io/arnautxu
+
+jobs:
+  images:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: api, file: service/Dockerfile, target: api }
+          - { name: worker, file: service/Dockerfile, target: worker }
+          - { name: file-server, file: service/Dockerfile, target: production }
+          - { name: egress-gateway, file: service/Dockerfile.egress-gateway, target: production }
+          - { name: tool-call-server, file: service/Dockerfile.tool-call-server, target: production }
+          - { name: sandbox-runner-direct, file: api/Dockerfile, target: sandbox-runner-false }
+    steps:
+      - name: Check the pinned revision
+        env:
+          SHA: ${{ inputs.upstream_sha }}
+        run: '[[ "$SHA" =~ ^[0-9a-f]{40}$ ]]'
+      - name: Checkout upstream at the pinned revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ env.UPSTREAM }}
+          ref: ${{ inputs.upstream_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.0.0
+      - name: Authenticate to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Build and push linux/arm64
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.0.0
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          platforms: linux/arm64
+          push: true
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/neska-codeapi-${{ matrix.name }}:buildcache-arm64
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/neska-codeapi-${{ matrix.name }}:buildcache-arm64,mode=max
+          tags: ${{ env.REGISTRY }}/neska-codeapi-${{ matrix.name }}:sha-${{ inputs.upstream_sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ inputs.upstream_sha }}
+            org.opencontainers.image.licenses=Apache-2.0
+
+  packages:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    steps:
+      - name: Checkout upstream at the pinned revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ env.UPSTREAM }}
+          ref: ${{ inputs.upstream_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Build the runtime packages (Python, Node, Bun, Bash)
+        run: ./build-packages.sh
+      - name: Authenticate to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Ship the package tree as an image (copied out to CODEAPI_PKGS on the server)
+        env:
+          TAG: ${{ env.REGISTRY }}/neska-codeapi-pkgs:sha-${{ inputs.upstream_sha }}
+        run: |
+          set -euo pipefail
+          sudo chmod -R a+rX data/pkgs
+          printf 'FROM scratch\nCOPY pkgs /pkgs\n' > data/Dockerfile.pkgs
+          docker build -f data/Dockerfile.pkgs -t "$TAG" \
+            --label org.opencontainers.image.revision=${{ inputs.upstream_sha }} data
+          docker push "$TAG"

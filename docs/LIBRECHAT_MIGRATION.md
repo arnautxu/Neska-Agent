@@ -25,3 +25,14 @@ Status 2026-11-09 (separate gates):
 - Live acceptance: Arnau chatted with Neska on Claude through the web UI. Memory failed on image
   fd5db56 (temperature rejected); the fix ships with the next image and still needs a live check.
 - Backups for the new stack: none yet (Arnau: not for now). Required before real customer data.
+
+Files and presentations (2026-11-10, Arnau: "que funcioni com a Codex o com a Claude"):
+- Both modes (Ràpid, Intel·ligent) get `executeCode`, `skills` and `artifacts`, always on with
+  the tool chips hidden (`hideBadgeRow`). Neska skills live in `librechat/skill/`
+  (`neska-presentacions` with `neska_deck.py`, `neska-excel` with `neska_xlsx.py`, `neska-word`)
+  and ship inside the app image.
+- Code runs in LibreChat's open-source Code Interpreter, installed per server from
+  `librechat/neska/code/` (direct NsJail mode, no KVM on Hetzner cloud). ARM images and the
+  runtime package tree come from `build-codeapi.yml`; upstream publishes amd64 only.
+- Gates: tested end to end only in a local x86 container so far (sandbox runs Python, files
+  upload and come back to LibreChat). Not built for ARM, not deployed, not live-accepted.
