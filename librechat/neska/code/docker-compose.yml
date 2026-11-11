@@ -33,7 +33,7 @@ x-auth: &auth
 
 services:
   api:
-    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/code-interpreter-api:${CODEAPI_IMAGE_TAG:?set CODEAPI_IMAGE_TAG}
+    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-api:${CODEAPI_IMAGE_TAG:?set CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     environment:
       <<: [*redis, *auth]
@@ -50,7 +50,7 @@ services:
         aliases: [codeapi]
 
   service-worker:
-    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/code-interpreter-worker:${CODEAPI_IMAGE_TAG}
+    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-worker:${CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     environment:
       <<: [*redis, *auth]
@@ -65,7 +65,7 @@ services:
       sandbox-runner: { condition: service_healthy }
 
   egress_gateway:
-    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/code-interpreter-egress-gateway:${CODEAPI_IMAGE_TAG}
+    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-egress-gateway:${CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     environment:
       <<: *redis
@@ -80,7 +80,7 @@ services:
     depends_on: [file_server, tool_call_server, redis]
 
   tool_call_server:
-    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/code-interpreter-tool-call-server:${CODEAPI_IMAGE_TAG}
+    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-tool-call-server:${CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     environment:
       <<: *redis
@@ -90,7 +90,7 @@ services:
     depends_on: [redis]
 
   sandbox-runner:
-    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/code-interpreter-sandbox-runner-direct:${CODEAPI_IMAGE_TAG}
+    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-sandbox-runner-direct:${CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     privileged: false
     mem_limit: 3g
@@ -141,7 +141,7 @@ services:
       start_period: 20s
 
   file_server:
-    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/code-interpreter-file-server:${CODEAPI_IMAGE_TAG}
+    image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-file-server:${CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     environment:
       <<: *redis
