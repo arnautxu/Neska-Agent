@@ -18,13 +18,17 @@ import sys; sys.path.insert(0, "/mnt/data/skills/neska-presentacions/scripts")
 from neska_deck import Deck
 
 d = Deck(title="Nom de la presentació")
-d.cover("Títol gran", "Subtítol o data", kicker="Proposta")
-d.section("01", "Primer bloc")
-d.bullets("Una conclusió clara", ["Màxim 5 punts", "Frases curtes", "Sense punts finals"])
+d.cover("Títol gran", "Subtítol", kicker="Proposta", date="Novembre 2026")
+d.agenda(["Primer bloc", "Segon bloc", "Números", "Calendari"])
+d.section("01", "Primer bloc", "Una frase que el resumeixi")
+d.bullets("Una conclusió clara", ["Lema: explicació curta", "Lema: explicació curta", "Lema: explicació curta"])
+d.cards("Què inclou", [("Títol", "Una o dues frases"), ("Títol", "…"), ("Títol", "…")])
 d.stat("+38%", "creixement de vendes", note="Font: …")
 d.stats("Tres xifres", [("12", "clients nous"), ("4,2", "valoració"), ("98%", "a temps")])
-d.chart("Vendes per mes", ["Gen", "Feb", "Mar"], {"2025": [10, 12, 9], "2026": [14, 15, 18]}, kind="bar")
-d.table("Pressupost", [["Partida", "Import"], ["Disseny", "4.000 €"]])
+d.chart("Les vendes es multipliquen per 4", ["Gen", "Feb", "Mar"], {"Vendes": [10, 12, 18]},
+        kind="bar", takeaway="La frase que vols que recordin")
+d.table("Pressupost", [["Partida", "Import"], ["Disseny", "4.000 €"], ["Total", "4.000 €"]])
+d.timeline("Calendari", [("Nov", "Què passa"), ("Des", "Què passa"), ("Gen", "Què passa")])
 d.two_columns("Abans i després", "Abans", ["…"], "Després", ["…"])
 d.quote("Una frase potent.", "Qui ho diu")
 d.closing("Gràcies", "contacte@empresa.cat")
@@ -32,6 +36,10 @@ d.save("/mnt/data/nom-presentacio.pptx")
 ```
 
    Tipus de gràfic: `bar`, `hbar`, `line`, `pie`. Són gràfics natius: l'usuari els pot editar a PowerPoint.
+   Amb una sola sèrie, la darrera barra surt destacada (`highlight=` per triar-ne una altra).
+   **Varia el ritme:** la portada, les seccions, `stat` i el tancament són de color sòlid; entre mig,
+   alterna `bullets`, `cards`, `stats`, `chart`, `timeline` i `table`. No posis dues diapositives
+   iguals seguides. Als `bullets`, escriu "Lema: detall" perquè el lema surti en negreta.
    Afegeix `notes="…"` a les diapositives importants amb el que l'usuari ha de dir en veu alta.
 4. **Desa sempre a `/mnt/data/`** amb un nom curt en minúscules i guions. El fitxer apareix sol al xat, amb previsualització i botó de descàrrega: no escriguis mai la ruta `/mnt/data/…` a la resposta.
 5. **Comprova-la** abans de respondre: torna-la a obrir amb `Presentation(path)` i mira que hi hagi totes les diapositives i que cap text sigui més llarg del que hi cap (punts de més de ~90 caràcters, títols de més de ~80). Si cal, escurça i torna-la a desar.
