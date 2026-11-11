@@ -48,12 +48,14 @@ Files and presentations (2026-11-10, Arnau: "que funcioni com a Codex o com a Cl
   delivering, and follows `disseny.md` (our slide adaptation of Impeccable, Apache 2.0; notice in
   `impeccable/`). The sandbox needs the `neska2` patch from `build-codeapi.yml` (Pango + WeasyPrint):
   new images and a new pkgs tree on the server before the new app image. The chat hides the
-  review sheets (`revisio-*.png`) that the agent reads. Arnau then asked for real graphic
-  resources: the skill ships Lucide icons, maps (world, Europe, Spain, Catalonia by comarca and
-  municipality) and helpers for pictograms, rings, sparklines, slope charts, halftone texture and
-  treated user photos (`scripts/neska_recursos.py`, data in `recursos/`, built offline by
-  `librechat/neska/tools/build_recursos_presentacions.py` because the sandbox has no network).
-  A skill must stay well under ~70 files: every file is primed into each code call and the exec
-  token that lists them outgrows the 16 KB header limit (HTTP 431, "sandbox execution failed"
-  on every call). That is why the fonts are inlined in `scripts/fonts.css` (29 files now).
+  review sheets (`revisio-*.png`) that the agent reads. Arnau then asked for a much richer
+  system: 56 OFL font families, Lucide/Tabler/Phosphor icons, flags, maps (world, Europe, Spain,
+  Catalonia by comarca, admin-1 regions of 240 countries), a gazetteer, and charts (waterfall,
+  Gantt, funnel, heatmap, range, treemap, stacked) in `scripts/neska_recursos.py`. The heavy data
+  lives in `librechat/neska/sandbox-recursos/` and `build-codeapi.yml` installs it into the
+  sandbox packages (`share/neska` under the Python prefix), because every skill file is uploaded
+  again on each code call and a skill of ~70+ files breaks every call (HTTP 431: the exec token
+  that lists them outgrows the 16 KB header limit). The skill keeps text, scripts and specimens
+  (19 files). `render()` declares only the font families a deck names; declaring all 56 cost
+  ~7 s per render.
   Gates: local x86 end-to-end only so far.

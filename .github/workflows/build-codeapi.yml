@@ -111,6 +111,25 @@ jobs:
           grep -q '^        weasyprint; then$' build-packages.sh
       - name: Build the runtime packages (Python, Node, Bun, Bash)
         run: ./build-packages.sh
+      - name: Checkout the Neska deck resources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: neska-src
+          sparse-checkout: librechat/neska/sandbox-recursos
+          persist-credentials: false
+      - name: Add the Neska deck resources (fonts, icons, maps) to the Python tree
+        # neska_recursos.py finds them at <sys.prefix>/share/neska. They live here and not in
+        # the skill because every skill file is uploaded again on each code call.
+        run: |
+          set -euo pipefail
+          found=0
+          for d in data/pkgs/python/*/; do
+            sudo mkdir -p "$d/share/neska"
+            sudo cp -r neska-src/librechat/neska/sandbox-recursos/. "$d/share/neska/"
+            test -f "$d/share/neska/fonts/fonts.css"
+            found=1
+          done
+          test "$found" = 1
       - name: Authenticate to GHCR
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.0.0
         with:

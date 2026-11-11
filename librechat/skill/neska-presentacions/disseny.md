@@ -49,23 +49,22 @@ El color es compromet a escala de diapositiva: camps que ocupen regions senceres
 escampats. Comprova el contrast: text blanc sobre un color saturat necessita un to prou fosc
 (el revisor ho mesura; si falla, enfosqueix el color, no aclareixis el text).
 
-### Tipografies (totes OFL, ja carregades)
+### Tipografies (56 famílies OFL, ja instal·lades)
 
-| Família | Veu | Pesos |
-| --- | --- | --- |
-| Big Shoulders Display | condensada, de rètol o de senyal; contundent | 500, 800 |
-| Unbounded | ampla i rodona, d'etiqueta o de marca jove | 400, 700 |
-| Gloock | serifa de contrast alt, de revista o de luxe | 400 |
-| Bricolage Grotesque | grotesca amb personalitat, càlida | 400, 600, 800 |
-| Young Serif | serifa càlida i robusta (és la de Neska) | 400 |
-| Instrument Serif | serifa editorial fina, amb cursiva | 400, 400 cursiva |
-| Archivo | sans de treball, sòlida; text i xifres | 400, 600, 800 |
-| Schibsted Grotesk | sans de diari, clara; text | 400, 500, 700 |
-| Instrument Sans | sans neta; text | 400, 500, 600, 700 |
+Mira `exemples/tipografies.png` abans de triar: cada família hi és a mida de títol amb la seva
+veu, agrupades (serifes, egípcies, sans, condensades, de cartell, mono, de mà, píxel). Totes
+tenen la ela geminada, « » i €. Les variables accepten qualsevol pes del seu rang
+(`font-weight: 650`).
 
-Una per als títols, una per al text. Tria la de títols com un objecte del món del client, no
-per costum: Instrument Serif i Young Serif són les més "per defecte", fes-les servir només si
-tenen una raó. Mai Arial, Helvetica ni la lletra del sistema.
+- Una per als títols, una per al text (dues de la mateixa família també val). Tria la de
+  títols com un objecte del món del client: una condensada de rètol per a transport o esport,
+  una Bodoni per a moda, una egípcia negra per a una botiga de barri, una serif "old style"
+  (Fraunces) per a un producte artesà.
+- Les més "per defecte" (Instrument Serif, Young Serif, Inter Tight) només amb una raó.
+- Mono només per a xifres, codi o noms de fitxer; de mà (Caveat) només per a una anotació curta
+  sobre un gràfic; píxel només per a etiquetes petites.
+- Mai Arial, Helvetica ni la lletra del sistema. Només es carreguen les famílies que el CSS
+  anomena, així que fer-ne servir una no alenteix res.
 
 ## 2. Una idea per diapositiva
 
@@ -115,28 +114,36 @@ presentació de 8 a 10):
 
 ## 4. Recursos gràfics
 
-Una presentació feta només de text i barres és pobra. Tens recursos de debò a `neska_pdf` (mira
-`exemples/recursos.png` per veure'ls); fes-los servir sempre que el contingut en doni peu, i en
-una presentació de 8 a 10 diapositives n'hi hauria d'haver almenys dos tipus.
+Una presentació feta només de text i barres és pobra. Mira `exemples/recursos.png` (un exemple
+de cada recurs) i fes-los servir sempre que el contingut en doni peu: en una presentació de 8 a
+10 diapositives n'hi hauria d'haver almenys dos o tres tipus. Com es criden: `recursos.md`.
 
 | Si el contingut parla de… | Fes servir |
 | --- | --- |
-| llocs: comarques, províncies, països, mercats, sucursals, clients | `mapa()` amb la zona destacada, `enfoca=` i `punts=` |
+| llocs: comarques, països, regions d'un país, mercats, sucursals | `mapa()` amb la zona destacada, `punts=` per nom, `rutes=` per a fluxos |
+| un país concret | `bandera()` petita al costat del nom, mai com a decoració |
 | "X de cada Y", persones, unitats, places | `pictograma()` amb una icona del món del client |
 | una part d'un tot o un objectiu ("68 % fet") | `anell()` |
+| quina part és de qui (més de 4 parts) | `treemap()`; amb 2-4 parts, `share()` |
+| d'on surt una diferència (preus, clients, costos) | `cascada()` |
+| un pla amb fases i dates | `calendari()` |
+| on es perd la gent pel camí | `embut()` |
+| quan passa (hores × dies, mesos × productes) | `calor()` |
+| on som dins d'un rang (preus, sous, competència) | `interval()` |
+| la suma i les parts al llarg del temps | `apilades()` |
 | una xifra amb història | la xifra gegant i `minigrafic()` al costat |
 | qui puja i qui baixa entre dos moments | `pendent()` |
-| un objecte, un producte, un servei | una icona gran (160-360 px, traç 1-1,5) com a imatge de la diapositiva |
+| un objecte, un producte, un servei | una icona gran (160-360 px) com a imatge de la diapositiva |
 | fotos que ha pujat l'usuari | `foto()` en duotone, trama o línies amb els colors de la presentació |
 | una portada o una meitat de color que vol textura | `trama()` (mai sota text) |
 
-- **Icones:** 2.356 de Lucide (`icones("bike")` cerca per etiqueta en anglès). Totes amb el
-  mateix traç. Grans i soles, o com a unitats d'un pictograma. Mai una icona petita davant de
-  cada punt d'una llista ni graelles de targetes amb icona.
-- **Mapes:** `mon`, `europa`, `espanya-autonomies`, `espanya-provincies`, `catalunya-provincies`,
-  `catalunya-comarques` i `catalunya-municipis` (`mapa_noms()` en dona els noms). Un mapa diu
-  una cosa: destaca només el que demostra el títol, la resta en `--tint`. Els d'Espanya i
-  Catalunya són CC BY: deixa el crèdit que hi posa o porta'l a la nota.
+- **Icones:** uns 16.000 dibuixos en tres jocs (Lucide, Tabler i Phosphor en sis pesos). Un
+  sol joc i un sol pes per presentació, triat pel món: Lucide neutre, Tabler el més ampli,
+  Phosphor amb més caràcter (thin elegant, bold o fill contundent, duotone càlid). Grans i
+  soles, o com a unitats d'un pictograma. Mai una icona petita davant de cada punt d'una llista
+  ni graelles de targetes amb icona.
+- **Mapes:** un mapa diu una cosa: destaca només el que demostra el títol, la resta en
+  `--tint`. Els d'Espanya i Catalunya són CC BY: deixa el crèdit que hi posa o porta'l a la nota.
 - **Fotos:** no hi ha banc d'imatges ni internet. Si l'usuari n'ha pujat, fes-les servir grans
   (a sang, o mitja diapositiva) i tractades amb `foto()` perquè siguin del món de la
   presentació. Si no n'hi ha, no en simulis.

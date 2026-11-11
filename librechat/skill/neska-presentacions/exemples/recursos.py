@@ -10,8 +10,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "scripts"))
-from neska_pdf import (anell, foto, icon, mapa, minigrafic, pendent, pictograma,  # noqa: E402
-                       render, trama)
+from neska_pdf import (anell, apilades, bandera, calendari, calor, cascada, embut, foto,  # noqa: E402
+                       icon, interval, mapa, minigrafic, pendent, pictograma, render, trama, treemap)
 
 PHOTO = os.path.join(HERE, "foto-exemple.jpg")
 
@@ -101,6 +101,74 @@ html = f"""
     <div style="background:url('{foto(PHOTO, "#0F5C4C", "#FFFFFF", "linies", cel=8)}') center/cover"></div>
   </div>
   <h2 style="margin:40px 72px 0;font-size:44px">foto(): la foto de l'usuari, en duotone, trama o línies</h2>
+</section>
+<section class="slide">
+  <div class="row" style="gap:40px">
+    <div>{icon("lucide:coffee", 150, "var(--ink)", 1.3)}<p class="note">lucide</p></div>
+    <div>{icon("tabler:coffee", 150, "var(--ink)", 1.3)}<p class="note">tabler</p></div>
+    <div>{icon("phosphor:coffee-thin", 150, "var(--ink)")}<p class="note">phosphor-thin</p></div>
+    <div>{icon("phosphor:coffee", 150, "var(--ink)")}<p class="note">phosphor</p></div>
+    <div>{icon("phosphor:coffee-duotone", 150, "var(--accent)")}<p class="note">phosphor-duotone</p></div>
+    <div>{icon("phosphor:coffee-fill", 150, "var(--accent)")}<p class="note">phosphor-fill</p></div>
+  </div>
+  <h2 style="margin-top:56px">Tres jocs d'icones, uns 16.000 dibuixos</h2>
+  <p class="note" style="margin-top:16px">icon("tabler:coffee"), icones("coffee") per cercar. Un sol joc i un sol pes per presentació.</p>
+  <div class="folio"><span>Recursos gràfics</span><span>10</span></div>
+</section>
+
+<section class="slide">
+  <div style="position:absolute;right:0;top:0">{mapa("FR-grups", destaca=["Occitanie", "Auvergne-Rhône-Alpes"], width=660, height=720,
+      rutes=[("Barcelona", "Lió"), ("Barcelona", "Tolosa"), ("Barcelona", "Montpeller")], ruta_color="var(--accent)",
+      enfoca=["Occitanie", "Auvergne-Rhône-Alpes", "Provence-Alpes-Côte-d'Azur", "Nouvelle-Aquitaine"])}</div>
+  <div class="row" style="gap:16px">{bandera("es-ct", 96, vora="var(--line)")}{bandera("fr", 96, vora="var(--line)")}</div>
+  <h2 style="width:520px;margin-top:40px">Regions de 240 països, rutes i banderes</h2>
+  <p class="note" style="width:500px;margin-top:16px">mapa("FR-grups", rutes=[("Barcelona", "Lió")]); punts per nom amb 8.000 llocs; bandera("es-ct").</p>
+  <div class="folio"><span>Recursos gràfics</span><span>11</span></div>
+</section>
+
+<section class="slide">
+  <h2>cascada(): d'on surt la diferència</h2>
+  <div style="margin-top:40px">{cascada(["2025", "Preus", "Clients nous", "Clients perduts", "Costos"], [410, 62, 95, -38, -41], unit=" k€", total="2026", height=440)}</div>
+  <div class="folio"><span>Recursos gràfics</span><span>12</span></div>
+</section>
+
+<section class="slide">
+  <h2>calendari(): el pla en una línia de temps</h2>
+  <div style="margin-top:48px">{calendari([("Registre de marca", 0, 3, True), ("Primer distribuïdor", 2, 5), ("Logística", 3, 6), ("Primer enviament", 6, 7, True), ("Fira de Lió", 8, 9)],
+      ["Gen", "Feb", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Oct"], avui=1.4)}</div>
+  <div class="folio"><span>Recursos gràfics</span><span>13</span></div>
+</section>
+
+<section class="slide">
+  <h2>embut(): on es perden els clients</h2>
+  <div style="margin-top:40px">{embut(["Visites a la web", "Fitxa de producte", "Cistella", "Compra"], [48000, 13200, 2900, 1160], destaca=2)}</div>
+  <div class="folio"><span>Recursos gràfics</span><span>14</span></div>
+</section>
+
+<section class="slide">
+  <h2>calor(): quan passa</h2>
+  <div style="margin-top:32px">{calor(["Dilluns", "Dimarts", "Dimecres", "Dijous", "Divendres", "Dissabte", "Diumenge"], ["9 h", "11 h", "13 h", "15 h", "17 h", "19 h", "21 h"],
+      [[12, 30, 22, 18, 25, 40, 20], [10, 28, 20, 16, 22, 38, 18], [11, 26, 24, 15, 24, 41, 22], [14, 32, 26, 20, 30, 52, 30],
+       [18, 40, 34, 28, 44, 70, 58], [30, 64, 72, 40, 52, 80, 66], [26, 58, 60, 30, 34, 36, 20]], fila=62)}</div>
+  <div class="folio"><span>Recursos gràfics</span><span>15</span></div>
+</section>
+
+<section class="slide">
+  <h2>interval(): on som dins del mercat</h2>
+  <div style="margin-top:56px">{interval(["Nosaltres", "Competidor A", "Competidor B", "Competidor C"], [3.2, 2.4, 3.8, 2.9], [4.1, 3.9, 5.6, 3.6], punt=[3.6, 3.1, 4.4, 3.2], unit=" €", destaca=0)}</div>
+  <div class="folio"><span>Recursos gràfics</span><span>16</span></div>
+</section>
+
+<section class="slide">
+  <h2>treemap(): quina part és de qui</h2>
+  <div style="margin-top:32px">{treemap([("Restaurants", 48), ("Botigues", 21), ("Supermercats", 14), ("Web", 9), ("Exportació", 5), ("Altres", 3)], unit=" %", destaca=0, height=470)}</div>
+  <div class="folio"><span>Recursos gràfics</span><span>17</span></div>
+</section>
+
+<section class="slide">
+  <h2>apilades(): la suma i les parts</h2>
+  <div style="margin-top:32px">{apilades(["2023", "2024", "2025", "2026"], {"Botiga": [120, 130, 140, 150], "Web": [20, 40, 70, 110], "Export": [0, 5, 15, 30]}, unit=" k€", height=470)}</div>
+  <div class="folio"><span>Recursos gràfics</span><span>18</span></div>
 </section>
 """
 

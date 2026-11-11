@@ -20,7 +20,9 @@ Les imatges i el paquet de llenguatges (Python 3.14 amb python-pptx, openpyxl, p
 matplotlib…) es construeixen per a ARM amb el workflow **Build Neska code sandbox (arm64)**
 a partir d'un commit fixat de l'upstream (upstream només publica amd64). El workflow hi afegeix
 el pedaç de Neska: Pango al sistema del sandbox i WeasyPrint als paquets de Python, perquè les
-presentacions es dissenyen en HTML i es lliuren en PDF. L'etiqueta de les imatges és
+presentacions es dissenyen en HTML i es lliuren en PDF, i els recursos de les presentacions
+(fonts, icones, mapes: `librechat/neska/sandbox-recursos/`) a `share/neska` dels paquets de
+Python, on no costen res per crida. L'etiqueta de les imatges és
 `sha-<commit>-<pedaç>` (ara `neska2`); canviar de pedaç vol dir una etiqueta nova, i tornar
 enrere és posar l'anterior a `CODEAPI_IMAGE_TAG` i recuperar el `pkgs` anterior.
 

@@ -87,8 +87,8 @@ def render(html: str, pdf: str = "/tmp/presentacio.pdf",
 
     html = _resolve_svg_vars(html)
     fonts = FontConfiguration()
-    sheets = [CSS(filename=os.path.join(SCRIPTS, name), font_config=fonts)
-              for name in ("fonts.css", "base.css")]
+    sheets = [CSS(string=_font_faces(html), base_url=os.path.join(RES, "fonts") + "/", font_config=fonts),
+              CSS(filename=os.path.join(SCRIPTS, "base.css"), font_config=fonts)]
     doc = HTML(string=html, base_url=SCRIPTS + "/").render(stylesheets=sheets, font_config=fonts)
     os.makedirs(os.path.dirname(os.path.abspath(pdf)), exist_ok=True)
     doc.write_pdf(pdf)
@@ -107,6 +107,16 @@ def render(html: str, pdf: str = "/tmp/presentacio.pdf",
     sheet_path = _contact_sheet(images, problems, sheet) if sheet and images else None
     return Report(pdf=pdf, sheet=sheet_path, slides=len(doc.pages), problems=problems,
                   slide_images=images if slides_dir else [])
+
+
+def _font_faces(html: str) -> str:
+    """Only the @font-face rules of the families the deck names (and base.css's defaults):
+    WeasyPrint loads every declared face, and loading all of them costs seconds per render."""
+    with open(os.path.join(RES, "fonts", "fonts.css"), encoding="utf-8") as fh:
+        rules = [line for line in fh if line.startswith("@font-face")]
+    text = (html + open(os.path.join(SCRIPTS, "base.css"), encoding="utf-8").read()).lower()
+    keep = [r for r in rules if re.search(r'font-family: "([^"]+)"', r).group(1).lower() in text]
+    return "".join(keep)
 
 
 def _tokens(html: str) -> dict:
@@ -470,5 +480,6 @@ def line(labels, series: dict, highlight=None, unit="", width=1104, height=400, 
 
 # Icons, maps, pictograms and photo treatments live in neska_recursos; re-exported here so a
 # deck needs one import.
-from neska_recursos import (anell, foto, icon, icones, mapa, mapa_noms, minigrafic,  # noqa: E402,F401
-                            pendent, pictograma, trama)
+from neska_recursos import (RES, anell, apilades, bandera, calendari, calor, cascada,  # noqa: E402,F401
+                            embut, foto, icon, icones, interval, lloc, mapa, mapa_noms, minigrafic,
+                            pendent, pictograma, trama, treemap)
