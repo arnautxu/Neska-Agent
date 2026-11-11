@@ -7,6 +7,41 @@ interface:
   theme: neska
   customWelcome: 'Què fem avui?'
   landingFooter: false
+  # Neska stays minimal (Arnau, 2026-11-11): people write, attach files, pick Ràpid or
+  # Intel·ligent, and Neska remembers. Everything below is LibreChat surface the client's
+  # staff do not need. Nothing is removed from the code: set a line back to true to
+  # bring that feature back.
+  parameters: false
+  presets: false
+  multiConvo: false
+  bookmarks: false
+  temporaryChat: false
+  feedback: false
+  fileSearch: false
+  contextUsage: false
+  mascot: false
+  buildInfo: false
+  prompts:
+    use: false
+    create: false
+  # The two modes run as ephemeral agents, which this permission does not gate: it only
+  # hides the builder and the list of saved agents.
+  agents:
+    use: false
+    create: false
+  mcpServers:
+    use: false
+    create: false
+  # use stays on: the Neska skills (presentacions, excel, word) need it.
+  skills:
+    use: true
+    create: false
+  sharedLinks:
+    create: false
+    share: false
+    public: false
+  # Kept on purpose: memories (people see and delete what Neska remembers).
+  memories: true
 
 # What both modes can do besides chatting: run Python in the code sandbox (presentations as
 # PDF, Excel and Word files), use the Neska skills in ../skill/ (presentacions,
@@ -63,3 +98,10 @@ memory:
     instructions: "Guarda només fets útils i duradors sobre l'usuari i la seva feina (preferències, rol, projectes). En català. Mai contrasenyes ni claus."
     # Needs the Neska memory.ts fix: Claude 5 rejects the temperature LibreChat's
     # memory agent used to send (see NESKA_FORK.md).
+
+# Voice is off by default (Neska stays minimal): no dictation button in the input box and
+# no read-aloud button under answers. Remove this block to bring both back.
+speech:
+  speechTab:
+    speechToText: false
+    textToSpeech: false
