@@ -11,7 +11,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
-from neska_pdf import hbars, render, share  # noqa: E402
+from neska_pdf import hbars, mapa, pictograma, render, share  # noqa: E402
 
 html = f"""
 <style>
@@ -69,10 +69,19 @@ html = f"""
 
 <section class="slide">
   <div class="halves">
-    <div class="green"><div class="fig">7 de 10</div></div>
+    <div class="green"><div class="fig">7 de 10</div>
+      <div style="margin-top:40px">{pictograma(7, 10, columnes=5, icona="apple", mida=72, gap=18, color="#FFFFFF", rest="#3B6552", stroke=1.6)}</div></div>
     <div><h2 style="font-size:40px">quilos que collim surten sense la nostra marca</h2>
       <p class="note" style="margin-top:24px">Es venen a granel a tres centrals de compra, que hi posen la seva.</p></div>
   </div>
+</section>
+
+<section class="slide">
+  <div style="position:absolute;right:0;top:0">{mapa("catalunya-comarques", destaca=["Segrià"], enfoca=["Segrià"],
+      punts=[(0.62, 41.61, "Lleida"), (0.52, 41.56, "Alcarràs"), (0.46, 41.49, "Aitona")],
+      rest="#E3E9E5", width=700, height=720, gruix=3, credit=False, label_size=24)}</div>
+  <h2 style="position:absolute;left:var(--pad);top:var(--pad);width:470px">Collim en 14 pobles d'una sola comarca</h2>
+  <p class="note" style="position:absolute;left:var(--pad);bottom:var(--pad);width:420px">412 socis entre el Segre i la Noguera Ribagorçana. Mapa: IGN/CNIG (CC BY 4.0), Idescat.</p>
 </section>
 
 <section class="slide">

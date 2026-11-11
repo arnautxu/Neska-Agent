@@ -48,5 +48,9 @@ Files and presentations (2026-11-10, Arnau: "que funcioni com a Codex o com a Cl
   delivering, and follows `disseny.md` (our slide adaptation of Impeccable, Apache 2.0; notice in
   `impeccable/`). The sandbox needs the `neska2` patch from `build-codeapi.yml` (Pango + WeasyPrint):
   new images and a new pkgs tree on the server before the new app image. The chat hides the
-  review sheets (`revisio-*.png`) that the agent reads.
+  review sheets (`revisio-*.png`) that the agent reads. Arnau then asked for real graphic
+  resources: the skill ships Lucide icons, maps (world, Europe, Spain, Catalonia by comarca and
+  municipality) and helpers for pictograms, rings, sparklines, slope charts, halftone texture and
+  treated user photos (`scripts/neska_recursos.py`, data in `recursos/`, built offline by
+  `librechat/neska/tools/build_recursos_presentacions.py` because the sandbox has no network).
   Gates: local x86 end-to-end only so far.

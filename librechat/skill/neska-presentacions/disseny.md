@@ -92,8 +92,8 @@ presentació de 8 a 10):
    l'explicació. També en proporció 5/7.
 5. **Gràfic d'una sola idea**: títol-conclusió i el gràfic a tota amplada amb la dada destacada.
 6. **Repartiment**: una barra al 100 % (`share`) quan la idea és "quina part és de qui".
-7. **Diagrama del món**: una ruta, un mapa esquemàtic, un perfil, un procés, dibuixat en SVG
-   amb formes netes i dades reals.
+7. **Mapa o diagrama del món**: un `mapa()` amb la zona que importa, o una ruta, un perfil, un
+   procés dibuixat en SVG amb formes netes i dades reals.
 8. **Línia de temps** com a objecte del món (punts quilomètrics, collites, fases d'obra).
 9. **Taula com una llista de preus**: poques files, xifres alineades a la dreta, total destacat.
 10. **Problema / proposta**: dues columnes desiguals, la primera tenyida.
@@ -113,7 +113,35 @@ presentació de 8 a 10):
 - **Agrupa per proximitat**, no amb caixes. Més espai sobre un títol que sota.
 - **Res al mig per defecte**: alinea a l'esquerra i deixa que l'aire faci la feina.
 
-## 4. Tipografia
+## 4. Recursos gràfics
+
+Una presentació feta només de text i barres és pobra. Tens recursos de debò a `neska_pdf` (mira
+`exemples/recursos.png` per veure'ls); fes-los servir sempre que el contingut en doni peu, i en
+una presentació de 8 a 10 diapositives n'hi hauria d'haver almenys dos tipus.
+
+| Si el contingut parla de… | Fes servir |
+| --- | --- |
+| llocs: comarques, províncies, països, mercats, sucursals, clients | `mapa()` amb la zona destacada, `enfoca=` i `punts=` |
+| "X de cada Y", persones, unitats, places | `pictograma()` amb una icona del món del client |
+| una part d'un tot o un objectiu ("68 % fet") | `anell()` |
+| una xifra amb història | la xifra gegant i `minigrafic()` al costat |
+| qui puja i qui baixa entre dos moments | `pendent()` |
+| un objecte, un producte, un servei | una icona gran (160-360 px, traç 1-1,5) com a imatge de la diapositiva |
+| fotos que ha pujat l'usuari | `foto()` en duotone, trama o línies amb els colors de la presentació |
+| una portada o una meitat de color que vol textura | `trama()` (mai sota text) |
+
+- **Icones:** 2.356 de Lucide (`icones("bike")` cerca per etiqueta en anglès). Totes amb el
+  mateix traç. Grans i soles, o com a unitats d'un pictograma. Mai una icona petita davant de
+  cada punt d'una llista ni graelles de targetes amb icona.
+- **Mapes:** `mon`, `europa`, `espanya-autonomies`, `espanya-provincies`, `catalunya-provincies`,
+  `catalunya-comarques` i `catalunya-municipis` (`mapa_noms()` en dona els noms). Un mapa diu
+  una cosa: destaca només el que demostra el títol, la resta en `--tint`. Els d'Espanya i
+  Catalunya són CC BY: deixa el crèdit que hi posa o porta'l a la nota.
+- **Fotos:** no hi ha banc d'imatges ni internet. Si l'usuari n'ha pujat, fes-les servir grans
+  (a sang, o mitja diapositiva) i tractades amb `foto()` perquè siguin del món de la
+  presentació. Si no n'hi ha, no en simulis.
+
+## 5. Tipografia
 
 - Mida mínima: 20 px (el revisor avisa per sota de 18). Text de suport 22-28 px. Títols
   48-72 px. Afirmacions 96-120 px. Xifres i portades 150-520 px.
@@ -123,7 +151,7 @@ presentació de 8 a 10):
   «», punt volat a "l·l", guió llarg només si cal.
 - Talla els títols a mà (`<br>`) entre frases, mai deixant una paraula sola a l'última línia.
 
-## 5. Gràfics i dades
+## 6. Gràfics i dades
 
 - `bars`, `hbars`, `line` i `share` de `neska_pdf` ja surten amb els colors i la lletra de la
   presentació. Una sola sèrie si es pot; `highlight` per a la dada que demostra el títol; la
@@ -134,7 +162,7 @@ presentació de 8 a 10):
   digues-ho en una nota petita a la diapositiva i a la resposta. Cites i noms de persones:
   només si l'usuari els ha donat.
 
-## 6. Prohibit (reflexos de plantilla)
+## 7. Prohibit (reflexos de plantilla)
 
 - **Etiquetes o "kickers" sobre el títol** ("PROPOSTA", "CONTEXT"). Sense excepció.
 - **Números de secció** (01, 02, 03) si la seqüència no aporta res.
@@ -149,7 +177,7 @@ presentació de 8 a 10):
 
 L'usuari pot demanar explícitament qualsevol d'aquestes coses, excepte els kickers.
 
-## 7. Comprova-ho mirant-ho
+## 8. Comprova-ho mirant-ho
 
 Cada volta: genera, obre el full de revisió amb `read_file` i mira totes les diapositives de cop.
 Corregeix-ho tot en una sola tanda abans de tornar a generar. Pregunta't:
@@ -157,6 +185,8 @@ Corregeix-ho tot en una sola tanda abans de tornar a generar. Pregunta't:
 - Passa la prova de memòria? Hi ha un gest propi que es repeteix?
 - El color ocupa regions senceres, com diu l'estratègia que has triat?
 - Hi ha almenys cinc composicions diferents i cap de repetida seguida?
+- Fa servir els recursos que el contingut demana (mapa si hi ha llocs, pictograma si hi ha
+  "X de cada Y", les fotos de l'usuari si n'hi ha)?
 - Cada títol es llegeix en un segon i diu una conclusió?
 - Hi ha text tallat, trepitjat, massa petit o amb poc contrast? (el revisor el marca en vermell)
 - Hi ha algun reflex prohibit, o s'assembla a un dels quatre looks d'IA?

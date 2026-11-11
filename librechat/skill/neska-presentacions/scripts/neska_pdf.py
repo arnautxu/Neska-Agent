@@ -466,3 +466,9 @@ def line(labels, series: dict, highlight=None, unit="", width=1104, height=400, 
         parts.append(f'<text x="{x:.1f}" y="{height - 12}" text-anchor="{anchor}" style="font-size:20px;fill:{muted}">{_esc(labels[i])}</text>')
     parts.append("</svg>")
     return "".join(parts)
+
+
+# Icons, maps, pictograms and photo treatments live in neska_recursos; re-exported here so a
+# deck needs one import.
+from neska_recursos import (anell, foto, icon, icones, mapa, mapa_noms, minigrafic,  # noqa: E402,F401
+                            pendent, pictograma, trama)

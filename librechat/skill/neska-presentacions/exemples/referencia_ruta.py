@@ -11,7 +11,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
-from neska_pdf import bars, line, render  # noqa: E402
+from neska_pdf import bars, icon, line, mapa, render  # noqa: E402
 
 KM = ["0", "10", "20", "30", "40", "50", "60", "70", "80"]
 ALT = [12, 40, 95, 210, 340, 180, 120, 60, 15]
@@ -115,6 +115,19 @@ html = f"""
   <div class="folio"><span>Perfil de la ruta Costa Brava, 80 km</span><span>5</span></div>
 </section>
 
+<section class="slide on-blue">
+  <div style="position:absolute;left:0;top:0">{mapa("catalunya-comarques", destaca=["Alt Empordà", "Baix Empordà"], enfoca=["Alt Empordà", "Baix Empordà", "Gironès", "Pla de l'Estany"],
+      color="#FFFFFF", rest="#3A58C6", vora="#1D3FBB", ink="#0E1A2B", width=760, height=720, gruix=2, credit=False,
+      halo="#FFFFFF", label_size=22,
+      punts=[(3.12, 41.95, "Pals"), (3.06, 41.85, "Palamós"), (2.96, 42.27, "Figueres")])}</div>
+  <div style="position:absolute;right:var(--pad);top:var(--pad);width:400px">
+    {icon("bike", 120, "#FFC21A", 1.4)}
+    <h2 style="margin-top:32px;color:#fff">Totes les rutes surten de dues comarques</h2>
+    <p style="margin-top:20px;color:#DCE3FA">Alt i Baix Empordà: costa, plana i un sol coll.</p>
+  </div>
+  <div class="folio"><span>Mapa: IGN/CNIG (CC BY 4.0), Idescat</span><span>6</span></div>
+</section>
+
 <section class="slide">
   <h2>Quatre passos fins a l'estiu</h2>
   <div class="km">
@@ -123,7 +136,7 @@ html = f"""
     <div><span>Abril</span><b>Dos guies més</b><span>temporada de 7 mesos</span></div>
     <div><span>Juny</span><b>Ruta nocturna</b><span>prova pilot</span></div>
   </div>
-  <div class="folio"><span>Calendari 2027</span><span>6</span></div>
+  <div class="folio"><span>Calendari 2027</span><span>7</span></div>
 </section>
 
 <section class="slide">
@@ -138,13 +151,13 @@ html = f"""
         <li><b>Guies propis</b> en lloc d'autònoms a última hora</li>
       </ol></div>
   </div>
-  <div class="folio"><span>Pedals de l'Empordà</span><span>7</span></div>
+  <div class="folio"><span>Pedals de l'Empordà</span><span>8</span></div>
 </section>
 
 <section class="slide on-blue close">
   <h1>Demanem 60.000 € per arribar a 4.600 reserves</h1>
   <p class="ask">Votació a la junta del 15 de desembre.</p>
-  <div class="folio"><span>Pedals de l'Empordà</span><span>8</span></div>
+  <div class="folio"><span>Pedals de l'Empordà</span><span>9</span></div>
 </section>
 """
 
