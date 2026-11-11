@@ -33,9 +33,12 @@ a partir d'un commit fixat de l'upstream (upstream només publica amd64).
 3. Omplir `/etc/neska/<client>/code.env` a partir de `code.env.example` (`chmod 600`).
 4. Afegir a `/etc/neska/<client>/neska.env` les línies `LIBRECHAT_CODE_BASEURL` i `CODEAPI_*`
    de `../neska.env.example`, amb la clau privada que fa parella amb `CODEAPI_JWT_PUBLIC_KEY`.
-5. Des d'aquesta carpeta, amb l'app ja en marxa (la seva xarxa ha d'existir):
+5. Carregar el perfil d'AppArmor del sandbox (Ubuntu bloqueja per defecte els muntatges que NsJail necessita):
+   `install -m 644 ./apparmor-neska-codeapi-sandbox /etc/apparmor.d/neska-codeapi-sandbox && apparmor_parser -r /etc/apparmor.d/neska-codeapi-sandbox`
+   (a `/etc/apparmor.d` es torna a carregar sol després d'un reinici; repetir-ho si canvia el fitxer).
+6. Des d'aquesta carpeta, amb l'app ja en marxa (la seva xarxa ha d'existir):
    `docker compose --env-file /etc/neska/<client>/code.env up -d`
-6. Reiniciar l'app perquè llegeixi `LIBRECHAT_CODE_BASEURL`.
+7. Reiniciar l'app perquè llegeixi `LIBRECHAT_CODE_BASEURL`.
 
 ## Comprovar-ho
 

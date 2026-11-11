@@ -35,4 +35,9 @@ Files and presentations (2026-11-10, Arnau: "que funcioni com a Codex o com a Cl
   `librechat/neska/code/` (direct NsJail mode, no KVM on Hetzner cloud). ARM images and the
   runtime package tree come from `build-codeapi.yml`; upstream publishes amd64 only.
 - Gates: tested end to end only in a local x86 container so far (sandbox runs Python, files
-  upload and come back to LibreChat). Not built for ARM, not deployed, not live-accepted.
+  upload and come back to LibreChat).
+- 2026-11-11: PR #33 merged (a067901); ARM app image and sandbox images built. First switch on
+  prova failed: Docker's default AppArmor profile blocks NsJail's mounts on Ubuntu, so the
+  sandbox runner crash-looped; rolled back to f0698d5. Fix: dedicated AppArmor profile
+  `librechat/neska/code/apparmor-neska-codeapi-sandbox` (only for sandbox-runner), verified
+  healthy on prova in a throwaway container. Not yet deployed or live-accepted.

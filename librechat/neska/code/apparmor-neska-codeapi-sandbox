@@ -1,0 +1,26 @@
+#include <tunables/global>
+
+# AppArmor profile for the Neska code sandbox runner (librechat/neska/code, sandbox-runner).
+# Docker's default profile denies mount, so NsJail cannot set up the per-job mount
+# namespace ("unshare: cannot change root filesystem propagation: Permission denied").
+# This profile allows the namespace and mount operations NsJail needs. Isolation of the
+# user's code still comes from NsJail (namespaces, per-job uid, no network), the seccomp
+# file and the container limits. Load on the host before starting the stack:
+#   install -m 644 apparmor-neska-codeapi-sandbox /etc/apparmor.d/neska-codeapi-sandbox
+#   apparmor_parser -r /etc/apparmor.d/neska-codeapi-sandbox
+profile neska-codeapi-sandbox flags=(attach_disconnected,mediate_deleted) {
+  capability,
+  network,
+  unix,
+  signal,
+  ptrace,
+  mqueue,
+  userns,
+  mount,
+  umount,
+  remount,
+  pivot_root,
+
+  file rwlkm /{**,},
+  /** ix,
+}

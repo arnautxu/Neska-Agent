@@ -98,6 +98,9 @@ services:
     pids_limit: 2048
     security_opt:
       - seccomp=./nsjail-seccomp.json
+      # Docker's default AppArmor profile blocks NsJail's mounts on Ubuntu hosts; load
+      # ./apparmor-neska-codeapi-sandbox on the host first (see README).
+      - apparmor=neska-codeapi-sandbox
     cap_add: [SYS_ADMIN, SYS_CHROOT, SYS_PTRACE, SETUID, SETGID, NET_ADMIN, DAC_OVERRIDE,
               DAC_READ_SEARCH, CHOWN, FOWNER, FSETID, KILL, SETFCAP, MKNOD]
     volumes:
