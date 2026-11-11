@@ -1,0 +1,27 @@
+# SearXNG for Neska: private metasearch on the client's server. Only LibreChat calls it,
+# over the private compose network, asking for JSON. The secret comes from SEARXNG_SECRET.
+use_default_settings:
+  engines:
+    keep_only:
+      # The default google, bing, qwant, startpage and mojeek engines are switched off
+      # upstream (blocked or captcha); these are the general-web engines that work.
+      - google cse
+      - brave
+      - duckduckgo
+      - wikipedia
+general:
+  instance_name: neska-cerca
+  enable_metrics: false
+search:
+  safe_search: 1
+  autocomplete: ''
+  formats: [json]
+server:
+  limiter: false
+  image_proxy: false
+  public_instance: false
+  method: GET
+outgoing:
+  request_timeout: 5.0
+  max_request_timeout: 10.0
+  pool_connections: 50

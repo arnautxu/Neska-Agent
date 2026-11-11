@@ -9,6 +9,7 @@ LibreChat (MIT) és a `../`, copiat de l'upstream `LibreChat-AI/LibreChat` al co
 - `librechat.yaml`: configuració per client (tema `neska`, benvinguda, l'assistent Neska i el model).
 - `docker-compose.yml`: app + MongoDB + Meilisearch + Caddy (TLS), un stack per servidor Hetzner ARM.
 - `neska.env.example`: variables i secrets; la còpia real viu a `/etc/neska/<client>/neska.env`.
+- `cerca/`: cerca web pròpia (SearXNG + Firecrawl + reordenador local), un segon stack que s'uneix a la xarxa de l'app.
 
 ## Instal·lar un client nou (servidor Hetzner CAX21, Ubuntu 24.04 ARM)
 
@@ -19,6 +20,7 @@ LibreChat (MIT) és a `../`, copiat de l'upstream `LibreChat-AI/LibreChat` al co
    `docker compose --env-file /etc/neska/<client>/neska.env up -d`
 4. Crear el primer usuari: `docker compose --env-file … exec app npm run create-user`.
 5. Comprovar `https://<domini>/health` i entrar amb l'usuari.
+6. Cerca web (`cerca/`, tot dins el servidor, sense cap API de cerca de fora): SearXNG troba pàgines, Firecrawl les llegeix i `reranker.py` tria els trossos que responen la pregunta. Copiar `cerca/cerca.env.example` a `/etc/neska/<client>/cerca.env` (omplert, `chmod 600`) i, des de `cerca/`: `docker compose --env-file /etc/neska/<client>/cerca.env up -d`. Ocupa uns 2,5 GB de memòria. Els cercadors públics que fa servir SearXNG poden limitar-nos si en fem un ús intens. El sandbox de codi continua sense xarxa.
 
 La compilació de la imatge, el desplegament i l'acceptació amb usuaris reals són passos separats:
 que un funcioni no demostra el següent.

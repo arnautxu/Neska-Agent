@@ -59,3 +59,12 @@ Files and presentations (2026-11-10, Arnau: "que funcioni com a Codex o com a Cl
   (19 files). `render()` declares only the font families a deck names; declaring all 56 cost
   ~7 s per render.
   Gates: local x86 end-to-end only so far.
+- 2026-11-11: web search without any outside search API. New stack `librechat/neska/cerca/`
+  (SearXNG + self-hosted Firecrawl + `reranker.py`, a BM25 service on the Jina rerank API) joins
+  the app network; both modes have `webSearch: true` and `librechat.yaml` points `webSearch` at
+  `searxng:8080`, `firecrawl:3002` and `reranker:8890` (listed in `allowedAddresses`).
+  Deployed on prova by hand (`/opt/neska/cerca-9198473`, `/etc/neska/prova/cerca.env`, config
+  backup `librechat.yaml.bak-20261111-pre-cerca`) and live-accepted by Arnau in a real chat.
+  Uses ~3 GB RAM (Firecrawl ~2.1 GB, near its 2.5 GB limit); no swap yet. DuckDuckGo answers the
+  server with a CAPTCHA; Google CSE, Brave and Wikipedia work. The prova config file predates
+  PR #37 (artifacts still on there).

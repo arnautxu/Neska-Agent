@@ -52,6 +52,11 @@ interface:
 # below carry executeCode and skills, always on: hideBadgeRow hides the tool
 # chips so people never have to switch anything on.
 #
+# Web: both modes search the internet with LibreChat's web search tool (webSearch: true),
+# served entirely from the client's own server by the stack in cerca/: SearXNG finds pages,
+# Firecrawl reads them, and reranker.py keeps the parts that answer the question. No outside
+# search API or key. The code sandbox stays offline.
+#
 # One assistant called Neska with two modes, picked in the input box. People never pick a
 # provider or a model: enforce keeps them to these specs, and no endpoint is added to the
 # menu. modelLabel keeps every answer signed "Neska" whichever mode wrote it.
@@ -66,24 +71,44 @@ modelSpecs:
       default: true
       executeCode: true
       skills: true
+      webSearch: true
       hideBadgeRow: true
       preset:
         endpoint: anthropic
         model: claude-sonnet-5-5
         modelLabel: Neska
-        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte.'
+        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte. Tens accés a internet amb la cerca web: fes-la servir quan calgui informació actual o que no saps segur (notícies, preus, horaris, dades d''empreses, documentació) i digues d''on surt la informació. No diguis mai que no pots consultar internet.'
     - name: intelligent
       label: Intel·ligent
       description: 'Pensa més a fons. Per a feina complexa.'
       iconURL: /assets/neska-dog.svg
       executeCode: true
       skills: true
+      webSearch: true
       hideBadgeRow: true
       preset:
         endpoint: anthropic
         model: claude-opus-5-5
         modelLabel: Neska
-        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte.'
+        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte. Tens accés a internet amb la cerca web: fes-la servir quan calgui informació actual o que no saps segur (notícies, preus, horaris, dades d''empreses, documentació) i digues d''on surt la informació. No diguis mai que no pots consultar internet.'
+
+webSearch:
+  searchProvider: searxng
+  searxngInstanceUrl: http://searxng:8080
+  scraperProvider: firecrawl
+  firecrawlApiUrl: http://firecrawl:3002
+  # Self-hosted Firecrawl runs without auth; LibreChat still wants a key to send.
+  firecrawlApiKey: neska-local
+  rerankerType: jina
+  jinaApiUrl: http://reranker:8890/v1/rerank
+  jinaApiKey: neska-local
+  scraperTimeout: 15000
+  safeSearch: 1
+  # The private compose hosts above must be allowed explicitly (SSRF guard).
+  allowedAddresses:
+    - searxng:8080
+    - firecrawl:3002
+    - reranker:8890
 
 # Memory across conversations. Users see and delete what is kept under "Memòries"
 # in the side panel. The memory agent runs on the server's company Anthropic key.
