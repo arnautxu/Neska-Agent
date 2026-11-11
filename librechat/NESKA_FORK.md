@@ -43,7 +43,7 @@ the specs-only menu has no key-entry row, the Claude key is one company key on t
 
 ## Minimal Neska for Restanova (2026-11-11)
 
-Most of the trim is config (`neska/librechat.yaml` `interface:` flags, `SEARCH=false`, no
+Most of the trim is config (`neska/librechat.yaml` `interface:` flags, no
 `artifacts` in the specs). Five small client edits hide what config cannot:
 
 - `client/src/components/Chat/Messages/HoverButtons.tsx`: `NESKA_COPY_ONLY` hides edit, branch
