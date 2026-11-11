@@ -93,6 +93,7 @@ export const neskaLightTheme: Partial<IThemeRGB> = {
   'rgb-field-fill': PAPER,
   'rgb-field-text': INK,
   'rgb-surface-tooltip': INK,
+  'rgb-text-tooltip': PAPER,
   'rgb-alert-error-fill': SUNK,
   'rgb-alert-error-border': LINE_2,
 
