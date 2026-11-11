@@ -50,3 +50,5 @@ h3 { font-size: 30px; line-height: 1.2; }
 img, svg { display: block; max-width: 100%; }
 table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .num { font-variant-numeric: tabular-nums lining-nums; }
+/* Type deliberately cut by the slide edge (the review skips it: check it by eye). */
+.bleed { white-space: nowrap; }

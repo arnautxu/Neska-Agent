@@ -32,6 +32,7 @@ if not os.path.exists("/etc/fonts/fonts.conf"):  # the sandbox has no Fontconfig
     os.environ.setdefault("FONTCONFIG_FILE", os.path.join(SCRIPTS, "fonts.conf"))
 SLIDE_W, SLIDE_H = 1280, 720
 MIN_TEXT_PX = 18
+SAFE = 28  # px of the slide edge that text never touches
 EMOJI = re.compile("[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F2FF]")
 
 
@@ -183,6 +184,14 @@ def _background(ancestors):
     return (1.0, 1.0, 1.0)
 
 
+def _is_bleed(ancestors) -> bool:
+    for a in ancestors:
+        el = getattr(a, "element", None)
+        if el is not None and "bleed" in (el.get("class") or "").split():
+            return True
+    return False
+
+
 def _check_page(n: int, page) -> list[Problem]:
     from weasyprint.formatting_structure import boxes as B
 
@@ -198,6 +207,8 @@ def _check_page(n: int, page) -> list[Problem]:
         size = box.style["font_size"]
         snippet = box.text.strip()[:40]
         rect = (x, y, w, h)
+        if _is_bleed(anc):
+            continue  # deliberate bleed: type cut by the slide edge, checked by eye
         texts.append((rect, box, anc))
         if x < -1 or y < -1 or x + w > SLIDE_W + 1 or y + h > SLIDE_H + 1:
             out.append(Problem(n, f"el text «{snippet}» surt de la diapositiva", rect))
@@ -208,11 +219,13 @@ def _check_page(n: int, page) -> list[Problem]:
             if a.style["height"] != "auto" or a.style["overflow"] == "hidden":
                 bx, by = a.content_box_x(), a.content_box_y()
                 bw, bh = a.width, a.height
-                if (y + h > by + bh + 2 or x + w > bx + bw + 2) and a.element_tag not in ("html", "body"):
-                    if a.element is not None and "slide" in (a.element.get("class") or "").split():
-                        out.append(Problem(n, f"el text «{snippet}» entra dins el marge de la diapositiva", rect))
-                    else:
-                        out.append(Problem(n, f"el text «{snippet}» no cap dins la seva caixa", rect))
+                is_slide = a.element is not None and "slide" in (a.element.get("class") or "").split()
+                if is_slide:
+                    # Folios and bleeds may sit in the padding; only the outer safe area is off limits.
+                    if x < SAFE or y < SAFE or x + w > SLIDE_W - SAFE or y + h > SLIDE_H - SAFE:
+                        out.append(Problem(n, f"el text «{snippet}» queda enganxat a la vora (menys de {SAFE}px)", rect))
+                elif (y + h > by + bh + 2 or x + w > bx + bw + 2) and a.element_tag not in ("html", "body"):
+                    out.append(Problem(n, f"el text «{snippet}» no cap dins la seva caixa", rect))
                 break
         if size < MIN_TEXT_PX - 0.1:
             out.append(Problem(n, f"lletra massa petita ({size:.0f}px, mínim {MIN_TEXT_PX}px) a «{snippet}»", rect))
@@ -319,13 +332,15 @@ def _esc(t) -> str:
     return _html.escape(str(t))
 
 
-def bars(labels, values, highlight=None, unit="", width=1104, height=400,
+def bars(labels, values, highlight=None, unit="", width=1104, height=400, ghost=None,
          color="var(--accent)", rest="var(--line)", ink="var(--ink)", muted="var(--muted)",
          font="var(--text)") -> str:
     """Vertical bars with values on top. `highlight` = index (or list) drawn in `color`;
-    the others use `rest`. With highlight=None every bar uses `color`."""
+    the others use `rest`. With highlight=None every bar uses `color`. `ghost` = indices of
+    targets or forecasts, drawn as a dashed outline (never mix them up with real data)."""
     n = len(values)
     hl = set([highlight] if isinstance(highlight, int) else (highlight or []))
+    gh = set([ghost] if isinstance(ghost, int) else (ghost or []))
     top, bottom = 44, 44
     plot_h = height - top - bottom
     vmax = max(values) or 1
@@ -339,7 +354,11 @@ def bars(labels, values, highlight=None, unit="", width=1104, height=400,
         y = top + plot_h - h
         on = (not hl) or i in hl
         fill = color if on else rest
-        parts.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{bar_w:.1f}" height="{h:.1f}" style="fill:{fill}"/>')
+        if i in gh:
+            parts.append(f'<rect x="{x + 1:.1f}" y="{y + 1:.1f}" width="{bar_w - 2:.1f}" height="{max(h - 2, 0):.1f}" '
+                         f'style="fill:none;stroke:{color if on else muted};stroke-width:2;stroke-dasharray:8 6"/>')
+        else:
+            parts.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{bar_w:.1f}" height="{h:.1f}" style="fill:{fill}"/>')
         parts.append(f'<text x="{x + bar_w / 2:.1f}" y="{y - 12:.1f}" text-anchor="middle" '
                      f'style="font-size:22px;font-weight:{600 if on and hl else 500};fill:{ink if on else muted}">{_esc(_fmt(v, unit))}</text>')
         parts.append(f'<text x="{x + bar_w / 2:.1f}" y="{height - 12}" text-anchor="middle" '
@@ -347,6 +366,28 @@ def bars(labels, values, highlight=None, unit="", width=1104, height=400,
     parts.append(f'<line x1="0" x2="{width}" y1="{top + plot_h + 0.5}" y2="{top + plot_h + 0.5}" style="stroke:{ink};stroke-width:1"/>')
     parts.append("</svg>")
     return "".join(parts)
+
+
+def share(parts, highlight=0, unit=" %", width=1104, height=88,
+          color="var(--accent)", rest="var(--line)", ink="var(--ink)", muted="var(--muted)",
+          on_color="var(--on-accent)", font="var(--text)") -> str:
+    """One bar split into shares (100 %). `parts` = [(label, value), ...]; the highlighted share
+    is drawn in `color` with its value inside, the others in `rest`. Labels go underneath."""
+    total = sum(v for _, v in parts) or 1
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height + 44}" '
+           f'viewBox="0 0 {width} {height + 44}" style="font-family:{font}">']
+    x = 0.0
+    for i, (lab, v) in enumerate(parts):
+        w = width * v / total
+        on = i == highlight
+        out.append(f'<rect x="{x:.1f}" y="0" width="{max(w - 3, 0):.1f}" height="{height}" style="fill:{color if on else rest}"/>')
+        if w > 90:
+            out.append(f'<text x="{x + 18:.1f}" y="{height / 2 + 12:.1f}" style="font-size:{34 if on else 26}px;'
+                       f'font-weight:600;fill:{on_color if on else ink}">{_esc(_fmt(v, unit))}</text>')
+        out.append(f'<text x="{x:.1f}" y="{height + 34}" style="font-size:20px;fill:{ink if on else muted}">{_esc(lab)}</text>')
+        x += w
+    out.append("</svg>")
+    return "".join(out)
 
 
 def hbars(labels, values, highlight=None, unit="", width=1104, row=56, label_w=300,
@@ -372,14 +413,20 @@ def hbars(labels, values, highlight=None, unit="", width=1104, row=56, label_w=3
     return "".join(parts)
 
 
-def line(labels, series: dict, highlight=None, unit="", width=1104, height=400,
-         color="var(--accent)", rest="var(--muted)", ink="var(--ink)", muted="var(--muted)",
-         font="var(--text)") -> str:
+def line(labels, series: dict, highlight=None, unit="", width=1104, height=400, area=False,
+         marks=None, end_labels=None, color="var(--accent)", rest="var(--muted)",
+         fill="var(--tint)", ink="var(--ink)", muted="var(--muted)", font="var(--text)") -> str:
     """Lines over time. `series` = {"name": [values]}; `highlight` = the series name drawn in
-    `color` (others in `rest`, thinner). The last value of each line is labelled directly."""
+    `color` (others in `rest`, thinner). `area=True` fills under the highlighted line (profiles,
+    accumulations). `marks` = {index: "text"} annotates points of the highlighted line. The last
+    value of each line is labelled directly (`end_labels=False` to skip it; default: only when
+    there is more than one series)."""
     names = list(series)
     hl = highlight or names[0]
-    top, bottom, right = 30, 44, 170
+    if end_labels is None:
+        end_labels = len(names) > 1
+    top, bottom = 56 if marks else 30, 44
+    right = 170 if end_labels else 24
     plot_w, plot_h = width - right, height - top - bottom
     vals = [v for s in series.values() for v in s]
     vmin, vmax = min(0, min(vals)), max(vals) or 1
@@ -388,23 +435,34 @@ def line(labels, series: dict, highlight=None, unit="", width=1104, height=400,
     def pt(i, v):
         return (i * plot_w / max(n - 1, 1), top + plot_h - plot_h * (v - vmin) / (vmax - vmin))
 
+    base_y = top + plot_h
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
-             f'viewBox="0 0 {width} {height}" style="font-family:{font}">',
-             f'<line x1="0" x2="{plot_w}" y1="{top + plot_h + 0.5}" y2="{top + plot_h + 0.5}" style="stroke:{ink};stroke-width:1"/>']
+             f'viewBox="0 0 {width} {height}" style="font-family:{font}">']
     for name in sorted(names, key=lambda s: s == hl):
         on = name == hl
         pts = [pt(i, v) for i, v in enumerate(series[name])]
         d = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+        if on and area:
+            parts.append(f'<polygon points="{pts[0][0]:.1f},{base_y} {d} {pts[-1][0]:.1f},{base_y}" style="fill:{fill}"/>')
         parts.append(f'<polyline points="{d}" style="fill:none;stroke:{color if on else rest};'
-                     f'stroke-width:{4 if on else 2};stroke-linejoin:round;stroke-linecap:round"/>')
-        lx, ly = pts[-1]
-        parts.append(f'<circle cx="{lx:.1f}" cy="{ly:.1f}" r="{6 if on else 4}" style="fill:{color if on else rest}"/>')
-        parts.append(f'<text x="{lx + 14:.1f}" y="{ly + 7:.1f}" style="font-size:20px;font-weight:{600 if on else 400};'
-                     f'fill:{ink if on else muted}">{_esc(_fmt(series[name][-1], unit))} {_esc(name)}</text>')
+                     f'stroke-width:{5 if on else 2};stroke-linejoin:round;stroke-linecap:round"/>')
+        if end_labels:
+            lx, ly = pts[-1]
+            parts.append(f'<circle cx="{lx:.1f}" cy="{ly:.1f}" r="{6 if on else 4}" style="fill:{color if on else rest}"/>')
+            parts.append(f'<text x="{lx + 14:.1f}" y="{ly + 7:.1f}" style="font-size:20px;font-weight:{600 if on else 400};'
+                         f'fill:{ink if on else muted}">{_esc(_fmt(series[name][-1], unit))} {_esc(name)}</text>')
+        if on and marks:
+            for i, text in marks.items():
+                mx, my = pts[i]
+                anchor = "start" if mx < plot_w * 0.15 else ("end" if mx > plot_w * 0.85 else "middle")
+                parts.append(f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="9" style="fill:{color};stroke:#FFFFFF;stroke-width:3"/>')
+                parts.append(f'<text x="{mx:.1f}" y="{my - 22:.1f}" text-anchor="{anchor}" '
+                             f'style="font-size:22px;font-weight:600;fill:{ink}">{_esc(text)}</text>')
+    parts.append(f'<line x1="0" x2="{plot_w}" y1="{base_y + 0.5}" y2="{base_y + 0.5}" style="stroke:{ink};stroke-width:1"/>')
     step = max(1, n // 8)
     for i in range(0, n, step):
         x, _ = pt(i, vmin)
-        anchor = "start" if i == 0 else "middle"
+        anchor = "start" if i == 0 else ("end" if i == n - 1 else "middle")
         parts.append(f'<text x="{x:.1f}" y="{height - 12}" text-anchor="{anchor}" style="font-size:20px;fill:{muted}">{_esc(labels[i])}</text>')
     parts.append("</svg>")
     return "".join(parts)

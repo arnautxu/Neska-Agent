@@ -11,39 +11,32 @@ dissenyen en HTML i CSS (una `<section class="slide">` per diapositiva, 1280×72
 
 ## Com treballar
 
-1. **Llegeix el criteri** la primera vegada de la conversa: `cat` de
-   `/mnt/data/skills/neska-presentacions/disseny.md` i de
-   `/mnt/data/skills/neska-presentacions/impeccable/craft-floor.md`. Segueix-los.
+1. **Llegeix el criteri i mira el llistó** la primera vegada de la conversa: `cat` de
+   `/mnt/data/skills/neska-presentacions/disseny.md` i de `…/impeccable/craft-floor.md`, i obre
+   amb `read_file` `…/exemples/referencia_ruta.png` i `…/exemples/referencia_fruita.png`. Són
+   el nivell mínim; no en copiïs el món. Segueix el criteri.
 2. **Entén l'encàrrec**: qui la veurà, per a què, on es projectarà. Si falta una dada clau (les
    xifres, per exemple), pregunta-ho una sola vegada; si no, decideix tu i digues què has suposat.
-3. **Tria el món** (paper, tinta, accent, tipografia) a partir del client i del tema, i escriu
-   el **guió**: un títol-conclusió per diapositiva i quina composició farà cada una.
+3. **Tria el món** (d'on surt, estratègia de color, tipografies, gest propi) a partir del client,
+   escriu-lo en un comentari CSS i fes el **guió**: un títol-conclusió per diapositiva i quina
+   composició del repertori de `disseny.md` farà cada una.
 4. **Fes-la i revisa-la en una sola crida de codi.** Al sandbox, `/tmp` s'esborra entre crides i
    tot el que es desa a `/mnt/data` li apareix a l'usuari. Per tant, escriu el programa amb un
    heredoc (`python3 - <<'EOF' … EOF`), sense desar-ne el `.py`:
 
 ```python
 import sys; sys.path.insert(0, "/mnt/data/skills/neska-presentacions/scripts")
-from neska_pdf import render, bars, hbars, line
+from neska_pdf import render, bars, hbars, line, share
 
 html = f"""
 <style>
-  /* Món: paper càlid, tinta gairebé negra, verd fosc com a únic accent; Young Serif + Instrument Sans */
-  :root {{ --accent: #1F5C4D; --line: #D7DFDB; --tint: #EEF3F0; }}
-  .cover {{ background: var(--accent); color: #fff; display: flex; flex-direction: column; justify-content: flex-end; }}
-  .cover p {{ color: #CFE0DA; margin-top: 24px; }}
-  .lead {{ max-width: 760px; color: var(--muted); margin-top: 24px; }}
+  /* Món: <d'on surt> · Color: <estratègia> · Lletra: <títols> + <text>, perquè …
+     Gest propi: <el recurs que torna a 2-3 diapositives> · Clar/fosc: <per què> */
+  :root {{ --accent: …; --ink: …; --display: "…"; --text: "…"; }}
+  /* una classe per composició: .cover, .statement, .halves, … */
 </style>
-
-<section class="slide cover">
-  <h1>Una clínica que la gent recomana</h1>
-  <p>Pla de creixement 2027</p>
-</section>
-
-<section class="slide">
-  <h2>6 de cada 10 pacients nous arriben per recomanació</h2>
-  <div style="margin-top: 56px">{hbars(["Recomanació", "Google", "Instagram"], [61, 22, 9], highlight=0, unit=" %")}</div>
-</section>
+<section class="slide cover">…</section>
+<section class="slide">… {bars([...], [...], highlight=3)} …</section>
 """
 print(render(html, "/tmp/presentacio.pdf"))   # PDF + /mnt/data/revisio-diapositives.png
 ```
@@ -67,12 +60,15 @@ print(render(html, "/tmp/presentacio.pdf"))   # PDF + /mnt/data/revisio-diaposit
   `--paper --ink --muted --line --tint --accent --on-accent --display --text --pad`, mides de
   `h1 h2 h3`). Retorna un informe; imprimeix-lo. Amb `slides_dir="/tmp/d"` també desa cada
   diapositiva gran, per mirar-ne una de prop.
-- `bars(labels, values, highlight=i, unit="")`, `hbars(...)` (rànquings) i
-  `line(labels, {"Sèrie": [...]}, highlight="Sèrie")`: SVG amb els colors de `:root`.
+- `bars(labels, values, highlight=i, ghost=j, unit="")`, `hbars(...)` (rànquings),
+  `share([(etiqueta, valor), ...], highlight=0)` (repartiment al 100 %) i
+  `line(labels, {"Sèrie": [...]}, area=True, marks={i: "text"})`: SVG amb els colors de `:root`.
+  Tots accepten `color=`, `rest=`, `ink=` i `muted=` per fer-los servir sobre un fons de color.
   Amplada per defecte 1104 px (l'amplada útil de la diapositiva); passa `width=`/`height=` si
   el gràfic va en una columna.
 - Imatges: si l'usuari puja una foto o un logo, és a `/mnt/data/<fitxer>`; posa-la amb
   `<img src="file:///mnt/data/<fitxer>">`.
+- Classe `bleed`: text tallat a propòsit per la vora de la diapositiva (el revisor no el mira).
 - CSS que funciona: flexbox, grid, `position: absolute`, variables, `@font-face`. No hi ha
   JavaScript ni animacions, i `text-wrap: balance` no té efecte: talla els títols a mà si cal.
 
