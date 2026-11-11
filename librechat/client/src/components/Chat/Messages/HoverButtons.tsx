@@ -91,6 +91,9 @@ const HoverButton = memo(
 
 HoverButton.displayName = 'HoverButton';
 
+/** Neska: under each message only copy (and read aloud) stay; edit, branch and regenerate are hidden. */
+const NESKA_COPY_ONLY = true;
+
 const HoverButtons = ({
   index,
   isEditing,
@@ -235,7 +238,7 @@ const HoverButtons = ({
       )}
 
       {/* Edit Button */}
-      {!isSubagentThreadReadOnly && isEditableEndpoint && !hideEditButton && (
+      {!NESKA_COPY_ONLY && !isSubagentThreadReadOnly && isEditableEndpoint && !hideEditButton && (
         <HoverButton
           id={`edit-${message.messageId}`}
           onClick={onEdit}
@@ -249,7 +252,7 @@ const HoverButtons = ({
 
       {/* Fork Button: withheld on a failed turn, whose copy would carry the provider's error as an
           ordinary answer. The error card's "Branch without files" copies up to the turn before. */}
-      {!error && !isActiveStreamingMessage && (
+      {!NESKA_COPY_ONLY && !error && !isActiveStreamingMessage && (
         <Fork
           messageId={message.messageId}
           conversationId={conversation.conversationId}
@@ -265,7 +268,7 @@ const HoverButtons = ({
       )}
 
       {/* Regenerate Button */}
-      {!isSubagentThreadReadOnly && regenerateEnabled && (
+      {!NESKA_COPY_ONLY && !isSubagentThreadReadOnly && regenerateEnabled && (
         <HoverButton
           onClick={regenerate}
           title={localize('com_ui_regenerate')}

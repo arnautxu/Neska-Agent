@@ -9,13 +9,13 @@ interface:
   landingFooter: false
   # Neska stays minimal (Arnau, 2026-11-11): people write, attach files, pick Ràpid or
   # Intel·ligent, and Neska remembers. Everything below is LibreChat surface the client's
-  # staff do not need. Nothing is removed from the code: set a line back to true to
-  # bring that feature back.
+  # staff do not need. Kept on request: projects, temporary chat, sharing, settings,
+  # attachments, voice. Set a line back to true to bring a feature back.
   parameters: false
   presets: false
   multiConvo: false
+  temporaryChat: true
   bookmarks: false
-  temporaryChat: false
   feedback: false
   fileSearch: false
   contextUsage: false
@@ -36,18 +36,20 @@ interface:
   skills:
     use: true
     create: false
+  # Share a conversation with a link, only to people signed in to this Neska.
   sharedLinks:
-    create: false
-    share: false
+    create: true
+    share: true
     public: false
-  # Kept on purpose: memories (people see and delete what Neska remembers).
+  # Memory stays on (it must, or Neska forgets). Its side panel is hidden in the client
+  # (useSideNavLinks.ts), so people do not see or edit the list.
   memories: true
 
 # What both modes can do besides chatting: run Python in the code sandbox (presentations as
 # PDF, Excel and Word files), use the Neska skills in ../skill/ (presentacions,
-# excel, word) and draw artifacts (visual previews inside the chat). The sandbox lives in
+# excel, word). Artifacts (visual previews inside the chat) are off since 2026-11-11. The sandbox lives in
 # neska/code/ and is reached through LIBRECHAT_CODE_BASEURL in neska.env. Both modes
-# below carry executeCode, skills and artifacts, always on: hideBadgeRow hides the tool
+# below carry executeCode and skills, always on: hideBadgeRow hides the tool
 # chips so people never have to switch anything on.
 #
 # One assistant called Neska with two modes, picked in the input box. People never pick a
@@ -64,7 +66,6 @@ modelSpecs:
       default: true
       executeCode: true
       skills: true
-      artifacts: default
       hideBadgeRow: true
       preset:
         endpoint: anthropic
@@ -77,7 +78,6 @@ modelSpecs:
       iconURL: /assets/neska-dog.svg
       executeCode: true
       skills: true
-      artifacts: default
       hideBadgeRow: true
       preset:
         endpoint: anthropic
@@ -98,10 +98,3 @@ memory:
     instructions: "Guarda només fets útils i duradors sobre l'usuari i la seva feina (preferències, rol, projectes). En català. Mai contrasenyes ni claus."
     # Needs the Neska memory.ts fix: Claude 5 rejects the temperature LibreChat's
     # memory agent used to send (see NESKA_FORK.md).
-
-# Voice is off by default (Neska stays minimal): no dictation button in the input box and
-# no read-aloud button under answers. Remove this block to bring both back.
-speech:
-  speechTab:
-    speechToText: false
-    textToSpeech: false

@@ -175,7 +175,8 @@ export default function useSideNavLinks({
       });
     }
 
-    if (hasAccessToMemories && hasAccessToReadMemories) {
+    // Neska: memory keeps working in the background, but the Memories panel is not shown.
+    if (false && hasAccessToMemories && hasAccessToReadMemories) {
       links.push({
         title: 'com_ui_memories',
         label: '',
