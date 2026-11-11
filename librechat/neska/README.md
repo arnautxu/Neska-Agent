@@ -19,6 +19,7 @@ LibreChat (MIT) és a `../`, copiat de l'upstream `LibreChat-AI/LibreChat` al co
    `docker compose --env-file /etc/neska/<client>/neska.env up -d`
 4. Crear el primer usuari: `docker compose --env-file … exec app npm run create-user`.
 5. Comprovar `https://<domini>/health` i entrar amb l'usuari.
+6. Cerca web: Neska consulta internet amb la cerca pròpia de Claude (`web_search: true` als dos modes de `librechat.yaml`), amb la mateixa clau d'Anthropic; no cal cap altra clau. Ha d'estar permesa per a l'organització a la consola d'Anthropic. Cost: uns 10 $ per cada 1.000 cerques, més els tokens dels resultats. El sandbox de codi continua sense xarxa.
 
 La compilació de la imatge, el desplegament i l'acceptació amb usuaris reals són passos separats:
 que un funcioni no demostra el següent.
