@@ -7,7 +7,6 @@ import {
   Archive,
   ChevronRight,
   CircleHelp,
-  Files,
   Keyboard,
   LifeBuoy,
   LogOut,
@@ -15,7 +14,6 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/ArchivedChatsModal';
-import { filesDialogTriggerAtom, showFilesDialogAtom } from '~/store/filesDialog';
 import useDirection, { inlineSide } from '~/hooks/Nav/useDirection';
 import { useGetStartupConfig } from '~/data-provider';
 import { useAuthContext } from '~/hooks/AuthContext';
@@ -104,8 +102,6 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
   const { data: startupConfig } = useGetStartupConfig();
   const { privacyPolicyUrl, termsOfServiceUrl } = policyUrls(startupConfig);
   const setShowSettings = useSetAtom(settingsOpenAtom);
-  const setShowFiles = useSetAtom(showFilesDialogAtom);
-  const setFilesDialogTrigger = useSetAtom(filesDialogTriggerAtom);
   const setShowShortcutsDialog = useSetRecoilState(store.showShortcutsDialog);
   const [showArchived, setShowArchived] = useState(false);
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);

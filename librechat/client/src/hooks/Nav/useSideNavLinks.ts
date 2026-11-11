@@ -36,6 +36,9 @@ import { MemoryPanel } from '~/components/SidePanel/Memories';
 import { PromptsAccordion } from '~/components/Prompts';
 import { SkillsAccordion } from '~/components/Skills';
 
+/** Neska: memory runs in the background; people do not see the Memories panel. */
+const NESKA_SHOW_MEMORIES_PANEL = false as boolean;
+
 export default function useSideNavLinks({
   hidePanel,
   keyProvided,
@@ -176,7 +179,7 @@ export default function useSideNavLinks({
     }
 
     // Neska: memory keeps working in the background, but the Memories panel is not shown.
-    if (false && hasAccessToMemories && hasAccessToReadMemories) {
+    if (NESKA_SHOW_MEMORIES_PANEL && hasAccessToMemories && hasAccessToReadMemories) {
       links.push({
         title: 'com_ui_memories',
         label: '',
