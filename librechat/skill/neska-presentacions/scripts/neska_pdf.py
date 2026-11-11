@@ -207,8 +207,14 @@ def _walk(box, ancestors=()):
 
 
 def _positioned(boxes) -> bool:
-    return any(getattr(b, "style", None) is not None and b.style["position"] in ("absolute", "fixed", "relative")
-               for b in boxes)
+    """Positioned below the slide level (every slide is position: relative)."""
+    for b in boxes:
+        el = getattr(b, "element", None)
+        if el is None or el.tag in ("html", "body") or "slide" in (el.get("class") or "").split():
+            continue
+        if getattr(b, "style", None) is not None and b.style["position"] in ("absolute", "fixed", "relative"):
+            return True
+    return False
 
 
 def _rgba(color):
@@ -257,6 +263,7 @@ def _check_page(n: int, page) -> list[Problem]:
     out: list[Problem] = []
     texts = []
     under = []  # texts that a later or positioned graphic could cover
+    panels = []  # (order, rect, id) of positioned boxes with a background colour
     graphics = []  # (order, rect, positioned) of pictures, icons and maps that may paint over text
     order = 0
     for box, anc in _walk(page._page_box):
@@ -267,7 +274,16 @@ def _check_page(n: int, page) -> list[Problem]:
                 graphics.append((order, (box.position_x, box.position_y, box.width, box.height),
                                  _positioned(anc + (box,))))
             continue
-        if not isinstance(box, B.TextBox) or not box.text.strip():
+        if not isinstance(box, B.TextBox):
+            el = getattr(box, "element", None)
+            bg = _rgba(box.style["background_color"]) if getattr(box, "style", None) is not None else None
+            if (bg and bg[3] > 0 and el is not None and el.tag not in ("html", "body")
+                    and "slide" not in (el.get("class") or "").split()
+                    and not isinstance(box, (B.LineBox, B.InlineBox)) and _positioned(anc + (box,))):
+                panels.append((order, (box.border_box_x(), box.border_box_y(), box.border_width(),
+                                       box.border_height()), id(box)))
+            continue
+        if not box.text.strip():
             continue
         x, y, w, h = box.position_x, box.position_y, box.width, box.height
         line_box = next((a for a in reversed(anc) if isinstance(a, B.LineBox)), None)
@@ -279,7 +295,7 @@ def _check_page(n: int, page) -> list[Problem]:
         if _is_bleed(anc):
             continue  # deliberate bleed: type cut by the slide edge, checked by eye
         texts.append((rect, box, anc))
-        under.append((order, rect, _positioned(anc), snippet))
+        under.append((order, rect, _positioned(anc), snippet, {id(a) for a in anc}))
         if x < -1 or y < -1 or x + w > SLIDE_W + 1 or y + h > SLIDE_H + 1:
             out.append(Problem(n, f"el text «{snippet}» surt de la diapositiva", rect))
             continue
@@ -312,7 +328,23 @@ def _check_page(n: int, page) -> list[Problem]:
     # A picture, icon or map that collides with text. Only a positioned graphic placed before
     # the text is a deliberate background; anything else that overlaps is a layout accident
     # (a flow element spilling over its neighbour, or a graphic painted on top).
-    for t_order, (x, y, w, h), t_pos, snippet in under:
+    # A positioned colour panel painted over text: positioned boxes paint after static ones, and
+    # among positioned ones the later wins. Panels that contain the text are its background.
+    covered = set()
+    for t_order, (x, y, w, h), t_pos, snippet, anc_ids in under:
+        for p_order, g, p_id in panels:
+            if p_id in anc_ids or (t_pos and p_order < t_order):
+                continue
+            ix = min(x + w, g[0] + g[2]) - max(x, g[0])
+            iy = min(y + h, g[1] + g[3]) - max(y, g[1])
+            if ix > 6 and iy > h * 0.3:
+                out.append(Problem(n, f"un bloc de color tapa el text «{snippet}»", (x, y, w, h)))
+                covered.add(t_order)
+                break
+
+    for t_order, (x, y, w, h), t_pos, snippet, _ in under:
+        if t_order in covered:
+            continue
         for g_order, g, g_pos in graphics:
             if g_pos and g_order < t_order:
                 continue

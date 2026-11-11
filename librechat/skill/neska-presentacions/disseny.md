@@ -121,8 +121,12 @@ espai i cada línia surtin d'un sistema. Abans del codi, defineix-lo a `:root` i
   les que criden) i treu-ne 5 o 6 mides a partir del text (24 px): `--t-text`, `--t-sub`,
   `--t-titol`, `--t-gran`, `--t-xifra`. Cap mida fora de l'escala. Si dues mides estan a menys
   d'un esglaó (40 i 44 px), són la mateixa: tria'n una.
-- **Pesos amb intenció.** Dos o tres pesos com a màxim, amb salts que es vegin (400 i 700, o 300 i
-  800). Mai 400 contra 500. A les variables, prova pesos extrems (200, 900) per als titulars.
+- **Pesos amb intenció, i pocs de negres.** La negreta és un recurs escàs: només l'element
+  protagonista de la diapositiva (la xifra gegant, l'afirmació) pot anar a 700 o més, i no a
+  totes les diapositives. Els títols normals, a 400-600 (una serif de display a 400 ja té prou
+  presència); el text, a 400; les etiquetes, a 400-500. Contrast per mida i per espai abans que
+  per pes. Dos o tres pesos com a màxim, amb salts que es vegin (mai 400 contra 500). Si la
+  presentació, mirada de lluny, sembla negra o "cridada", baixa pesos.
 - **Escala d'espais** de 8 en 8 que s'eixampla: 8, 16, 24, 40, 64, 104, 168 (`--e-1` … `--e-7`).
   El que va junt s'agrupa a 8-16 px; els blocs se separen a 64-104. Si tots els espais són
   iguals, no hi ha jerarquia. Més aire sobre un títol que sota.
@@ -229,5 +233,6 @@ Corregeix-ho tot en una sola tanda abans de tornar a generar. Pregunta't:
 - Cada títol es llegeix en un segon i diu una conclusió?
 - Hi ha text tallat, trepitjat, massa petit o amb poc contrast? (el revisor el marca en vermell)
 - Hi ha algun reflex prohibit, o s'assembla a un dels quatre looks d'IA?
+- Hi ha massa negreta? Només el protagonista pot anar negre.
 - Les mides i els espais surten de l'escala? Hi ha un terç d'aire? Els grups es veuen sense caixes?
 - Està al nivell de les referències? Si no, què li falta? Fes-ho.
