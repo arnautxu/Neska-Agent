@@ -73,8 +73,11 @@ class Report:
 # ---------------------------------------------------------------- render
 
 
+DEFAULT_SHEET = "/mnt/data/revisio-diapositives.png"
+
+
 def render(html: str, pdf: str = "/tmp/presentacio.pdf",
-           sheet: str | None = "/mnt/data/revisio-diapositives.png",
+           sheet: str | None = "/mnt/data/revisio-diapositives.png",  # DEFAULT_SHEET
            slides_dir: str | None = None, forcar: bool = False) -> Report:
     """Lay out `html` (a whole document or just the <section class="slide"> elements).
 
@@ -110,6 +113,11 @@ def render(html: str, pdf: str = "/tmp/presentacio.pdf",
         problems.append(Problem(0, f"la lletra «{fam}» no està instal·lada i surt una de substitució; "
                                    "tria'n una de exemples/tipografies.png"))
 
+    if sheet is None and os.path.exists(DEFAULT_SHEET):  # the final render cleans up the reviews
+        try:
+            os.remove(DEFAULT_SHEET)
+        except OSError:
+            pass
     if sheet is None and problems and not forcar:
         os.remove(pdf)
         raise RuntimeError("No lliuro el PDF: encara hi ha problemes. Corregeix-los i torna-hi.\n"

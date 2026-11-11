@@ -53,11 +53,11 @@ print(render(html, "/tmp/presentacio.pdf"))   # PDF + /mnt/data/revisio-diaposit
    al pas 4. Com a màxim tres voltes. No lliuris mai una presentació amb un problema que ja has
    vist ni el deixis "per a la propera volta": la crida final s'hi nega mentre en quedi algun.
 6. **Quan estigui bé**, genera-la per última vegada directament al lloc final, sense full de
-   revisió, i esborra el de les voltes anteriors:
-   `render(html, "/mnt/data/<nom-curt>.pdf", sheet=None)` (minúscules i guions) i
-   `os.remove("/mnt/data/revisio-diapositives.png")`. No deixis cap altre fitxer a `/mnt/data`. El PDF apareix sol al xat: no escriguis mai la ruta a la resposta.
+   revisió: `render(html, "/mnt/data/<nom-curt>.pdf", sheet=None)` (minúscules i guions). Aquesta
+   crida esborra sola el full de revisió. No deixis cap altre fitxer a `/mnt/data`. El PDF apareix sol al xat: no escriguis mai la ruta a la resposta.
 7. **Respon breu**: una frase amb què has fet, la llista de diapositives (una línia cada una),
-   què has suposat i què pot demanar de canviar. No expliquis el procés.
+   què has suposat i què pot demanar de canviar. No expliquis el procés ni parlis del revisor, del
+   full de revisió o de fitxers.
 
 ## Eines
 

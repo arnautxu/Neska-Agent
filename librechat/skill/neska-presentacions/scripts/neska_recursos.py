@@ -199,7 +199,7 @@ def _main_cluster(feats):
     ys = sorted(f["c"][1] for f in feats)
     mx, my = xs[len(xs) // 2], ys[len(ys) // 2]
     d = sorted(math.hypot(f["c"][0] - mx, f["c"][1] - my) for f in feats)
-    lim = max(d[int(len(d) * 0.75)] * 3, 1.0)
+    lim = max(d[len(d) // 2] * 4, 1.0)  # median, so a block of overseas parts cannot widen it
     return [f for f in feats if math.hypot(f["c"][0] - mx, f["c"][1] - my) <= lim]
 
 

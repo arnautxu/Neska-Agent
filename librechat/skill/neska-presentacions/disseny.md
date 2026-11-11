@@ -186,7 +186,7 @@ de cada recurs) i fes-los servir sempre que el contingut en doni peu: en una pre
   48-72 px. Afirmacions 96-120 px. Xifres i portades 150-520 px. Totes, de la teva escala (3b).
 - Interlineat: display 0,9-1,05; text 1,35-1,5. Espaiat de lletra mai per sota de -0,04em.
 - Xifres en taules i gràfics amb `font-variant-numeric: tabular-nums` (classe `.num`).
-- Català ben escrit: espai fi o normal entre la xifra i el % i el € ("54 %", "60.000 €"), cometes
+- Català ben escrit: espai fi que no es parteix (`&#8239;`) entre la xifra i el % i el € ("54&#8239;%", "60.000&#8239;€"); mai un espai normal, que deixa el % sol a la línia següent, cometes
   «», punt volat a "l·l", guió llarg només si cal.
 - Talla els títols a mà (`<br>`) entre frases, mai deixant una paraula sola a l'última línia.
 
