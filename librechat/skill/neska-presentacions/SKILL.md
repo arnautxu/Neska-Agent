@@ -20,7 +20,7 @@ dissenyen en HTML i CSS (una `<section class="slide">` per diapositiva, 1280×72
 2. **Entén l'encàrrec**: qui la veurà, per a què, on es projectarà. Si falta una dada clau (les
    xifres, per exemple), pregunta-ho una sola vegada; si no, decideix tu i digues què has suposat.
 3. **Tria el món** (d'on surt, estratègia de color, tipografies, gest propi) a partir del client,
-   escriu-lo en un comentari CSS i fes el **guió**: un títol-conclusió per diapositiva, quina
+   escriu-lo en un comentari CSS, defineix l'escala de mides i d'espais (`disseny.md`, 3b) i fes el **guió**: un títol-conclusió per diapositiva, quina
    composició del repertori de `disseny.md` farà cada una i quin recurs gràfic hi va. Per triar
    la lletra, obre `…/exemples/tipografies.png`; per cridar els recursos, `cat …/recursos.md`.
 4. **Fes-la i revisa-la en una sola crida de codi.** Al sandbox, `/tmp` s'esborra entre crides i
@@ -35,7 +35,9 @@ html = f"""
 <style>
   /* Món: <d'on surt> · Color: <estratègia> · Lletra: <títols> + <text>, perquè …
      Gest propi: <el recurs que torna a 2-3 diapositives> · Clar/fosc: <per què> */
-  :root {{ --accent: …; --ink: …; --display: "…"; --text: "…"; }}
+  :root {{ --accent: …; --ink: …; --display: "…"; --text: "…";
+           --t-text: 24px; --t-sub: …; --t-titol: …; --t-gran: …; --t-xifra: …;   /* una ràtio */
+           --e-1: 8px; --e-2: 16px; --e-3: 24px; --e-4: 40px; --e-5: 64px; --e-6: 104px; }}
   /* una classe per composició: .cover, .statement, .halves, … */
 </style>
 <section class="slide cover">…</section>

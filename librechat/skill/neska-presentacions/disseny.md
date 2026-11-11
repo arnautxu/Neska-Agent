@@ -112,6 +112,38 @@ presentació de 8 a 10):
 - **Agrupa per proximitat**, no amb caixes. Més espai sobre un títol que sota.
 - **Res al mig per defecte**: alinea a l'esquerra i deixa que l'aire faci la feina.
 
+## 3b. Gust: escala, espai i acabat
+
+El que fa que una presentació sembli cara no és afegir-hi coses, sinó que cada mida, cada
+espai i cada línia surtin d'un sistema. Abans del codi, defineix-lo a `:root` i no en surtis.
+
+- **Escala tipogràfica.** Tria una ràtio (1,333 per a presentacions sòbries, 1,5 o 1,618 per a
+  les que criden) i treu-ne 5 o 6 mides a partir del text (24 px): `--t-text`, `--t-sub`,
+  `--t-titol`, `--t-gran`, `--t-xifra`. Cap mida fora de l'escala. Si dues mides estan a menys
+  d'un esglaó (40 i 44 px), són la mateixa: tria'n una.
+- **Pesos amb intenció.** Dos o tres pesos com a màxim, amb salts que es vegin (400 i 700, o 300 i
+  800). Mai 400 contra 500. A les variables, prova pesos extrems (200, 900) per als titulars.
+- **Escala d'espais** de 8 en 8 que s'eixampla: 8, 16, 24, 40, 64, 104, 168 (`--e-1` … `--e-7`).
+  El que va junt s'agrupa a 8-16 px; els blocs se separen a 64-104. Si tots els espais són
+  iguals, no hi ha jerarquia. Més aire sobre un títol que sota.
+- **Línies de text** de 30 a 60 caràcters (`max-width: 28ch` a `34ch` amb text de 24-28 px). Un
+  bloc de text a tota l'amplada és sempre un error.
+- **Aire de debò.** Deixa almenys un terç de cada diapositiva buit. L'espai buit és el que fa
+  que l'element principal sembli important; omplir-lo el fa barat.
+- **Asimetria pensada.** Proporcions 5/7, 4/8 o 3/9 sobre la graella, mai 6/6 per defecte.
+  L'element principal ancorat a una cantonada o a una línia de la graella, no flotant al mig.
+- **Una capa de profunditat, ben feta.** Si fas servir capes (una foto que trepitja un camp de
+  color, una xifra que surt d'una meitat i entra a l'altra), que sigui un gest deliberat i
+  repetit, no un accident. El revisor marca els solapaments; els que vulguis, posa'ls amb
+  `position: absolute` abans del text.
+- **Acabat.** Línies d'1 px en un to de la paleta (mai gris genèric); ombres cap o molt
+  difuses; cantonades rectes o d'un sol radi a tota la presentació. Icones de traç fi i d'un
+  sol joc i pes: `phosphor:…-light` o `-thin`, o Lucide/Tabler amb `stroke=1.2-1.5`; el traç 2
+  només a mides petites. Mai icones gruixudes a mida gran.
+- **Variació.** No repeteixis el mateix esquema de presentació en presentació: el món del client
+  decideix si és editorial càlida, estructural i neta, o de contrast fosc; si és fosca, que ho
+  sigui per una raó (on es projecta, la marca), no per semblar tecnològica.
+
 ## 4. Recursos gràfics
 
 Una presentació feta només de text i barres és pobra. Mira `exemples/recursos.png` (un exemple
@@ -151,7 +183,7 @@ de cada recurs) i fes-los servir sempre que el contingut en doni peu: en una pre
 ## 5. Tipografia
 
 - Mida mínima: 20 px (el revisor avisa per sota de 18). Text de suport 22-28 px. Títols
-  48-72 px. Afirmacions 96-120 px. Xifres i portades 150-520 px.
+  48-72 px. Afirmacions 96-120 px. Xifres i portades 150-520 px. Totes, de la teva escala (3b).
 - Interlineat: display 0,9-1,05; text 1,35-1,5. Espaiat de lletra mai per sota de -0,04em.
 - Xifres en taules i gràfics amb `font-variant-numeric: tabular-nums` (classe `.num`).
 - Català ben escrit: espai fi o normal entre la xifra i el % i el € ("54 %", "60.000 €"), cometes
@@ -197,4 +229,5 @@ Corregeix-ho tot en una sola tanda abans de tornar a generar. Pregunta't:
 - Cada títol es llegeix en un segon i diu una conclusió?
 - Hi ha text tallat, trepitjat, massa petit o amb poc contrast? (el revisor el marca en vermell)
 - Hi ha algun reflex prohibit, o s'assembla a un dels quatre looks d'IA?
+- Les mides i els espais surten de l'escala? Hi ha un terç d'aire? Els grups es veuen sense caixes?
 - Està al nivell de les referències? Si no, què li falta? Fes-ho.
