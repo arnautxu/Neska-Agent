@@ -214,6 +214,17 @@
   "source": "instrument-sans@5.3.0"
  },
  {
+  "family": "DM Sans",
+  "group": "sans",
+  "voice": "geomètrica suau i clara; text i titulars amables",
+  "variable": true,
+  "weights": [
+   "100 1000"
+  ],
+  "italic": true,
+  "source": "dm-sans@5.3.0"
+ },
+ {
   "family": "Schibsted Grotesk",
   "group": "sans",
   "voice": "grotesca de diari, clara; text",

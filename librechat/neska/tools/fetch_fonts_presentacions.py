@@ -41,6 +41,7 @@ FAMILIES = [
     ("bree-serif", "Bree Serif", "slab", "serif amable i informal"),
     # sans for titles or text
     ("instrument-sans", "Instrument Sans", "sans", "sans neta, de text"),
+    ("dm-sans", "DM Sans", "sans", "geomètrica suau i clara; text i titulars amables"),
     ("schibsted-grotesk", "Schibsted Grotesk", "sans", "grotesca de diari, clara; text"),
     ("archivo", "Archivo", "sans", "sans de treball, sòlida; de 100 a 900 i d'estreta a ampla"),
     ("bricolage-grotesque", "Bricolage Grotesque", "sans", "grotesca amb personalitat i calidesa; de 200 a 800"),

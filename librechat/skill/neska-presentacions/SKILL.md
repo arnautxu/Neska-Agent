@@ -48,7 +48,8 @@ print(render(html, "/tmp/presentacio.pdf"))   # PDF + /mnt/data/revisio-diaposit
    amb `read_file` (si diu que no el troba, torna-ho a provar una vegada) i revisa-la amb les preguntes del final de `disseny.md`. El que el revisor pot
    mesurar (text tallat, trepitjat, tapat per un gràfic, massa petit, poc contrast, pàgines de més, emojis) surt a la
    llista i marcat en vermell; la resta ho has de veure tu. Corregeix-ho tot d'una vegada i torna
-   al pas 4. Com a màxim tres voltes.
+   al pas 4. Com a màxim tres voltes. No lliuris mai una presentació amb un problema que ja has
+   vist ni el deixis "per a la propera volta": la crida final s'hi nega mentre en quedi algun.
 6. **Quan estigui bé**, genera-la per última vegada directament al lloc final, sense full de
    revisió, i esborra el de les voltes anteriors:
    `render(html, "/mnt/data/<nom-curt>.pdf", sheet=None)` (minúscules i guions) i

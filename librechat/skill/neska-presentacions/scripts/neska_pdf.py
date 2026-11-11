@@ -20,6 +20,7 @@ fonts, so a chart looks like it belongs to the slide instead of a spreadsheet.
 from __future__ import annotations
 
 import html as _html
+import json
 import os
 import re
 import shutil
@@ -43,7 +44,7 @@ class Problem:
     box: tuple | None = None  # x, y, w, h in slide px
 
     def __str__(self) -> str:
-        return f"Diapositiva {self.slide}: {self.what}"
+        return f"Diapositiva {self.slide}: {self.what}" if self.slide else f"Tota la presentació: {self.what}"
 
 
 @dataclass
@@ -74,8 +75,11 @@ class Report:
 
 def render(html: str, pdf: str = "/tmp/presentacio.pdf",
            sheet: str | None = "/mnt/data/revisio-diapositives.png",
-           slides_dir: str | None = None) -> Report:
-    """Lay out `html` (a whole document or just the <section class="slide"> elements)."""
+           slides_dir: str | None = None, forcar: bool = False) -> Report:
+    """Lay out `html` (a whole document or just the <section class="slide"> elements).
+
+    The final render (sheet=None) refuses to leave a PDF while measurable problems remain,
+    unless forcar=True: a deck is never delivered with a problem the reviewer already saw."""
     from weasyprint import CSS, HTML
     from weasyprint.text.fonts import FontConfiguration
 
@@ -102,6 +106,14 @@ def render(html: str, pdf: str = "/tmp/presentacio.pdf",
         problems += _check_page(n, page)
     for ch in sorted(set(EMOJI.findall(_strip_tags(html)))):
         problems.append(Problem(0, f"hi ha un emoji ({ch}); fes servir text o una forma dibuixada"))
+    for fam in _missing_families(html):
+        problems.append(Problem(0, f"la lletra «{fam}» no està instal·lada i surt una de substitució; "
+                                   "tria'n una de exemples/tipografies.png"))
+
+    if sheet is None and problems and not forcar:
+        os.remove(pdf)
+        raise RuntimeError("No lliuro el PDF: encara hi ha problemes. Corregeix-los i torna-hi.\n"
+                           + "\n".join(f"- {p}" for p in problems))
 
     images = _rasterise(pdf, slides_dir)
     sheet_path = _contact_sheet(images, problems, sheet) if sheet and images else None
@@ -117,6 +129,30 @@ def _font_faces(html: str) -> str:
     text = (html + open(os.path.join(SCRIPTS, "base.css"), encoding="utf-8").read()).lower()
     keep = [r for r in rules if re.search(r'font-family: "([^"]+)"', r).group(1).lower() in text]
     return "".join(keep)
+
+
+GENERIC = {"serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "inherit", "initial",
+           "unset", "math", "emoji", "ui-serif", "ui-sans-serif", "ui-monospace"}
+
+
+def _missing_families(html: str) -> list[str]:
+    """Families the deck asks for (directly or through a custom property) that are not installed."""
+    css = "\n".join(re.findall(r"<style[^>]*>(.*?)</style>", html, flags=re.S | re.I))
+    css += "\n".join(re.findall(r'style="([^"]*)"', html))
+    tokens = dict(re.findall(r"(--[\w-]+)\s*:\s*([^;}]+)", css))
+    values = []
+    for v in re.findall(r"font(?:-family)?\s*:\s*([^;}\n]+)", css):
+        values.append(v)
+        values += [tokens.get(name, "") for name in re.findall(r"var\((--[\w-]+)", v)]
+    with open(os.path.join(RES, "fonts", "catalog.json"), encoding="utf-8") as fh:
+        have = {f["family"].lower() for f in json.load(fh)}
+    missing = []
+    for v in values:  # only the first family of each list: the rest are fallbacks
+        first = re.match(r"\s*[\"']([^\"']+)[\"']", v)
+        name = first and first.group(1)
+        if name and name.lower() not in have and name.lower() not in GENERIC and name not in missing:
+            missing.append(name)
+    return missing
 
 
 def _tokens(html: str) -> dict:
@@ -265,17 +301,29 @@ def _check_page(n: int, page) -> list[Problem]:
             if ratio < need:
                 out.append(Problem(n, f"poc contrast ({ratio:.1f}:1, cal {need}:1) a «{snippet}»", rect))
 
-    # A picture, icon or map painted over text: positioned boxes paint after static ones, and
-    # among equals the later one in the document wins.
+    # A picture, icon or map that collides with text. Only a positioned graphic placed before
+    # the text is a deliberate background; anything else that overlaps is a layout accident
+    # (a flow element spilling over its neighbour, or a graphic painted on top).
     for t_order, (x, y, w, h), t_pos, snippet in under:
         for g_order, g, g_pos in graphics:
-            if not ((g_pos and not t_pos) or (g_pos == t_pos and g_order > t_order)):
+            if g_pos and g_order < t_order:
                 continue
             ix = min(x + w, g[0] + g[2]) - max(x, g[0])
             iy = min(y + h, g[1] + g[3]) - max(y, g[1])
             if ix > 6 and iy > h * 0.3:
-                out.append(Problem(n, f"un gràfic tapa el text «{snippet}»", (x, y, w, h)))
+                out.append(Problem(n, f"un gràfic i el text «{snippet}» es trepitgen", (x, y, w, h)))
                 break
+
+    # Two graphics that only partly overlap: side-by-side charts, icons or maps colliding.
+    # A graphic laid mostly over another (a texture behind a chart) is deliberate.
+    for i, (_, a, _) in enumerate(graphics):
+        for _, b, _ in graphics[i + 1:]:
+            ix = min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])
+            iy = min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1])
+            if ix > 6 and iy > 6 and ix * iy < 0.5 * min(a[2] * a[3], b[2] * b[3]):
+                union = (min(a[0], b[0]), min(a[1], b[1]), max(a[0] + a[2], b[0] + b[2]) - min(a[0], b[0]),
+                         max(a[1] + a[3], b[1] + b[3]) - min(a[1], b[1]))
+                out.append(Problem(n, f"dos gràfics es trepitgen ({ix:.0f}px d'amplada)", union))
 
     # Text from different blocks drawn on top of each other.
     def block_of(anc):
