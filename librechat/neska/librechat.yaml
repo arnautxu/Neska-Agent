@@ -7,12 +7,49 @@ interface:
   theme: neska
   customWelcome: 'Què fem avui?'
   landingFooter: false
+  # Neska stays minimal (Arnau, 2026-11-11): people write, attach files, pick Ràpid or
+  # Intel·ligent, and Neska remembers. Everything below is LibreChat surface the client's
+  # staff do not need. Kept on request: projects, temporary chat, sharing, settings,
+  # attachments, voice. Set a line back to true to bring a feature back.
+  parameters: false
+  presets: false
+  multiConvo: false
+  temporaryChat: true
+  bookmarks: false
+  feedback: false
+  fileSearch: false
+  contextUsage: false
+  mascot: false
+  buildInfo: false
+  prompts:
+    use: false
+    create: false
+  # The two modes run as ephemeral agents, which this permission does not gate: it only
+  # hides the builder and the list of saved agents.
+  agents:
+    use: false
+    create: false
+  mcpServers:
+    use: false
+    create: false
+  # use stays on: the Neska skills (presentacions, excel, word) need it.
+  skills:
+    use: true
+    create: false
+  # Share a conversation with a link, only to people signed in to this Neska.
+  sharedLinks:
+    create: true
+    share: true
+    public: false
+  # Memory stays on (it must, or Neska forgets). Its side panel is hidden in the client
+  # (useSideNavLinks.ts), so people do not see or edit the list.
+  memories: true
 
 # What both modes can do besides chatting: run Python in the code sandbox (presentations as
 # PDF, Excel and Word files), use the Neska skills in ../skill/ (presentacions,
-# excel, word) and draw artifacts (visual previews inside the chat). The sandbox lives in
+# excel, word). Artifacts (visual previews inside the chat) are off since 2026-11-11. The sandbox lives in
 # neska/code/ and is reached through LIBRECHAT_CODE_BASEURL in neska.env. Both modes
-# below carry executeCode, skills and artifacts, always on: hideBadgeRow hides the tool
+# below carry executeCode and skills, always on: hideBadgeRow hides the tool
 # chips so people never have to switch anything on.
 #
 # One assistant called Neska with two modes, picked in the input box. People never pick a
@@ -29,7 +66,6 @@ modelSpecs:
       default: true
       executeCode: true
       skills: true
-      artifacts: default
       hideBadgeRow: true
       preset:
         endpoint: anthropic
@@ -42,7 +78,6 @@ modelSpecs:
       iconURL: /assets/neska-dog.svg
       executeCode: true
       skills: true
-      artifacts: default
       hideBadgeRow: true
       preset:
         endpoint: anthropic

@@ -66,6 +66,8 @@ export default function useExportShare({
     {
       label: localize('com_endpoint_export'),
       onClick: () => setShowExports(true),
+      /** Neska: conversations are not exported (Arnau, 2026-11-11). */
+      show: false,
       icon: <Upload className="text-text-secondary size-4" />,
       /** NOTE: THE FOLLOWING PROPS ARE REQUIRED FOR MENU ITEMS THAT OPEN DIALOGS */
       hideOnClick: false,

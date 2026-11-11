@@ -702,6 +702,8 @@ export const registry: SettingEntry[] = [
     tab: DATA,
     section: 'data',
     labelKey: 'com_ui_settings_label_import',
+    /** Neska: no conversation import (Arnau, 2026-11-11). */
+    show: () => false,
     Component: ImportConversations,
   },
   {

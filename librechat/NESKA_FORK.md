@@ -40,3 +40,16 @@ Users never pick a raw Anthropic model. `librechat.yaml` defines two model specs
 chat header into the composer bar (`ModelSelector variant="composer"`, menu opens upward). Because
 the specs-only menu has no key-entry row, the Claude key is one company key on the server
 (`ANTHROPIC_API_KEY` in `/etc/neska/<client>/neska.env`), not a per-user key.
+
+## Minimal Neska for Restanova (2026-11-11)
+
+Most of the trim is config (`neska/librechat.yaml` `interface:` flags, no
+`artifacts` in the specs). Five small client edits hide what config cannot:
+
+- `client/src/components/Chat/Messages/HoverButtons.tsx`: `NESKA_COPY_ONLY` hides edit, branch
+  and regenerate under messages; copy and read-aloud stay.
+- `client/src/hooks/Nav/useSideNavLinks.ts`: the Memories panel is not shown. Memory itself keeps
+  working (it is gated by `MEMORIES.USE`, which stays on).
+- `client/src/components/Nav/AccountSettings.tsx`: "Els meus fitxers" removed from the account menu.
+- `client/src/hooks/Sharing/useExportShare.tsx`: "Exporta" hidden in the chat menu; "Comparteix" stays.
+- `client/src/components/Nav/Settings/registry.tsx`: conversation import hidden in Settings.
