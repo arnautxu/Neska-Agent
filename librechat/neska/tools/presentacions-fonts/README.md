@@ -14,4 +14,5 @@ Font License 1.1 (licence texts in this folder):
 - Archivo — The Archivo Project Authors (`OFL-archivo.txt`)
 
 They are embedded (subset) in the PDFs that `scripts/neska_pdf.py` writes, which the OFL allows.
-`scripts/fonts.css` declares them.
+The skill carries them inlined in `scripts/fonts.css` (built by `build_recursos_presentacions.py`)
+and these licences gathered in `LLICENCIES-FONTS.txt`.

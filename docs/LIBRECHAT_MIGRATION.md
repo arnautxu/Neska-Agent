@@ -53,4 +53,7 @@ Files and presentations (2026-11-10, Arnau: "que funcioni com a Codex o com a Cl
   municipality) and helpers for pictograms, rings, sparklines, slope charts, halftone texture and
   treated user photos (`scripts/neska_recursos.py`, data in `recursos/`, built offline by
   `librechat/neska/tools/build_recursos_presentacions.py` because the sandbox has no network).
+  A skill must stay well under ~70 files: every file is primed into each code call and the exec
+  token that lists them outgrows the 16 KB header limit (HTTP 431, "sandbox execution failed"
+  on every call). That is why the fonts are inlined in `scripts/fonts.css` (29 files now).
   Gates: local x86 end-to-end only so far.

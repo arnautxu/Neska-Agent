@@ -1,6 +1,8 @@
 # Recursos gràfics de les presentacions
 
 El sandbox no té internet, així que tot el que les presentacions poden fer servir viatja aquí.
+Aquest fitxer diu d'on surt cada recurs (no es diu README perquè el sandbox no carrega bé
+dos fitxers amb el mateix nom dins d'una habilitat).
 Es genera amb `librechat/neska/tools/build_recursos_presentacions.py`; no s'edita a mà.
 
 | Fitxer | Què és | Origen i llicència |
