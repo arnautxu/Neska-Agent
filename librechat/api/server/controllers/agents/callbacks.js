@@ -1024,6 +1024,12 @@ function createToolEndCallback({ req, res, artifactPromises, streamId = null, jo
     }
 
     if (output.artifact.content) {
+      /* Neska: images the agent opens with `read_file` (design references,
+       * its own review sheets) are for the model only. Saving them as
+       * attachments showed template decks in the user's chat. */
+      if (output.name === Tools.read_file) {
+        return;
+      }
       /** @type {FormattedContent[]} */
       const content = output.artifact.content;
       for (let i = 0; i < content.length; i++) {
@@ -1390,6 +1396,12 @@ function createResponsesToolEndCallback({ req, res, tracker, artifactPromises })
     }
 
     if (output.artifact.content) {
+      /* Neska: images the agent opens with `read_file` (design references,
+       * its own review sheets) are for the model only. Saving them as
+       * attachments showed template decks in the user's chat. */
+      if (output.name === Tools.read_file) {
+        return;
+      }
       /** @type {FormattedContent[]} */
       const content = output.artifact.content;
       for (let i = 0; i < content.length; i++) {

@@ -1125,6 +1125,29 @@ describe('createToolEndCallback', () => {
     });
   });
 
+  it.each(['createToolEndCallback', 'createResponsesToolEndCallback'])(
+    '%s keeps read_file images for the model only (no chat attachment)',
+    async (factoryName) => {
+      const { saveBase64Image } = require('~/server/services/Files/process');
+      saveBase64Image.mockClear();
+      const toolEndCallback = require('../callbacks')[factoryName]({ req, res, artifactPromises });
+      const image = { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } };
+
+      await toolEndCallback(
+        { output: { name: Tools.read_file, tool_call_id: 'read1', artifact: { content: [image] } } },
+        { run_id: 'run456', thread_id: 'thread789' },
+      );
+      expect(artifactPromises).toHaveLength(0);
+      expect(saveBase64Image).not.toHaveBeenCalled();
+
+      await toolEndCallback(
+        { output: { name: 'image_gen', tool_call_id: 'gen1', artifact: { content: [image] } } },
+        { run_id: 'run456', thread_id: 'thread789' },
+      );
+      expect(artifactPromises).toHaveLength(1);
+    },
+  );
+
   describe('code execution deferred-preview emit', () => {
     /* The deferred-preview code-execution flow emits the attachment twice over
      * SSE: the initial emit with `status: 'pending'` and the current run's

@@ -23,6 +23,7 @@ import {
 import { useLocalize, useAttachmentPreviewSync, useExpandCollapse } from '~/hooks';
 import { fileToArtifact, TOOL_ARTIFACT_TYPES } from '~/utils/artifacts';
 import Image from '~/components/Chat/Messages/Content/Image';
+import FilePreviewDialog from '~/components/Chat/Messages/Content/FilePreviewDialog';
 import ToolMermaidArtifact from './ToolMermaidArtifact';
 import ToolArtifactCard from './ToolArtifactCard';
 import { useAttachmentLink } from './LogLink';
@@ -102,8 +103,20 @@ const PreviewPlaceholderRow = memo(
 );
 PreviewPlaceholderRow.displayName = 'PreviewPlaceholderRow';
 
+/** Neska: a PDF the agent made opens in the in-app viewer (with its own
+ * download button) instead of going straight to the downloads folder. */
+function isPdfAttachment(attachment: Partial<TAttachment>): boolean {
+  const type = (attachment as Partial<TFile>).type ?? '';
+  return (
+    type.toLowerCase().startsWith('application/pdf') ||
+    (attachment.filename ?? '').toLowerCase().endsWith('.pdf')
+  );
+}
+
 const FileAttachment = memo(({ attachment }: { attachment: Partial<TAttachment> }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const chipRef = useRef<HTMLDivElement>(null);
   const file = attachment as TFile & TAttachmentMetadata;
   const { handleDownload } = useAttachmentLink({
     href: attachment.filepath ?? '',
@@ -126,6 +139,7 @@ const FileAttachment = memo(({ attachment }: { attachment: Partial<TAttachment> 
     return () => clearTimeout(timer);
   }, []);
 
+  const canPreview = isPdfAttachment(attachment) && Boolean(file.file_id);
   if (!attachment.filepath) {
     return null;
   }
@@ -165,14 +179,28 @@ const FileAttachment = memo(({ attachment }: { attachment: Partial<TAttachment> 
         willChange: 'opacity, transform',
       }}
     >
-      <FileContainer
-        file={attachment}
-        onClick={handleDownload}
-        overrideType={extension}
-        displayName={displayFilename(attachment.filename)}
-        containerClassName="max-w-fit"
-        buttonClassName="bg-surface-secondary hover:cursor-pointer hover:bg-surface-hover active:bg-surface-secondary focus:bg-surface-hover hover:border-border-heavy active:border-border-heavy"
-      />
+      <div ref={chipRef} className="max-w-fit">
+        <FileContainer
+          file={attachment}
+          onClick={canPreview ? () => setPreviewOpen(true) : handleDownload}
+          overrideType={extension}
+          displayName={displayFilename(attachment.filename)}
+          containerClassName="max-w-fit"
+          buttonClassName="bg-surface-secondary hover:cursor-pointer hover:bg-surface-hover active:bg-surface-secondary focus:bg-surface-hover hover:border-border-heavy active:border-border-heavy"
+        />
+      </div>
+      {canPreview && (
+        <FilePreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          fileName={displayFilename(attachment.filename)}
+          fileId={file.file_id}
+          fileType="application/pdf"
+          fileSource={file.source}
+          fileSize={file.bytes}
+          triggerRef={chipRef}
+        />
+      )}
     </div>
   );
 });
