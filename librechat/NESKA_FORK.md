@@ -80,7 +80,9 @@ Built on LibreChat's own tool approval, tool intents and activity labels, switch
   (`html[data-theme='neska']`) whenever a review offers exactly approve + reject. "Ara no" sends a Catalan reason telling the model not to retry.
 - Activity in the chat: both specs set `describeIntent: true` and the prompt asks for Catalan
   infinitive intents; a fast model (`activityModel: claude-haiku-5-5`) writes one first-person
-  Catalan line per block instead of "Ran N actions".
+  Catalan line per block instead of "Ran N actions". `packages/api/src/agents/activityLabels/host.ts`
+  sends the label model an explicit thinking-off setting: Claude 5-era models think when
+  `thinking` is omitted, and on the 256-token label cap that left labels empty or cut off.
 - "Activitat" panel: `client/src/components/Chat/Activity/` (built only from saved message content:
   intents and activity labels, never tool names or arguments). `ChatView.tsx` wraps the pane in
   `ActivitySurface` (side column on desktop, full overlay on small screens) and `Header.tsx` shows

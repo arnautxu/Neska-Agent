@@ -304,6 +304,19 @@ describe('resolveActivityLabelModel model precedence', () => {
     });
   });
 
+  /** Neska: Claude 5-era models think adaptively when `thinking` is omitted, which ate the
+   *  whole label budget (empty or cut labels on prova). The label call turns it off. */
+  it('sends an explicit thinking-off config for adaptive Anthropic label models', async () => {
+    mockGetOptions.mockResolvedValueOnce({
+      provider: 'anthropic',
+      llmConfig: { model: 'claude-haiku-5-5', thinking: { type: 'adaptive' } },
+    } as never);
+    const resolved = await resolve({ activityLabel: true, activityModel: 'claude-haiku-5-5' });
+    expect((resolved.clientOptions as Record<string, unknown>).thinking).toEqual({
+      type: 'disabled',
+    });
+  });
+
   /** The primary cap is not merely stripped — it is REPLACED with a small
    *  label-specific one, so a model ignoring the 4–9-word instruction (or
    *  steered by injected tool output) cannot generate and bill its
