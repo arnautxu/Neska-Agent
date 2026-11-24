@@ -53,3 +53,12 @@ Most of the trim is config (`neska/librechat.yaml` `interface:` flags, no
 - `client/src/components/Nav/AccountSettings.tsx`: "Els meus fitxers" removed from the account menu.
 - `client/src/hooks/Sharing/useExportShare.tsx`: "Exporta" hidden in the chat menu; "Comparteix" stays.
 - `client/src/components/Nav/Settings/registry.tsx`: conversation import hidden in Settings.
+
+## Presentations: only the PDF in the chat (2026-11-24)
+
+- `api/server/controllers/agents/callbacks.js`: images the agent opens with `read_file` (the
+  presentation skill's reference decks, its own review sheet) reach the model only. They are no
+  longer saved as chat attachments, so template decks never show up for the user. Test in
+  `__tests__/callbacks.spec.js`.
+- `client/src/components/Chat/Messages/Content/Parts/Attachment.tsx`: a PDF chip opens the in-app
+  viewer (`FilePreviewDialog`, which has its own download button) instead of downloading.
