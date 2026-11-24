@@ -1,6 +1,6 @@
 import { Providers } from '@librechat/agents';
 import { logger } from '@librechat/data-schemas';
-import { Constants, EModelEndpoint } from 'librechat-data-provider';
+import { Constants, EModelEndpoint, resolveThinkingOffConfig } from 'librechat-data-provider';
 import type { AppConfig, IUser } from '@librechat/data-schemas';
 import type { TEndpoint } from 'librechat-data-provider';
 import type { ClientOptions } from '@librechat/agents';
@@ -469,6 +469,16 @@ export async function resolveActivityLabelModel({
     };
   } else if (!isOSeries) {
     (clientOptions as { maxTokens?: number }).maxTokens = LABEL_MAX_OUTPUT_TOKENS;
+  }
+  /** Neska (NESKA_FORK.md): stripping `thinking` is not "thinking off" for Claude 5-era
+   *  models, which think adaptively when the field is omitted (Haiku 5.5, Sonnet 5, Opus 5).
+   *  On a 256-token label cap that thinking ate the whole budget: labels came back empty or
+   *  cut mid-word. Send the model's explicit off setting instead. */
+  if (provider === Providers.ANTHROPIC && model != null) {
+    const thinkingOff = resolveThinkingOffConfig(model);
+    if (thinkingOff != null) {
+      (clientOptions as { thinking?: unknown }).thinking = thinkingOff;
+    }
   }
   if (options.configOptions) {
     clientOptions.configuration = options.configOptions;

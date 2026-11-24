@@ -1,4 +1,5 @@
 import { ContentTypes } from 'librechat-data-provider';
+import { getToolCallIntent } from '@librechat/chat/react';
 import type { TMessage, TMessageContentParts } from 'librechat-data-provider';
 
 /**
@@ -50,27 +51,15 @@ const PLAIN_TOOL_TEXT: Record<string, string> = {
 
 const MAX_REQUEST_CHARS = 90;
 
-function parseArgs(args: unknown): Record<string, unknown> {
-  if (args != null && typeof args === 'object' && !Array.isArray(args)) {
-    return args as Record<string, unknown>;
-  }
-  if (typeof args === 'string' && args.trim().startsWith('{')) {
-    try {
-      const parsed = JSON.parse(args) as unknown;
-      if (parsed != null && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return parsed as Record<string, unknown>;
-      }
-    } catch {
-      return {};
-    }
-  }
-  return {};
-}
-
 export function stepText(name: string | undefined, args: unknown): string {
-  const intent = parseArgs(args).intent;
-  if (typeof intent === 'string' && intent.trim().length > 0) {
-    const text = intent.trim().replace(/[.…]+$/, '');
+  /** Same reader as the chat's own tool rows: it also reads an intent that is still
+   *  streaming (args as an unfinished JSON string), so a step shows its sentence live. */
+  const intent =
+    typeof args === 'string' || (args != null && typeof args === 'object')
+      ? getToolCallIntent(args as string | Record<string, unknown>)
+      : undefined;
+  if (intent != null) {
+    const text = intent.replace(/[.…]+$/, '');
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
   const base = (name ?? '').split('_mcp_')[0].split('_action_')[0];
