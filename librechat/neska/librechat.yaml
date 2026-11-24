@@ -72,12 +72,13 @@ modelSpecs:
       executeCode: true
       skills: true
       webSearch: true
+      describeIntent: true
       hideBadgeRow: true
       preset:
         endpoint: anthropic
         model: claude-sonnet-5-5
         modelLabel: Neska
-        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte. Tens accés a internet amb la cerca web: fes-la servir quan calgui informació actual o que no saps segur (notícies, preus, horaris, dades d''empreses, documentació) i digues d''on surt la informació. No diguis mai que no pots consultar internet.'
+        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte. Tens accés a internet amb la cerca web: fes-la servir quan calgui informació actual o que no saps segur (notícies, preus, horaris, dades d''empreses, documentació) i digues d''on surt la informació. No diguis mai que no pots consultar internet. Al camp intent de les eines, escriu sempre en català planer una frase curta que comenci amb un verb en infinitiu i digui què faràs, sense noms d''eines ni termes tècnics: per exemple «Llegir les factures d''octubre» o «Enviar el correu de recordatori als 14 proveïdors».'
     - name: intelligent
       label: Intel·ligent
       description: 'Pensa més a fons. Per a feina complexa.'
@@ -85,12 +86,69 @@ modelSpecs:
       executeCode: true
       skills: true
       webSearch: true
+      describeIntent: true
       hideBadgeRow: true
       preset:
         endpoint: anthropic
         model: claude-opus-5-5
         modelLabel: Neska
-        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte. Tens accés a internet amb la cerca web: fes-la servir quan calgui informació actual o que no saps segur (notícies, preus, horaris, dades d''empreses, documentació) i digues d''on surt la informació. No diguis mai que no pots consultar internet.'
+        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte. Tens accés a internet amb la cerca web: fes-la servir quan calgui informació actual o que no saps segur (notícies, preus, horaris, dades d''empreses, documentació) i digues d''on surt la informació. No diguis mai que no pots consultar internet. Al camp intent de les eines, escriu sempre en català planer una frase curta que comenci amb un verb en infinitiu i digui què faràs, sense noms d''eines ni termes tècnics: per exemple «Llegir les factures d''octubre» o «Enviar el correu de recordatori als 14 proveïdors».'
+
+# Permission card and plain-language activity (Arnau, 2026-11-24). See NESKA_FORK.md.
+endpoints:
+  agents:
+    # Default capabilities plus tool_intents: every tool call carries one sentence, written by
+    # Neska in Catalan (see promptPrefix above), that names what the step does. It is the
+    # label of the step in the chat and the title of the permission card.
+    capabilities:
+      - deferred_tools
+      - execute_code
+      - file_search
+      - web_search
+      - artifacts
+      - subagents
+      - actions
+      - context
+      - skills
+      - memory
+      - ask_user_question
+      - tools
+      - ocr
+      - tool_intents
+    # Neska asks before anything that acts outside Neska: every connector tool (MCP servers,
+    # actions) stops and waits for "Permet" or "Ara no". Neska's own tools (code sandbox,
+    # files, web search, memory, skills) never ask. riskLabels makes the server add the line
+    # "Un cop fet, no es pot desfer." / "Es pot desfer després." from the tool's name and
+    # offers only approve / reject. Paused runs wait 24 h (Mongo checkpointer default).
+    toolApproval:
+      enabled: true
+      mode: bypass
+      ask:
+        - '*_mcp_*'
+        - '*_action_*'
+      riskLabels: true
+  # One line per block of steps, written by Haiku in plain Catalan, in place of
+  # "Ran 19 actions · Codi ×11".
+  all:
+    activityLabel: true
+    activityModel: claude-haiku-5-5
+    activityEndpoint: anthropic
+    activityMaxPerRun: 20
+    activityPrompt: |-
+      Escriu una etiqueta curta que expliqui què ha aconseguit aquest bloc de feina de l'assistent. Surt com a títol d'un grup de passos en un xat per a gent que no és tècnica.
+
+      Regles:
+      - En català, de 4 a 10 paraules, comença amb un verb en primera persona del passat («He llegit», «He sumat»)
+      - Digues el resultat amb paraules de la feina del dia a dia (factures, correus, proveïdors, imports), mai noms d'eines, codi, fitxers tècnics ni comandes
+      - Si alguna cosa ha fallat, digues-ho clar i curt
+      - Només l'etiqueta: sense cometes, sense punt final, sense introducció
+
+      Exemples:
+      - He llegit les 7 factures i n'he sumat els imports
+      - He buscat els horaris de recollida a la web
+      - He preparat la presentació en PDF
+      - He comparat els preus dels tres proveïdors
+      - He intentat obrir l'Excel, però estava buit
 
 webSearch:
   searchProvider: searxng

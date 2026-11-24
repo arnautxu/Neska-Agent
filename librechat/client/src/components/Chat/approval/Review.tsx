@@ -17,6 +17,7 @@ import {
   useResumeSubmit,
 } from '~/components/Chat/Messages/Content/ApprovalContext';
 import ToolApproval from '~/components/Chat/Messages/Content/ToolApproval';
+import NeskaApproval, { isNeskaReview, useIsNeskaTheme } from './NeskaApproval';
 import { useLocalize } from '~/hooks';
 
 function usePendingToolApproval(conversationId: string) {
@@ -61,6 +62,7 @@ export const PendingToolApprovalPanel = memo(function PendingToolApprovalPanel({
   /** The composer toggle that reopens the panel; collapsing returns focus to it. */
   triggerRef?: RefObject<HTMLButtonElement>;
 }) {
+  const neskaTheme = useIsNeskaTheme();
   const localize = useLocalize();
   const pendingAction = usePendingToolApproval(conversationId);
   const [open, setOpen] = useAtom(approvalPanelOpenFamily(conversationId));
@@ -112,6 +114,42 @@ export const PendingToolApprovalPanel = memo(function PendingToolApprovalPanel({
   const decisions = getDecisions(pendingAction.actionId);
   const status = getStatus(pendingAction.actionId);
   const locked = status === 'submitting' || status === 'submitted' || status === 'expired';
+
+  if (neskaTheme && reviews.every(({ config }) => isNeskaReview(config?.allowed_decisions))) {
+    return (
+      <div
+        id="pending-tool-approval-panel"
+        className="pointer-events-none absolute bottom-28 z-10 w-full"
+        role="region"
+        aria-label={localize('com_neska_approval_label')}
+        aria-live="polite"
+        onKeyDown={handleKeyDown}
+      >
+        <div className="pointer-events-auto relative max-h-[70vh] overflow-y-auto">
+          <NeskaApproval
+            actionId={pendingAction.actionId}
+            items={reviews.map(({ request }) => ({
+              toolCallId: request.tool_call_id,
+              toolName: request.name,
+              args: request.arguments,
+              description: request.description,
+            }))}
+          />
+          <Button
+            type="button"
+            variant="quiet"
+            size="icon"
+            aria-label={localize('com_neska_approval_hide')}
+            title={localize('com_neska_approval_hide')}
+            className="absolute end-2 top-2 size-auto rounded-md p-1"
+            onClick={collapse}
+          >
+            <ChevronDown className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -241,12 +279,16 @@ export const PendingToolApprovalButton = memo(function PendingToolApprovalButton
   const localize = useLocalize();
   const pendingAction = usePendingToolApproval(conversationId);
   const [open, setOpen] = useAtom(approvalPanelOpenFamily(conversationId));
+  const neskaTheme = useIsNeskaTheme();
 
   if (pendingAction == null) {
     return null;
   }
 
   const count = pendingAction.payload.action_requests.length;
+  const neska =
+    neskaTheme &&
+    pendingAction.payload.review_configs.every((config) => isNeskaReview(config.allowed_decisions));
   return (
     <Button
       ref={triggerRef}
@@ -261,7 +303,9 @@ export const PendingToolApprovalButton = memo(function PendingToolApprovalButton
     >
       <ShieldQuestion className="size-4" aria-hidden="true" />
       <span>
-        {localize(count === 1 ? 'com_ui_review_action' : 'com_ui_review_actions', { 0: count })}
+        {neska
+          ? localize('com_neska_approval_chip')
+          : localize(count === 1 ? 'com_ui_review_action' : 'com_ui_review_actions', { 0: count })}
       </span>
       {open ? (
         <ChevronDown className="size-3.5" aria-hidden="true" />

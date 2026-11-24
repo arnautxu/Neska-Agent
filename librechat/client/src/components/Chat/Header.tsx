@@ -15,6 +15,7 @@ import useDrawerViewport from '~/hooks/Nav/useDrawerViewport';
 import { BackgroundTasksButton } from './BackgroundTasks';
 import { isCodeConversation } from './PullRequest/code';
 import { TraceButton, useTraceControl } from './Trace';
+import ActivityButton from './Activity/Button';
 import { useGetStartupConfig } from '~/data-provider';
 import ExportAndShareMenu from './ExportAndShareMenu';
 import SubagentThreadLink from './SubagentThreadLink';
@@ -132,6 +133,7 @@ function Header({
 
       <div className={cn('flex shrink-0 items-center gap-2', hiddenBehindNav)}>
         {showTemporaryChat && <TemporaryChatIndicator />}
+        {!isNewChat && <ActivityButton conversationId={routeConversationId} />}
         {!isNewChat && <NewChat className={isSmallScreen ? undefined : 'hidden'} />}
         {!isNewChat && parentConversationId == null && (
           <BackgroundTasksButton

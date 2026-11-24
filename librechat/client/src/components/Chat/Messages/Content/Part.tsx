@@ -438,6 +438,7 @@ const wrapTool = (card: ReactNode, { toolCall, isSubmitting }: ToolRenderProps) 
           approval={toolCall.approval}
           toolCallId={toolCall.id ?? ''}
           args={toolCall.args}
+          toolName={toolCall.name}
         />
       </>
     );

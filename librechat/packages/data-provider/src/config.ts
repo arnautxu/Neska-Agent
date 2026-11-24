@@ -1262,6 +1262,11 @@ export const toolApprovalPolicySchema = z
     /** Optional reason template surfaced in the prompt; `{tool}` is interpolated. */
     reason: z.string().optional(),
     /**
+     * Neska: every call sent to review gets a plain-language risk line decided on the server
+     * ("Un cop fet, no es pot desfer.") and only approve / reject. Overrides `reason`.
+     */
+    riskLabels: z.boolean().optional(),
+    /**
      * Offer "Always allow" on the approval card. Choosing it auto-approves that exact tool
      * (MCP names include their server) for the rest of the conversation. The server stores
      * and enforces the choice; `deny` and `ask` rules and programmatic hooks still win, and

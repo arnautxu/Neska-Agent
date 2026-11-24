@@ -11,6 +11,7 @@ import { isHITLEnabled, mapToolApprovalPolicy } from './policy';
 import { buildToolApprovalHooks } from './hooks';
 import { EDIT_FILE_TOOL_NAME } from '../tools';
 import { normalizeEditArgs } from '../edits';
+import { neskaReview } from './neskaRisk';
 
 /** Stable across resumes; the job epoch separates edits that reuse a response id. */
 export function buildToolApprovalExecutionConfig(
@@ -109,9 +110,18 @@ export function buildHITLRunWiring(
   // Static config-driven policy (mode/allow/deny/ask) — the baseline.
   registry.register('PreToolUse', {
     hooks: [
-      withNormalizedEdits(async (input, signal) =>
-        createToolPolicyHook(mapToolApprovalPolicy(activePolicy) ?? {})(input, signal),
-      ),
+      withNormalizedEdits(async (input, signal) => {
+        const result = await createToolPolicyHook(mapToolApprovalPolicy(activePolicy) ?? {})(
+          input,
+          signal,
+        );
+        // Neska: a call sent to review carries a server-decided risk line and only
+        // approve / reject (NESKA_FORK.md, "Permission card").
+        if (activePolicy?.riskLabels === true && result?.decision === 'ask') {
+          return { ...result, ...neskaReview(input.toolName) };
+        }
+        return result;
+      }),
     ],
   });
 

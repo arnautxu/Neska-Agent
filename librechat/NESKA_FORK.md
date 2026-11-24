@@ -62,3 +62,26 @@ Most of the trim is config (`neska/librechat.yaml` `interface:` flags, no
   `__tests__/callbacks.spec.js`.
 - `client/src/components/Chat/Messages/Content/Parts/Attachment.tsx`: a PDF chip opens the in-app
   viewer (`FilePreviewDialog`, which has its own download button) instead of downloading.
+
+## Permission card and "Activitat" (2026-11-24)
+
+Built on LibreChat's own tool approval, tool intents and activity labels, switched on in
+`neska/librechat.yaml` (`endpoints.agents.toolApproval`, `tool_intents`, `endpoints.all.activityLabel`).
+
+- Permission card. `toolApproval` runs in `bypass` mode and sends only tools that act outside
+  Neska (`*_mcp_*`, `*_action_*`) to review. With `riskLabels: true` (new field in
+  `packages/data-provider/src/config.ts`), `packages/api/src/agents/hitl/runtime.ts` replaces the
+  review's reason with a server-decided risk line from `hitl/neskaRisk.ts` (by tool name: "Un cop
+  fet, no es pot desfer.", "Es pot desfer després." or "No sé segur si es pot desfer...") and
+  offers only approve / reject. The model never sets the risk. `client/.../Chat/approval/NeskaApproval.tsx`
+  draws the card ("Neska et demana permís", the call's `intent` as title, Permet / Ara no); it is
+  used by `approval/Review.tsx` (composer) and `Messages/Content/ToolApproval.tsx` (thread, which
+  shows "Esperant el teu permís" while the composer holds the card) under the `neska` theme
+  (`html[data-theme='neska']`) whenever a review offers exactly approve + reject. "Ara no" sends a Catalan reason telling the model not to retry.
+- Activity in the chat: both specs set `describeIntent: true` and the prompt asks for Catalan
+  infinitive intents; a fast model (`activityModel: claude-haiku-5-5`) writes one first-person
+  Catalan line per block instead of "Ran N actions".
+- "Activitat" panel: `client/src/components/Chat/Activity/` (built only from saved message content:
+  intents and activity labels, never tool names or arguments). `ChatView.tsx` wraps the pane in
+  `ActivitySurface` (side column on desktop, full overlay on small screens) and `Header.tsx` shows
+  the "Activitat" button when the conversation has at least one step.

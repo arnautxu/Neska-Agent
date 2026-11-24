@@ -27,6 +27,7 @@ import MessagesView from './Messages/MessagesView';
 import Presentation from './Presentation';
 import ChatForm from './Input/ChatForm';
 import { TraceSurface } from './Trace';
+import { ActivitySurface } from './Activity';
 import Lia from '~/components/Lia';
 import Landing from './Landing';
 import Header from './Header';
@@ -129,63 +130,65 @@ function ChatViewPane({
               <ApprovalProvider pendingAction={pendingAction}>
                 <Presentation routePending={routePending}>
                   <TraceSurface conversationId={conversationId}>
-                    <ChatPane
-                      index={index}
-                      view={view}
-                      heading={pageHeading}
-                      header={
-                        <Header
-                          parentConversationId={parentConversationId}
-                          readOnly={isSubagentThreadReadOnly}
-                        />
-                      }
-                      badge={chatProjectId ? <ProjectBadge projectId={chatProjectId} /> : null}
-                      messages={<MessagesView messagesTree={messagesTree} messages={messages} />}
-                      landing={<Landing centerFormOnLanding={centerFormOnLanding} />}
-                      renderColumn={(column) => (
-                        <OwnerTextProvider
-                          messages={messages}
-                          conversationId={conversationId}
-                          isSubmitting={chat.isSubmitting}
-                        >
-                          {column}
-                        </OwnerTextProvider>
-                      )}
-                      starters={<ConversationStarters />}
-                      readOnlyNote={
-                        isSubagentThreadReadOnly
-                          ? localize('com_ui_subagent_thread_read_only')
-                          : undefined
-                      }
-                      composer={
-                        <ChatForm
-                          index={index}
-                          routePending={routePending}
-                          placeholder={chatFormPlaceholder}
-                          project={isProjectLandingPage ? project : undefined}
-                          isLandingPage={isLandingPage}
-                          enterToSend={enterToSend}
-                          autoSendText={autoSendText}
-                          speechSettingsInitialized={speechSettingsInitialized}
-                          footerBelow={footerBelow}
-                          centerFormOnLanding={centerFormOnLanding}
-                        />
-                      }
-                      /* The generic disclaimer and the policy links are the welcome
+                    <ActivitySurface conversationId={conversationId} messages={messages}>
+                      <ChatPane
+                        index={index}
+                        view={view}
+                        heading={pageHeading}
+                        header={
+                          <Header
+                            parentConversationId={parentConversationId}
+                            readOnly={isSubagentThreadReadOnly}
+                          />
+                        }
+                        badge={chatProjectId ? <ProjectBadge projectId={chatProjectId} /> : null}
+                        messages={<MessagesView messagesTree={messagesTree} messages={messages} />}
+                        landing={<Landing centerFormOnLanding={centerFormOnLanding} />}
+                        renderColumn={(column) => (
+                          <OwnerTextProvider
+                            messages={messages}
+                            conversationId={conversationId}
+                            isSubmitting={chat.isSubmitting}
+                          >
+                            {column}
+                          </OwnerTextProvider>
+                        )}
+                        starters={<ConversationStarters />}
+                        readOnlyNote={
+                          isSubagentThreadReadOnly
+                            ? localize('com_ui_subagent_thread_read_only')
+                            : undefined
+                        }
+                        composer={
+                          <ChatForm
+                            index={index}
+                            routePending={routePending}
+                            placeholder={chatFormPlaceholder}
+                            project={isProjectLandingPage ? project : undefined}
+                            isLandingPage={isLandingPage}
+                            enterToSend={enterToSend}
+                            autoSendText={autoSendText}
+                            speechSettingsInitialized={speechSettingsInitialized}
+                            footerBelow={footerBelow}
+                            centerFormOnLanding={centerFormOnLanding}
+                          />
+                        }
+                        /* The generic disclaimer and the policy links are the welcome
                          screen's; a deployment's own footer stays with the
                          conversation that always showed it. */
-                      bandFooter={
-                        !fullFooter && configuredFooter ? <Footer configuredOnly /> : null
-                      }
-                      footer={fullFooter ? <Footer /> : null}
-                      renderMascot={(bandRef) => (
-                        <Lia
-                          bandRef={bandRef}
-                          landing={isLandingPage}
-                          submission={rootSubmission}
-                        />
-                      )}
-                    />
+                        bandFooter={
+                          !fullFooter && configuredFooter ? <Footer configuredOnly /> : null
+                        }
+                        footer={fullFooter ? <Footer /> : null}
+                        renderMascot={(bandRef) => (
+                          <Lia
+                            bandRef={bandRef}
+                            landing={isLandingPage}
+                            submission={rootSubmission}
+                          />
+                        )}
+                      />
+                    </ActivitySurface>
                   </TraceSurface>
                 </Presentation>
               </ApprovalProvider>

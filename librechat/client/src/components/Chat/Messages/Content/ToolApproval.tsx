@@ -27,6 +27,10 @@ import { cn, forceResize, insertTextAtCursor, logger } from '~/utils';
 import { NO_HOST_BINDINGS } from '~/hooks/Input/useComposerBindings';
 import { ChatContext } from '~/Providers/ChatContext';
 import { useLocalize } from '~/hooks';
+import NeskaApproval, {
+  isNeskaReview,
+  useIsNeskaTheme,
+} from '~/components/Chat/approval/NeskaApproval';
 
 /**
  * The resume route rejects an `edit` whose `editedArguments` isn't a plain object
@@ -98,14 +102,18 @@ export default function ToolApproval({
   approval,
   toolCallId,
   args,
+  toolName,
   surface = 'thread',
 }: {
   approval: NonNullable<Agents.ToolCall['approval']>;
   toolCallId: string;
   args: string | Record<string, unknown> | undefined;
+  /** Neska card fallback title when the call carries no `intent`. */
+  toolName?: string;
   /** The composer panel owns one batch submit; thread cards keep the lead button. */
   surface?: 'thread' | 'composer';
 }) {
+  const neskaTheme = useIsNeskaTheme();
   const localize = useLocalize();
   const invalidJsonId = useId();
   const allowAlwaysHintId = useId();
@@ -337,6 +345,29 @@ export default function ToolApproval({
     e.preventDefault();
     submitFromField(e.repeat);
   };
+
+  if (surface === 'thread' && neskaTheme && isNeskaReview(allowedDecisions)) {
+    if (deferToComposer) {
+      return (
+        <p
+          className="text-text-secondary my-2 flex items-center gap-2 text-sm"
+          data-testid="tool-approval"
+          data-tool-call-id={toolCallId}
+        >
+          <span className="bg-text-primary inline-block size-2 shrink-0" aria-hidden="true" />
+          {localize('com_neska_approval_waiting')}
+        </p>
+      );
+    }
+    return (
+      <div className="my-2" data-testid="tool-approval" data-tool-call-id={toolCallId}>
+        <NeskaApproval
+          actionId={actionId}
+          items={[{ toolCallId, toolName, args, description: safeDescription }]}
+        />
+      </div>
+    );
+  }
 
   const descriptionNode = safeDescription != null && safeDescription.length > 0 && (
     <p className="text-text-secondary text-sm">{safeDescription}</p>
