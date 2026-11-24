@@ -68,3 +68,10 @@ Files and presentations (2026-11-10, Arnau: "que funcioni com a Codex o com a Cl
   Uses ~3 GB RAM (Firecrawl ~2.1 GB, near its 2.5 GB limit); no swap yet. DuckDuckGo answers the
   server with a CAPTCHA; Google CSE, Brave and Wikipedia work. The prova config file predates
   PR #37 (artifacts still on there).
+- 2026-11-24: permission card before actions outside Neska (server-decided risk line, Permet / Ara
+  no) and plain-Catalan activity (intents, Haiku block labels, "Activitat" side panel). Details in
+  `librechat/NESKA_FORK.md`, "Permission card and Activitat". Prova needs the new `endpoints:`
+  block and `describeIntent`/prompt changes from `librechat/neska/librechat.yaml` in
+  `/etc/neska/prova/librechat.yaml`. No current Neska tool triggers the card (no MCP or action
+  connected yet). Gates: local mock end-to-end only so far.
+

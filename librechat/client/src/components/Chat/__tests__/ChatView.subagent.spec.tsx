@@ -81,6 +81,9 @@ jest.mock('~/components/Lia', () => () => null);
 jest.mock('../Trace', () => ({
   TraceSurface: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+jest.mock('../Activity', () => ({
+  ActivitySurface: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 jest.mock('../Footer', () => ({
   __esModule: true,
   default: () => <div data-testid="footer" />,
