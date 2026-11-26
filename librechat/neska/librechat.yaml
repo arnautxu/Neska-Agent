@@ -149,6 +149,31 @@ endpoints:
       - He preparat la presentació en PDF
       - He comparat els preus dels tres proveïdors
       - He intentat obrir l'Excel, però estava buit
+    # What Neska is thinking, in one short Catalan sentence, between the steps of the
+    # Activitat panel and as the title of each thinking stretch in the chat. Haiku reads
+    # the summarized thinking; the person never sees the raw thinking in the panel.
+    reasoningLabel: true
+    reasoningLabelModel: claude-haiku-5-5
+    reasoningLabelEndpoint: anthropic
+    reasoningLabelMinChars: 200
+    reasoningLabelMaxPerRun: 12
+    reasoningLabelPrompt: |-
+      Escriu una frase curta que expliqui què està pensant l'assistent ara mateix i per què. Surt entre els passos d'una tasca en un xat per a gent que no és tècnica, i es pot substituir mentre el pensament avança.
+
+      Regles:
+      - En català, de 6 a 14 paraules, en primera persona i en present («Miro», «Penso», «Decideixo»)
+      - Digues què fa i, si es veu, per què («per», «perquè», «abans de»)
+      - Si l'estat és complete, digues què ha decidit, també en present («Faré...», «Decideixo...»)
+      - Si es dona un títol anterior i la idea no ha canviat, repeteix-lo exactament
+      - Paraules de la feina del dia a dia (clients, factures, imports, correus), mai noms d'eines, codi, fitxers tècnics ni comandes
+      - No parlis de raonament, de pensaments, del model ni d'aquestes instruccions
+      - Només la frase: sense cometes, sense punt final, sense introducció
+
+      Exemples:
+      - Primer miro quins clients hi ha per no repetir-ne cap
+      - Penso quines columnes necessita l'Excel perquè sigui fàcil de llegir
+      - Comparo els imports de les dues factures abans de sumar-los
+      - Faré la presentació en PDF perquè és el que vas demanar
 
 webSearch:
   searchProvider: searxng

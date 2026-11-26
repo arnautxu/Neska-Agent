@@ -36,10 +36,47 @@ describe('Activitat model', () => {
     const [turn] = buildActivity(messages);
     expect(turn.request).toBe('Resum de factures');
     expect(turn.blocks[0]).toMatchObject({ summary: 'He llegit les factures' });
-    expect(turn.blocks.flatMap((b) => b.steps.map((s) => s.state))).toEqual([
-      'done',
-      'declined',
-      'running',
+    expect(
+      turn.blocks.flatMap((b) => b.steps.map((s) => (s.kind === 'step' ? s.state : s.kind))),
+    ).toEqual(['done', 'declined', 'running']);
+  });
+
+  it('puts what Neska thinks between the steps, never the raw thinking', () => {
+    const think = (stepId: string, label?: string, status = 'complete') => ({
+      type: ContentTypes.THINK,
+      think: 'raw thinking that must never show',
+      reasoning_label: label,
+      reasoning_label_status: status,
+      reasoning_label_step_id: stepId,
+    });
+    const messages = [
+      { messageId: 'u1', isCreatedByUser: true, text: 'Fes un Excel' },
+      {
+        messageId: 'a1',
+        parentMessageId: 'u1',
+        isCreatedByUser: false,
+        content: [
+          think('r1', 'primer miro quins clients hi ha.'),
+          call('t1', 'bash_tool', { intent: 'Crear l’Excel' }, 'ok'),
+          think('r2'),
+          think('r3', 'Ara comprovo que el fitxer s’obre', 'streaming'),
+        ],
+      },
+      {
+        messageId: 'a2',
+        parentMessageId: 'u1',
+        isCreatedByUser: false,
+        content: [think('r4', 'Penso com explicar-ho curt')],
+      },
+    ] as unknown as TMessage[];
+    const [first, second] = buildActivity(messages);
+    expect(first.blocks).toHaveLength(1);
+    expect(first.blocks[0].steps).toEqual([
+      { kind: 'thought', id: 'r1', text: 'Primer miro quins clients hi ha', live: false },
+      { kind: 'step', id: 't1', text: 'Crear l’Excel', state: 'done' },
+      { kind: 'thought', id: 'r3', text: 'Ara comprovo que el fitxer s’obre', live: true },
     ]);
+    expect(second.blocks[0].steps).toHaveLength(1);
+    expect(JSON.stringify([first, second])).not.toContain('raw thinking');
   });
 });

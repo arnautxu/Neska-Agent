@@ -7,14 +7,21 @@ import type { TMessage, TMessageContentParts } from 'librechat-data-provider';
  *
  * Read only from the saved message content. A step's sentence is the `intent` Neska wrote
  * for the call (tool_intents); a block's summary is the activity label the fast model
- * wrote after it (activityLabel). Neither is ever a tool name or its raw arguments.
+ * wrote after it (activityLabel); a thought is the reasoning label the fast model wrote
+ * for a stretch of Neska's thinking (reasoningLabel). None is ever a tool name, raw
+ * arguments or the raw thinking itself.
  */
 
 export type StepState = 'done' | 'running' | 'waiting' | 'declined' | 'failed';
 
-export type ActivityStep = { id: string; text: string; state: StepState };
+export type ActivityStep = { kind: 'step'; id: string; text: string; state: StepState };
 
-export type ActivityBlock = { id: string; summary?: string; steps: ActivityStep[] };
+/** One short sentence of what Neska is thinking and why (reasoning label of a THINK part). */
+export type ActivityThought = { kind: 'thought'; id: string; text: string; live: boolean };
+
+export type ActivityItem = ActivityStep | ActivityThought;
+
+export type ActivityBlock = { id: string; summary?: string; steps: ActivityItem[] };
 
 export type ActivityTurn = { id: string; request: string; blocks: ActivityBlock[] };
 
@@ -105,6 +112,33 @@ function labelOf(
   return { text, ids: label.tool_call_ids ?? [] };
 }
 
+function thoughtOf(
+  part: TMessageContentParts | undefined,
+  index: number,
+): ActivityThought | undefined {
+  if (part?.type !== ContentTypes.THINK) {
+    return undefined;
+  }
+  const think = part as {
+    reasoning_label?: string;
+    reasoning_label_status?: 'streaming' | 'complete';
+    reasoning_label_step_id?: string;
+  };
+  const text = (think.reasoning_label ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[.…]+$/, '');
+  if (text.length === 0) {
+    return undefined;
+  }
+  return {
+    kind: 'thought',
+    id: think.reasoning_label_step_id ?? `thought-${index}`,
+    text: text.charAt(0).toUpperCase() + text.slice(1),
+    live: think.reasoning_label_status === 'streaming',
+  };
+}
+
 function requestText(message: TMessage | undefined): string {
   const text = (message?.text ?? '').replace(/\s+/g, ' ').trim();
   if (text.length <= MAX_REQUEST_CHARS) {
@@ -113,7 +147,9 @@ function requestText(message: TMessage | undefined): string {
   return `${text.slice(0, MAX_REQUEST_CHARS - 1)}…`;
 }
 
-/** Steps of one assistant message, grouped under the summary that covers them. */
+/** Steps of one assistant message, grouped under the summary that covers them. A thought
+ *  joins the block of the step that follows it; thoughts after the last step join the last
+ *  block, and a message with thoughts but no steps gets one block without a summary. */
 export function buildBlocks(content: TMessageContentParts[] | undefined): ActivityBlock[] {
   const parts = content ?? [];
   const summaryById = new Map<string, string>();
@@ -122,21 +158,41 @@ export function buildBlocks(content: TMessageContentParts[] | undefined): Activi
     label?.ids.forEach((id) => summaryById.set(id, label.text));
   }
   const blocks: ActivityBlock[] = [];
+  let pending: ActivityThought[] = [];
   parts.forEach((part, index) => {
+    const thought = thoughtOf(part, index);
+    if (thought != null) {
+      pending.push(thought);
+      return;
+    }
     const call = toolCallOf(part);
     if (call == null) {
       return;
     }
     const id = call.id ?? `step-${index}`;
     const summary = summaryById.get(id);
-    const step: ActivityStep = { id, text: stepText(call.name, call.args), state: stepState(call) };
+    const step: ActivityStep = {
+      kind: 'step',
+      id,
+      text: stepText(call.name, call.args),
+      state: stepState(call),
+    };
     const last = blocks[blocks.length - 1];
     if (last != null && last.summary === summary && summary != null) {
-      last.steps.push(step);
-      return;
+      last.steps.push(...pending, step);
+    } else {
+      blocks.push({ id, summary, steps: [...pending, step] });
     }
-    blocks.push({ id, summary, steps: [step] });
+    pending = [];
   });
+  if (pending.length > 0) {
+    const last = blocks[blocks.length - 1];
+    if (last != null) {
+      last.steps.push(...pending);
+    } else {
+      blocks.push({ id: pending[0].id, steps: pending });
+    }
+  }
   return blocks;
 }
 

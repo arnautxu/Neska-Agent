@@ -1,5 +1,6 @@
 import type { AppConfig } from '@librechat/data-schemas';
 import type { HookCallback } from '@librechat/agents';
+import { buildNeskaDeleteHook } from './neskaDelete';
 
 /**
  * Per-run context handed to a {@link ToolApprovalHookFactory} when a run is built. It carries
@@ -122,6 +123,11 @@ export function buildToolApprovalHooks(
     if (hook) {
       built.push({ hook, matcher });
     }
+  }
+  // Neska: built-in "ask before deleting the person's files" (see neskaDelete.ts).
+  const neskaDelete = buildNeskaDeleteHook(context);
+  if (neskaDelete) {
+    built.push(neskaDelete);
   }
   return built;
 }
