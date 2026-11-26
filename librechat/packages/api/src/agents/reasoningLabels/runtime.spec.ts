@@ -395,6 +395,58 @@ describe('reasoning labels', () => {
     });
   });
 
+  it('keeps a committed label when an empty closing delta rebuilds the THINK part', async () => {
+    const harness = createHarness(async () => ({ label: 'Tracing the signature path' }), {
+      minChars: 5,
+      updateChars: 100,
+      updateIntervalMs: 0,
+    });
+    await harness.start();
+    await harness.append('1234 ');
+    await harness.settle();
+
+    /** Anthropic closes a thinking block with a signature-only delta: no text,
+     *  but the aggregator still rebuilds the part as a bare THINK object. */
+    await harness.append('');
+    await harness.close();
+    await harness.settle();
+
+    expect(harness.parts[0]).toMatchObject({
+      reasoning_label: 'Tracing the signature path',
+      reasoning_label_step_id: 'reasoning-1',
+    });
+  });
+
+  it('writes a label that resolves after an empty delta rebuilt the THINK part', async () => {
+    let release: ((value: GeneratedReasoningLabel) => void) | undefined;
+    let markStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    const harness = createHarness(
+      () =>
+        new Promise<GeneratedReasoningLabel>((resolve) => {
+          release = resolve;
+          markStarted?.();
+        }),
+      { minChars: 5, updateChars: 100, updateIntervalMs: 0 },
+    );
+    await harness.start();
+    await harness.append('1234 ');
+    await started;
+
+    await harness.append('');
+    await harness.close();
+    release?.({ label: 'Checking which clients exist' });
+    await harness.settle();
+
+    expect(harness.parts[0]).toMatchObject({
+      think: '1234 ',
+      reasoning_label: 'Checking which clients exist',
+      reasoning_label_step_id: 'reasoning-1',
+    });
+  });
+
   it('patches the authoritative THINK part when a delta replaces it during durable emit', async () => {
     let releaseEmit: (() => void) | undefined;
     let markEmitStarted: (() => void) | undefined;
