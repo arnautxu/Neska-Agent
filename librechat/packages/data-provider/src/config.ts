@@ -1267,6 +1267,12 @@ export const toolApprovalPolicySchema = z
      */
     riskLabels: z.boolean().optional(),
     /**
+     * Neska: tools that are part of Neska itself even though they arrive over MCP (the
+     * shared company brain, `*_mcp_cervell`). Globs. A call the `ask` list would send to
+     * review is allowed instead. `deny` and programmatic hooks still win.
+     */
+    ownTools: z.array(z.string()).optional(),
+    /**
      * Offer "Always allow" on the approval card. Choosing it auto-approves that exact tool
      * (MCP names include their server) for the rest of the conversation. The server stores
      * and enforces the choice; `deny` and `ask` rules and programmatic hooks still win, and

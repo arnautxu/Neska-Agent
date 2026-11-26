@@ -1,4 +1,4 @@
-import { classifyNeskaRisk, neskaReview, NESKA_RISK_REASON } from './neskaRisk';
+import { isNeskaOwnTool, classifyNeskaRisk, neskaReview, NESKA_RISK_REASON } from './neskaRisk';
 
 describe('classifyNeskaRisk', () => {
   it('treats sending, deleting and paying as irreversible', () => {
@@ -28,5 +28,14 @@ describe('neskaReview', () => {
       reason: NESKA_RISK_REASON.irreversible,
       allowedDecisions: ['approve', 'reject'],
     });
+  });
+});
+
+describe('isNeskaOwnTool', () => {
+  it('matches only the listed MCP server', () => {
+    expect(isNeskaOwnTool('aprendre_mcp_cervell', ['*_mcp_cervell'])).toBe(true);
+    expect(isNeskaOwnTool('send_email_mcp_gmail', ['*_mcp_cervell'])).toBe(false);
+    expect(isNeskaOwnTool('aprendre_mcp_cervell2', ['*_mcp_cervell'])).toBe(false);
+    expect(isNeskaOwnTool('aprendre_mcp_cervell', undefined)).toBe(false);
   });
 });

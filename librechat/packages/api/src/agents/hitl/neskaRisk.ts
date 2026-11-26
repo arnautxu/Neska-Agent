@@ -52,3 +52,11 @@ export function neskaReview(toolName: string): {
     allowedDecisions: ['approve', 'reject'],
   };
 }
+
+/** Neska's own tools that reach it over MCP (`toolApproval.ownTools` globs). */
+export function isNeskaOwnTool(toolName: string, patterns?: readonly string[]): boolean {
+  return (patterns ?? []).some((pattern) => {
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+    return new RegExp(`^${escaped}$`).test(toolName);
+  });
+}

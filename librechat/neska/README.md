@@ -9,6 +9,7 @@ LibreChat (MIT) és a `../`, copiat de l'upstream `LibreChat-AI/LibreChat` al co
 - `librechat.yaml`: configuració per client (tema `neska`, benvinguda, l'assistent Neska i el model).
 - `docker-compose.yml`: app + MongoDB + Meilisearch + Caddy (TLS), un stack per servidor Hetzner ARM.
 - `neska.env.example`: variables i secrets; la còpia real viu a `/etc/neska/<client>/neska.env`.
+- `cervell/`: el cervell comú del client (notes Markdown amb historial git), vegeu `cervell/README.md`.
 - `cerca/`: cerca web pròpia (SearXNG + Firecrawl + reordenador local), un segon stack que s'uneix a la xarxa de l'app.
 
 ## Instal·lar un client nou (servidor Hetzner CAX21, Ubuntu 24.04 ARM)

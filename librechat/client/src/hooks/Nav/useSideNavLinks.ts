@@ -96,7 +96,8 @@ export default function useSideNavLinks({
     permissionType: PermissionTypes.SCHEDULES,
     permission: Permissions.USE,
   });
-  const { availableMCPServers } = useMCPServerManager();
+  // Neska: servers hidden from chat (the shared brain, chatMenu: false) do not open the MCP panel.
+  const { selectableServers: availableMCPServers } = useMCPServerManager();
 
   const { agentsConfig } = useGetAgentsConfig({ endpointsConfig });
   const { skillsEnabled } = useAgentCapabilities(agentsConfig?.capabilities);

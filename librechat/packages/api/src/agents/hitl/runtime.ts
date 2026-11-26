@@ -11,7 +11,7 @@ import { isHITLEnabled, mapToolApprovalPolicy } from './policy';
 import { buildToolApprovalHooks } from './hooks';
 import { EDIT_FILE_TOOL_NAME } from '../tools';
 import { normalizeEditArgs } from '../edits';
-import { neskaReview } from './neskaRisk';
+import { isNeskaOwnTool, neskaReview } from './neskaRisk';
 
 /** Stable across resumes; the job epoch separates edits that reuse a response id. */
 export function buildToolApprovalExecutionConfig(
@@ -115,6 +115,10 @@ export function buildHITLRunWiring(
           input,
           signal,
         );
+        // Neska: Neska's own MCP tools (the shared brain) never ask (NESKA_FORK.md, "Cervell").
+        if (result?.decision === 'ask' && isNeskaOwnTool(input.toolName, activePolicy?.ownTools)) {
+          return { decision: 'allow' };
+        }
         // Neska: a call sent to review carries a server-decided risk line and only
         // approve / reject (NESKA_FORK.md, "Permission card").
         if (activePolicy?.riskLabels === true && result?.decision === 'ask') {
