@@ -98,3 +98,16 @@ Built on LibreChat's own tool approval, tool intents and activity labels, switch
   sentence of what Neska is doing and why. The panel shows it as a grey row (no state shape)
   between the steps (`ActivityThought` in `Activity/model.ts`); the raw thinking never appears
   in the panel.
+
+## Cervell del Racó (2026-11-26)
+
+Shared company brain, see `neska/cervell/README.md`. A stdio MCP server (`neska/cervell/server.mjs`)
+over a git-backed Markdown vault mounted at `/app/cervell`; both modes list it in `mcpServers`.
+
+- `packages/data-provider/src/config.ts`, `packages/api/src/agents/hitl/{runtime,neskaRisk}.ts`:
+  `toolApproval.ownTools` (globs) lets Neska's own MCP tools skip the permission card that
+  `ask: ['*_mcp_*']` would show. `deny` and programmatic hooks still win. Test in `neskaRisk.spec.ts`.
+- `client/src/hooks/Nav/useSideNavLinks.ts`: the MCP side panel only counts servers people can
+  pick in chat, so the brain (`chatMenu: false`) does not bring the panel back. `interface.mcpServers.use`
+  is on only so the modes reach the brain; `create` stays off.
+- `Dockerfile`: `git` added (the vault's history).

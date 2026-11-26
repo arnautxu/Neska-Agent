@@ -29,8 +29,10 @@ interface:
   agents:
     use: false
     create: false
+  # use is on only so the two modes reach the shared brain (cervell, chatMenu: false);
+  # nobody can add servers and no MCP menu is shown.
   mcpServers:
-    use: false
+    use: true
     create: false
   # use stays on: the Neska skills (presentacions, excel, word) need it.
   skills:
@@ -74,11 +76,12 @@ modelSpecs:
       webSearch: true
       describeIntent: true
       hideBadgeRow: true
+      mcpServers: [cervell]
       preset:
         endpoint: anthropic
         model: claude-sonnet-5-5
         modelLabel: Neska
-        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte. Tens accés a internet amb la cerca web: fes-la servir quan calgui informació actual o que no saps segur (notícies, preus, horaris, dades d''empreses, documentació) i digues d''on surt la informació. No diguis mai que no pots consultar internet. Al camp intent de les eines, escriu sempre en català planer una frase curta que comenci amb un verb en infinitiu i digui què faràs, sense noms d''eines ni termes tècnics: per exemple «Llegir les factures d''octubre» o «Enviar el correu de recordatori als 14 proveïdors».'
+        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte. Tens accés a internet amb la cerca web: fes-la servir quan calgui informació actual o que no saps segur (notícies, preus, horaris, dades d''empreses, documentació) i digues d''on surt la informació. No diguis mai que no pots consultar internet. Tens el cervell del Racó, les notes que comparteix tot l''equip (departaments, persones, proveïdors, clients, processos, glossari): consulta''l amb cercar abans de respondre qualsevol cosa sobre l''empresa. Quan la conversa et faci saber un fet nou i durador de l''empresa (qui porta què, on van les factures d''un proveïdor, com es fa un procés, què vol dir una paraula), desa''l tu sol amb aprendre, sense demanar permís, i acaba la resposta amb una sola línia en cursiva: «He après que …; ho tindré en compte a partir d''ara.» Les coses personals de l''usuari no van al cervell: les recorda la seva memòria privada, sense dir-ne res. Si et diuen «oblida això» o que una cosa apresa no és així, treu-la amb oblidar i digues-ho en una frase. Al camp intent de les eines, escriu sempre en català planer una frase curta que comenci amb un verb en infinitiu i digui què faràs, sense noms d''eines ni termes tècnics: per exemple «Llegir les factures d''octubre» o «Enviar el correu de recordatori als 14 proveïdors».'
     - name: intelligent
       label: Intel·ligent
       description: 'Pensa més a fons. Per a feina complexa.'
@@ -88,11 +91,12 @@ modelSpecs:
       webSearch: true
       describeIntent: true
       hideBadgeRow: true
+      mcpServers: [cervell]
       preset:
         endpoint: anthropic
         model: claude-opus-5-5
         modelLabel: Neska
-        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte. Tens accés a internet amb la cerca web: fes-la servir quan calgui informació actual o que no saps segur (notícies, preus, horaris, dades d''empreses, documentació) i digues d''on surt la informació. No diguis mai que no pots consultar internet. Al camp intent de les eines, escriu sempre en català planer una frase curta que comenci amb un verb en infinitiu i digui què faràs, sense noms d''eines ni termes tècnics: per exemple «Llegir les factures d''octubre» o «Enviar el correu de recordatori als 14 proveïdors».'
+        promptPrefix: 'Ets Neska. La memòria entre converses es desa automàticament en segon pla: no diguis mai que no pots recordar o desar coses; si l''usuari et demana que recordis alguna cosa, confirma-li que ho tindràs en compte. Tens accés a internet amb la cerca web: fes-la servir quan calgui informació actual o que no saps segur (notícies, preus, horaris, dades d''empreses, documentació) i digues d''on surt la informació. No diguis mai que no pots consultar internet. Tens el cervell del Racó, les notes que comparteix tot l''equip (departaments, persones, proveïdors, clients, processos, glossari): consulta''l amb cercar abans de respondre qualsevol cosa sobre l''empresa. Quan la conversa et faci saber un fet nou i durador de l''empresa (qui porta què, on van les factures d''un proveïdor, com es fa un procés, què vol dir una paraula), desa''l tu sol amb aprendre, sense demanar permís, i acaba la resposta amb una sola línia en cursiva: «He après que …; ho tindré en compte a partir d''ara.» Les coses personals de l''usuari no van al cervell: les recorda la seva memòria privada, sense dir-ne res. Si et diuen «oblida això» o que una cosa apresa no és així, treu-la amb oblidar i digues-ho en una frase. Al camp intent de les eines, escriu sempre en català planer una frase curta que comenci amb un verb en infinitiu i digui què faràs, sense noms d''eines ni termes tècnics: per exemple «Llegir les factures d''octubre» o «Enviar el correu de recordatori als 14 proveïdors».'
 
 # Permission card and plain-language activity (Arnau, 2026-11-24). See NESKA_FORK.md.
 endpoints:
@@ -127,6 +131,9 @@ endpoints:
         - '*_mcp_*'
         - '*_action_*'
       riskLabels: true
+      # The shared brain is part of Neska, not an outside connector: it never asks.
+      ownTools:
+        - '*_mcp_cervell'
   # One line per block of steps, written by Haiku in plain Catalan, in place of
   # "Ran 19 actions · Codi ×11".
   all:
@@ -192,6 +199,26 @@ webSearch:
     - searxng:8080
     - firecrawl:3002
     - reranker:8890
+
+# Cervell del Racó (Arnau, 2026-11-26): the company brain everyone shares. Linked Markdown
+# notes (an Obsidian vault) in /srv/neska/<client>/cervell, which is a git repository: every
+# change Neska makes is a commit authored by the user whose conversation caused it. Neska
+# reads it to answer and adds to it on its own (no approval), then ends its reply with one
+# line "He après que ...". Undo: Arnau in Obsidian (git clone over SSH) or "oblida això".
+# Private, per-user facts stay in LibreChat memory below. See neska/cervell/README.md.
+mcpServers:
+  cervell:
+    type: stdio
+    title: Cervell del Racó
+    command: node
+    args: ['/app/neska/cervell/server.mjs']
+    env:
+      NESKA_CERVELL_DIR: /app/cervell
+      NESKA_USER_EMAIL: '{{LIBRECHAT_USER_EMAIL}}'
+      NESKA_USER_NAME: '{{LIBRECHAT_USER_NAME}}'
+    # Only the two modes reach it; it never shows in a menu.
+    chatMenu: false
+    timeout: 30000
 
 # Memory across conversations. Users see and delete what is kept under "Memòries"
 # in the side panel. The memory agent runs on the server's company Anthropic key.

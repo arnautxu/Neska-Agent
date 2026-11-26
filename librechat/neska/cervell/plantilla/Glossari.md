@@ -1,0 +1,3 @@
+# Glossari
+
+- **El Racó**: Restanova.

@@ -29,6 +29,8 @@ services:
       - ${NESKA_DATA:-/srv/neska}/uploads:/app/uploads
       - ${NESKA_DATA:-/srv/neska}/images:/app/client/public/images
       - ${NESKA_DATA:-/srv/neska}/logs:/app/api/logs
+      # Cervell del Racó: shared Markdown notes, a git repo (neska/cervell/README.md).
+      - ${NESKA_DATA:-/srv/neska}/cervell:/app/cervell
     expose: ['3080']
 
   mongodb:
