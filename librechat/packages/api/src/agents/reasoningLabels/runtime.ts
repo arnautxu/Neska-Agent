@@ -176,6 +176,21 @@ function buildSignal(signal?: AbortSignal): AbortSignal {
     : timeout;
 }
 
+/** Writes the step's ownership and committed title onto its THINK part. */
+function stampReasoningPart(part: LooseContentPart, state: ReasoningStepState): void {
+  Object.assign(part, {
+    reasoning_label_step_id: state.stepId,
+    ...(state.attempts > 0 && { reasoning_label_submitted_chars: state.submittedChars }),
+    ...(state.label != null && state.revision > 0
+      ? {
+          reasoning_label: state.label,
+          reasoning_label_revision: state.revision,
+          reasoning_label_status: state.labelStatus ?? 'streaming',
+        }
+      : {}),
+  });
+}
+
 function getReasoningPart(
   deps: ReasoningLabelHostDeps,
   state: ReasoningStepState,
@@ -185,7 +200,18 @@ function getReasoningPart(
     state.index = index;
   }
   const part = index != null ? deps.getContentParts()[index] : undefined;
-  return part?.type === ContentTypes.THINK ? part : undefined;
+  if (part?.type !== ContentTypes.THINK) {
+    return undefined;
+  }
+  /** The content aggregator rebuilds a THINK part as a bare `{ type, think }`
+   *  on every reasoning delta, including the empty, signature-only delta that
+   *  closes an Anthropic thinking block. That rebuild drops the label fields,
+   *  so a part at this step's own slot that carries no owner is re-adopted
+   *  rather than treated as someone else's. */
+  if (part.reasoning_label_step_id == null) {
+    stampReasoningPart(part, state);
+  }
+  return part;
 }
 
 /** Re-emits reasoning-title revisions or resets committed in the resume snapshot gap. */
@@ -524,6 +550,7 @@ export function createReasoningLabelWiring(deps: ReasoningLabelHostDeps): Reason
     }
     state.closed = true;
     clearTimer(state);
+    getReasoningPart(deps, state);
     /** The stream is over, so a short undecided tail was a final word; a
      *  longer one is the unfinished start of a payload. */
     const word = flushOpaqueReasoning(state.cursor);
@@ -658,11 +685,16 @@ export function createReasoningLabelWiring(deps: ReasoningLabelHostDeps): Reason
   const appendDelta = (data: unknown): void => {
     const event = data as { id?: string };
     const rawText = deltaText(data);
-    if (!event.id || !rawText) {
+    if (!event.id) {
       return;
     }
     const state = steps.get(event.id);
-    if (state == null || state.closed) {
+    if (state == null) {
+      return;
+    }
+    if (!rawText || state.closed) {
+      /** An empty delta (e.g. a thinking signature) still rebuilt the part. */
+      getReasoningPart(deps, state);
       return;
     }
     const part = getReasoningPart(deps, state);
