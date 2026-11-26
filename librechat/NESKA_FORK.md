@@ -78,6 +78,12 @@ Built on LibreChat's own tool approval, tool intents and activity labels, switch
   used by `approval/Review.tsx` (composer) and `Messages/Content/ToolApproval.tsx` (thread, which
   shows "Esperant el teu permís" while the composer holds the card) under the `neska` theme
   (`html[data-theme='neska']`) whenever a review offers exactly approve + reject. "Ara no" sends a Catalan reason telling the model not to retry.
+- Ask before deleting the person's files (2026-11-26). `hitl/neskaDelete.ts` adds a built-in
+  hook (on only with `riskLabels: true`, wired in `hitl/hooks.ts`) for `bash_tool` /
+  `execute_code`: a delete (`rm`, `unlink`, `find -delete`, `os.remove`, `shutil.rmtree`,
+  `Path.unlink`...) that names anything other than scratch (`/tmp`, skill files, the slide
+  review sheet) asks with "Esborrarà fitxers teus. Un cop fet, no es pot desfer." Unknown
+  targets ask, so the check fails safe.
 - Activity in the chat: both specs set `describeIntent: true` and the prompt asks for Catalan
   infinitive intents; a fast model (`activityModel: claude-haiku-5-5`) writes one first-person
   Catalan line per block instead of "Ran N actions". `packages/api/src/agents/activityLabels/host.ts`
@@ -87,3 +93,8 @@ Built on LibreChat's own tool approval, tool intents and activity labels, switch
   intents and activity labels, never tool names or arguments). `ChatView.tsx` wraps the pane in
   `ActivitySurface` (side column on desktop, full overlay on small screens) and `Header.tsx` shows
   the "Activitat" button when the conversation has at least one step.
+- What Neska thinks (2026-11-26). `endpoints.all.reasoningLabel` (Haiku, Catalan
+  `reasoningLabelPrompt`) gives each stretch of summarized thinking a short first-person
+  sentence of what Neska is doing and why. The panel shows it as a grey row (no state shape)
+  between the steps (`ActivityThought` in `Activity/model.ts`); the raw thinking never appears
+  in the panel.

@@ -74,4 +74,8 @@ Files and presentations (2026-11-10, Arnau: "que funcioni com a Codex o com a Cl
   block and `describeIntent`/prompt changes from `librechat/neska/librechat.yaml` in
   `/etc/neska/prova/librechat.yaml`. No current Neska tool triggers the card (no MCP or action
   connected yet). Gates: local mock end-to-end only so far.
+- 2026-11-26: the card also appears before Neska deletes the person's files in its workspace
+  (not its own scratch files), and the "Activitat" panel shows short Catalan sentences of what
+  Neska is thinking between the steps (Haiku reasoning labels). Prova needs the
+  `reasoningLabel*` lines under `endpoints.all` from `librechat/neska/librechat.yaml`.
 

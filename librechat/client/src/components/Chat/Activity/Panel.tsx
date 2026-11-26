@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
-import type { ActivityStep, ActivityTurn, StepState } from './model';
+import type { ActivityItem, ActivityStep, ActivityThought, ActivityTurn, StepState } from './model';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import { NeskaIcon } from '~/components/NeskaIcons';
 import { useLocalize } from '~/hooks';
@@ -10,7 +10,8 @@ import { cn } from '~/utils';
  * Neska "Activitat": every step of the conversation in plain words, newest request last.
  * State is shape first (DESIGN: errors use a cross, never red): a filled brown square
  * while working, a hollow square while it waits for permission, a check when done,
- * a cross when it was declined or did not work.
+ * a cross when it was declined or did not work. A thought (what Neska is thinking and why)
+ * has no shape: it is quieter text between the steps, so only steps read as things done.
  */
 
 const STATE_KEY: Record<Exclude<StepState, 'done'>, TranslationKeys> = {
@@ -84,6 +85,22 @@ function Step({ step }: { step: ActivityStep }) {
   );
 }
 
+function Thought({ thought }: { thought: ActivityThought }) {
+  return (
+    <li className="flex gap-3" data-kind="thought">
+      <span aria-hidden="true" className="w-3 shrink-0" />
+      <p className="text-text-secondary min-w-0 text-[15px] leading-snug">
+        {thought.text}
+        {thought.live && <span aria-hidden="true">…</span>}
+      </p>
+    </li>
+  );
+}
+
+function Item({ item }: { item: ActivityItem }) {
+  return item.kind === 'thought' ? <Thought thought={item} /> : <Step step={item} />;
+}
+
 export default function ActivityPanel({
   turns,
   onClose,
@@ -95,8 +112,19 @@ export default function ActivityPanel({
 }) {
   const localize = useLocalize();
   const endRef = useRef<HTMLDivElement>(null);
+  /** Grows with every new step or thought, and as a live thought is rewritten. */
   const stepCount = turns.reduce(
-    (total, turn) => total + turn.blocks.reduce((sum, block) => sum + block.steps.length, 0),
+    (total, turn) =>
+      total +
+      turn.blocks.reduce(
+        (sum, block) =>
+          sum +
+          block.steps.reduce(
+            (n, item) => n + 1 + (item.kind === 'thought' ? item.text.length : 0),
+            0,
+          ),
+        0,
+      ),
     0,
   );
 
@@ -148,8 +176,8 @@ export default function ActivityPanel({
                         block.summary != null && 'border-border-light ms-1 border-s ps-4',
                       )}
                     >
-                      {block.steps.map((step) => (
-                        <Step key={step.id} step={step} />
+                      {block.steps.map((item) => (
+                        <Item key={`${item.kind}-${item.id}`} item={item} />
                       ))}
                     </ul>
                   </div>
