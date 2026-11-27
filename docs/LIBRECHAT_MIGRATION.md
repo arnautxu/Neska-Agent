@@ -79,3 +79,12 @@ Files and presentations (2026-11-10, Arnau: "que funcioni com a Codex o com a Cl
   Neska is thinking between the steps (Haiku reasoning labels). Prova needs the
   `reasoningLabel*` lines under `endpoints.all` from `librechat/neska/librechat.yaml`.
 
+- 2026-11-27 (audit fixes chosen by Arnau): MongoDB asks for a password (`NESKA_MONGO_PASSWORD`;
+  existing servers migrate once, `librechat/neska/README.md`, "MongoDB amb contrasenya");
+  uploads capped at 50 MB per file and 100 MB per message (`fileConfig`); Docker logs capped at
+  3 x 10 MB per container in all three stacks; RabbitMQ in the web search stack gets 768 MB
+  (384 MB was OOM-killed about 10 times in 30 days). The shared brain records notes added
+  outside Neska, refuses card numbers and IBANs, does not learn in a response that read the web,
+  and Obsidian now reaches it as the folder's own user (uid 1000, git-shell), never as root
+  (`librechat/neska/cervell/README.md`). The server was rebooted the same day (kernel
+  6.8.0-151); all 19 containers came back on their own.

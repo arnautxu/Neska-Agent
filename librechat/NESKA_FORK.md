@@ -111,3 +111,7 @@ over a git-backed Markdown vault mounted at `/app/cervell`; both modes list it i
   pick in chat, so the brain (`chatMenu: false`) does not bring the panel back. `interface.mcpServers.use`
   is on only so the modes reach the brain; `create` stays off.
 - `Dockerfile`: `git` added (the vault's history).
+- `packages/api/src/agents/hitl/neskaWebLearn.ts` (+ spec), registered in `hooks.ts`: once a
+  response has called `web_search`, `aprendre_mcp_cervell` is denied for the rest of that
+  response (prompt injection from web pages must not reach the shared brain). On only with
+  `toolApproval.riskLabels`. The vault also refuses card numbers (Luhn) and IBANs (mod 97).

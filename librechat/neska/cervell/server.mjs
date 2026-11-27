@@ -61,18 +61,88 @@ function relative(file) {
   return path.relative(VAULT, file).replace(/\.md$/, '');
 }
 
-async function git(...args) {
+const NESKA = { name: 'Neska', email: 'neska@neska.local' };
+
+async function gitAs(author, ...args) {
   const { stdout } = await run('git', ['-C', VAULT, ...args], {
     env: {
       ...process.env,
-      GIT_AUTHOR_NAME: USER_NAME,
-      GIT_AUTHOR_EMAIL: USER_EMAIL,
-      GIT_COMMITTER_NAME: 'Neska',
-      GIT_COMMITTER_EMAIL: 'neska@neska.local',
+      GIT_AUTHOR_NAME: author.name,
+      GIT_AUTHOR_EMAIL: author.email,
+      GIT_COMMITTER_NAME: NESKA.name,
+      GIT_COMMITTER_EMAIL: NESKA.email,
     },
     maxBuffer: 4 * 1024 * 1024,
   });
   return stdout;
+}
+
+function git(...args) {
+  return gitAs({ name: USER_NAME, email: USER_EMAIL }, ...args);
+}
+
+/**
+ * Notes that are in the folder but not in the history (the starting template, notes copied in
+ * by hand after the audit) go into one commit, so Obsidian sees them and "oblida" can undo
+ * against a real history. Runs at start, under the lock, authored by Neska.
+ */
+async function recordOutsideChanges() {
+  await gitAs(NESKA, 'add', '--all', '--', '.');
+  const staged = await gitAs(NESKA, 'diff', '--cached', '--name-only');
+  if (!staged.trim()) {
+    return;
+  }
+  const first = await gitAs(NESKA, 'rev-parse', '--verify', '--quiet', 'HEAD').then(
+    () => false,
+    () => true,
+  );
+  await gitAs(NESKA, 'commit', '--quiet', '-m', first ? 'Notes inicials del cervell' : 'Canvis fets fora de Neska');
+}
+
+// "contrasenya: x", "password = x", "la contrasenya és x" (JS \b does not see accented letters).
+const SECRET_WORDS =
+  /(contrasenya|password|passwd|clau d'acc[eé]s|\bpin\b|\bcvv\b|\bcvc\b|api[_ -]?key|token|secret)\s*(?::|=|\s(?:és|es|is|era|seria)\s)/i;
+
+/** Card numbers: 13 to 19 digits (spaces or dashes allowed) that pass the Luhn check. */
+function hasCardNumber(text) {
+  for (const match of text.matchAll(/\b\d(?:[ -]?\d){12,18}\b/g)) {
+    const digits = match[0].replace(/\D/g, '');
+    let sum = 0;
+    for (let i = 0; i < digits.length; i++) {
+      let d = Number(digits[digits.length - 1 - i]);
+      if (i % 2 === 1) {
+        d *= 2;
+        if (d > 9) d -= 9;
+      }
+      sum += d;
+    }
+    if (sum % 10 === 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** IBANs (any country, spaces allowed) that pass the mod-97 check. */
+function hasIban(text) {
+  for (const match of text.toUpperCase().matchAll(/\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}\b/g)) {
+    const iban = match[0].replace(/ /g, '');
+    const moved = iban.slice(4) + iban.slice(0, 4);
+    const numeric = moved.replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
+    let rest = 0;
+    for (const ch of numeric) {
+      rest = (rest * 10 + Number(ch)) % 97;
+    }
+    if (rest === 1) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** What the shared brain never stores: passwords and keys, card numbers, bank accounts. */
+export function looksSecret(text) {
+  return SECRET_WORDS.test(text) || hasCardNumber(text) || hasIban(text);
 }
 
 /** One vault, many user processes: serialise writes with a lock directory. */
@@ -226,8 +296,11 @@ server.registerTool(
   async ({ nota, fet, substitueix }) => {
     const { file, title } = noteFile(nota);
     const fact = fet.replace(/\s+/g, ' ').trim();
-    if (/(contrasenya|password|passwd|clau d'accés|\bpin\b|api[_ -]?key|token)\s*[:=]/i.test(fact)) {
-      return { isError: true, content: [{ type: 'text', text: 'No es desen contrasenyes ni claus al cervell.' }] };
+    if (looksSecret(fact)) {
+      return {
+        isError: true,
+        content: [{ type: 'text', text: 'No es desen contrasenyes, claus, números de targeta ni comptes bancaris al cervell.' }],
+      };
     }
     return withLock(async () => {
       await fs.mkdir(path.dirname(file), { recursive: true });
@@ -314,11 +387,17 @@ server.registerTool(
     }),
 );
 
-await fs.mkdir(VAULT, { recursive: true });
-await run('git', ['-C', VAULT, 'rev-parse', '--git-dir']).catch(async () => {
-  await run('git', ['init', '--quiet', '-b', 'main', VAULT]);
-});
-// Arnau's Obsidian (git clone over SSH) can push straight into this checkout.
-await run('git', ['-C', VAULT, 'config', 'receive.denyCurrentBranch', 'updateInstead']).catch(() => {});
+if (process.env.NESKA_CERVELL_NO_SERVER !== '1') {
+  await fs.mkdir(VAULT, { recursive: true });
+  await run('git', ['-C', VAULT, 'rev-parse', '--git-dir']).catch(async () => {
+    await run('git', ['init', '--quiet', '-b', 'main', VAULT]);
+  });
+  // The admin's Obsidian (git over SSH, as the same user that owns the folder, never root)
+  // can push straight into this checkout. See README.md, "Obsidian".
+  await run('git', ['-C', VAULT, 'config', 'receive.denyCurrentBranch', 'updateInstead']).catch(() => {});
+  await withLock(recordOutsideChanges).catch((error) => {
+    console.error('[cervell] could not record notes added outside Neska:', error.message);
+  });
 
-await server.connect(new StdioServerTransport());
+  await server.connect(new StdioServerTransport());
+}
