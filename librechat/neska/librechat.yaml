@@ -233,3 +233,13 @@ memory:
     instructions: "Guarda només fets útils i duradors sobre l'usuari i la seva feina (preferències, rol, projectes). En català. Mai contrasenyes ni claus."
     # Needs the Neska memory.ts fix: Claude 5 rejects the temperature LibreChat's
     # memory agent used to send (see NESKA_FORK.md).
+
+# Uploads (audit 2026-11-27): 50 MB per file, at most 10 files and 100 MB per message.
+# LibreChat's default was 512 MB per file. Values are in MB.
+fileConfig:
+  serverFileSizeLimit: 50
+  endpoints:
+    agents:
+      fileLimit: 10
+      fileSizeLimit: 50
+      totalSizeLimit: 100

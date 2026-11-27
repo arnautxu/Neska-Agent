@@ -31,8 +31,13 @@ x-auth: &auth
   # Remote bridge (operator-owned VMs) is not used by Neska.
   CODEAPI_BRIDGE_DYNAMIC_WORKERS: 'false'
 
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: '3'}
+
 services:
   api:
+    logging: *logging
     image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-api:${CODEAPI_IMAGE_TAG:?set CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     environment:
@@ -53,6 +58,7 @@ services:
         aliases: [codeapi]
 
   service-worker:
+    logging: *logging
     image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-worker:${CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     environment:
@@ -68,6 +74,7 @@ services:
       sandbox-runner: { condition: service_healthy }
 
   egress_gateway:
+    logging: *logging
     image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-egress-gateway:${CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     environment:
@@ -83,6 +90,7 @@ services:
     depends_on: [file_server, tool_call_server, redis]
 
   tool_call_server:
+    logging: *logging
     image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-tool-call-server:${CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     environment:
@@ -93,6 +101,7 @@ services:
     depends_on: [redis]
 
   sandbox-runner:
+    logging: *logging
     image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-sandbox-runner-direct:${CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     privileged: false
@@ -147,6 +156,7 @@ services:
       start_period: 20s
 
   file_server:
+    logging: *logging
     image: ${CODEAPI_REGISTRY:-ghcr.io/librechat-ai}/${CODEAPI_IMAGE_PREFIX:-code-interpreter}-file-server:${CODEAPI_IMAGE_TAG}
     restart: unless-stopped
     environment:
@@ -164,6 +174,7 @@ services:
       redis: { condition: service_started }
 
   redis:
+    logging: *logging
     image: redis:7.4-alpine
     restart: unless-stopped
     command: ['sh', '-c', 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes']
@@ -173,6 +184,7 @@ services:
       - ${CODEAPI_DATA:?set CODEAPI_DATA}/redis:/data
 
   minio:
+    logging: *logging
     image: ${CODEAPI_MINIO_IMAGE:-cgr.dev/chainguard/minio:latest}
     restart: unless-stopped
     command: ['server', '/data']

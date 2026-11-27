@@ -5,6 +5,10 @@
 # so what runs is exactly the reviewed Neska commit.
 name: neska-${NESKA_CLIENT:?set NESKA_CLIENT}
 
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: '3'}
+
 services:
   app:
     image: ${NESKA_IMAGE:-neska-librechat:local}
@@ -18,7 +22,8 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 3080
-      MONGO_URI: mongodb://mongodb:27017/neska
+      # MongoDB asks for a password (audit 2026-11-27): it shares a network with the web reader.
+      MONGO_URI: mongodb://neska:${NESKA_MONGO_PASSWORD:?set NESKA_MONGO_PASSWORD}@mongodb:27017/neska?authSource=admin
       MEILI_HOST: http://meilisearch:7700
       CONFIG_PATH: /app/neska/librechat.yaml
       # One app replica per server: lets scheduled tasks run without Redis.
@@ -32,13 +37,20 @@ services:
       # Cervell del Racó: shared Markdown notes, a git repo (neska/cervell/README.md).
       - ${NESKA_DATA:-/srv/neska}/cervell:/app/cervell
     expose: ['3080']
+    logging: *logging
 
   mongodb:
     image: mongo:8.0.20
     restart: unless-stopped
-    command: mongod --noauth
+    command: mongod --auth
+    environment:
+      # Creates the user on the first start with an empty data folder. An install that already
+      # has data adds it by hand once: README.md, "MongoDB amb contrasenya".
+      MONGO_INITDB_ROOT_USERNAME: neska
+      MONGO_INITDB_ROOT_PASSWORD: ${NESKA_MONGO_PASSWORD:?set NESKA_MONGO_PASSWORD}
     volumes:
       - ${NESKA_DATA:-/srv/neska}/mongo:/data/db
+    logging: *logging
 
   meilisearch:
     image: getmeili/meilisearch:v1.35.1
@@ -48,6 +60,7 @@ services:
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY}
     volumes:
       - ${NESKA_DATA:-/srv/neska}/meili:/meili_data
+    logging: *logging
 
   # TLS for the client's domain (e.g. prova.neska.cat). Only 80/443 are published;
   # MongoDB and Meilisearch stay on the private compose network.
@@ -57,5 +70,6 @@ services:
     depends_on: [app]
     ports: ['80:80', '443:443']
     command: caddy reverse-proxy --from ${NESKA_DOMAIN:?set NESKA_DOMAIN} --to app:3080
+    logging: *logging
     volumes:
       - ${NESKA_DATA:-/srv/neska}/caddy:/data

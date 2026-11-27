@@ -1,6 +1,7 @@
 import type { AppConfig } from '@librechat/data-schemas';
 import type { HookCallback } from '@librechat/agents';
 import { buildNeskaDeleteHook } from './neskaDelete';
+import { buildNeskaWebLearnHook } from './neskaWebLearn';
 
 /**
  * Per-run context handed to a {@link ToolApprovalHookFactory} when a run is built. It carries
@@ -128,6 +129,11 @@ export function buildToolApprovalHooks(
   const neskaDelete = buildNeskaDeleteHook(context);
   if (neskaDelete) {
     built.push(neskaDelete);
+  }
+  // Neska: the shared brain does not learn in a response that has read the web (neskaWebLearn.ts).
+  const neskaWebLearn = buildNeskaWebLearnHook(context);
+  if (neskaWebLearn) {
+    built.push(neskaWebLearn);
   }
   return built;
 }
